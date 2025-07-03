@@ -1,15 +1,25 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Search, 
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { X, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import {
+  Search,
   Filter,
   Heart,
   Calendar,
@@ -18,9 +28,12 @@ import {
   MessageSquare,
   Users,
   Clock,
-  BookOpen
-} from 'lucide-react';
-import { toast } from 'sonner';
+  BookOpen,
+  UserPlus,
+  CheckCircle,
+  Award,
+} from "lucide-react";
+import { toast } from "sonner";
 
 interface Mentor {
   id: string;
@@ -34,98 +47,149 @@ interface Mentor {
   yearsExperience: number;
   location: string;
   bio: string;
-  availability: 'available' | 'busy' | 'unavailable';
+  availability: "available" | "busy" | "unavailable";
   hourlyRate?: number;
   languages: string[];
+}
+interface MentorApplicationForm {
+  motivation: string;
+  expertise: string[];
+  availability: string;
+  preferredMenteeLevel: "beginner" | "intermediate" | "advanced" | "any";
+  maxMentees: number;
+  bio: string;
+  yearsExperience: number;
+  hourlyRate: string;
+  languages: string[];
+  linkedinUrl: string;
+  portfolioUrl: string;
 }
 
 export default function MentorsPage() {
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'available' | 'top-rated' | 'my-mentors'>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState<
+    "all" | "available" | "top-rated" | "my-mentors"
+  >("all");
   const [loading, setLoading] = useState(false);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [applicationLoading, setApplicationLoading] = useState(false);
+
+  // Mentor application form state
+  const [applicationForm, setApplicationForm] = useState<MentorApplicationForm>(
+    {
+      motivation: "",
+      expertise: [],
+      availability: "",
+      preferredMenteeLevel: "any",
+      maxMentees: 3,
+      bio: "",
+      yearsExperience: 0,
+      hourlyRate: "",
+      languages: ["English"],
+      linkedinUrl: "",
+      portfolioUrl: "",
+    }
+  );
 
   // Mock data - replace with actual API call
   const mentors: Mentor[] = [
     {
-      id: '1',
-      name: 'Sarah Johnson',
-      avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1',
-      designation: 'Senior Software Engineer',
-      company: 'Google',
-      expertise: ['React', 'Node.js', 'System Design', 'Career Growth'],
+      id: "1",
+      name: "Sarah Johnson",
+      avatar:
+        "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
+      designation: "Senior Software Engineer",
+      company: "Google",
+      expertise: ["React", "Node.js", "System Design", "Career Growth"],
       rating: 4.9,
       totalSessions: 156,
       yearsExperience: 8,
-      location: 'San Francisco, CA',
-      bio: 'Passionate about helping junior developers grow their careers in tech. Specialized in full-stack development and system architecture.',
-      availability: 'available',
+      location: "San Francisco, CA",
+      bio: "Passionate about helping junior developers grow their careers in tech. Specialized in full-stack development and system architecture.",
+      availability: "available",
       hourlyRate: 75,
-      languages: ['English', 'Spanish'],
+      languages: ["English", "Spanish"],
     },
     {
-      id: '2',
-      name: 'Michael Chen',
-      avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1',
-      designation: 'Product Manager',
-      company: 'Microsoft',
-      expertise: ['Product Strategy', 'User Research', 'Agile', 'Leadership'],
+      id: "2",
+      name: "Michael Chen",
+      avatar:
+        "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
+      designation: "Product Manager",
+      company: "Microsoft",
+      expertise: ["Product Strategy", "User Research", "Agile", "Leadership"],
       rating: 4.8,
       totalSessions: 89,
       yearsExperience: 6,
-      location: 'Seattle, WA',
-      bio: 'Former engineer turned product manager. Love helping others transition into product roles and develop strategic thinking.',
-      availability: 'available',
+      location: "Seattle, WA",
+      bio: "Former engineer turned product manager. Love helping others transition into product roles and develop strategic thinking.",
+      availability: "available",
       hourlyRate: 85,
-      languages: ['English', 'Mandarin'],
+      languages: ["English", "Mandarin"],
     },
     {
-      id: '3',
-      name: 'Emily Rodriguez',
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1',
-      designation: 'Data Science Director',
-      company: 'Netflix',
-      expertise: ['Machine Learning', 'Python', 'Data Analytics', 'Team Management'],
+      id: "3",
+      name: "Emily Rodriguez",
+      avatar:
+        "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
+      designation: "Data Science Director",
+      company: "Netflix",
+      expertise: [
+        "Machine Learning",
+        "Python",
+        "Data Analytics",
+        "Team Management",
+      ],
       rating: 4.9,
       totalSessions: 203,
       yearsExperience: 10,
-      location: 'Los Angeles, CA',
-      bio: 'Leading data science teams for 5+ years. Passionate about democratizing AI and helping others break into data science.',
-      availability: 'busy',
+      location: "Los Angeles, CA",
+      bio: "Leading data science teams for 5+ years. Passionate about democratizing AI and helping others break into data science.",
+      availability: "busy",
       hourlyRate: 95,
-      languages: ['English', 'Spanish'],
+      languages: ["English", "Spanish"],
     },
     {
-      id: '4',
-      name: 'David Kim',
-      avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1',
-      designation: 'Startup Founder',
-      company: 'TechStart Inc.',
-      expertise: ['Entrepreneurship', 'Fundraising', 'Business Strategy', 'Networking'],
+      id: "4",
+      name: "David Kim",
+      avatar:
+        "https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
+      designation: "Startup Founder",
+      company: "TechStart Inc.",
+      expertise: [
+        "Entrepreneurship",
+        "Fundraising",
+        "Business Strategy",
+        "Networking",
+      ],
       rating: 4.7,
       totalSessions: 67,
       yearsExperience: 12,
-      location: 'Austin, TX',
-      bio: 'Serial entrepreneur with 2 successful exits. Mentoring aspiring founders and helping with business development.',
-      availability: 'available',
+      location: "Austin, TX",
+      bio: "Serial entrepreneur with 2 successful exits. Mentoring aspiring founders and helping with business development.",
+      availability: "available",
       hourlyRate: 120,
-      languages: ['English', 'Korean'],
+      languages: ["English", "Korean"],
     },
   ];
 
-  const filteredMentors = mentors.filter(mentor => {
-    const matchesSearch = mentor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         mentor.expertise.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         mentor.company.toLowerCase().includes(searchTerm.toLowerCase());
-    
+  const filteredMentors = mentors.filter((mentor) => {
+    const matchesSearch =
+      mentor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      mentor.expertise.some((skill) =>
+        skill.toLowerCase().includes(searchTerm.toLowerCase())
+      ) ||
+      mentor.company.toLowerCase().includes(searchTerm.toLowerCase());
+
     switch (selectedFilter) {
-      case 'available':
-        return matchesSearch && mentor.availability === 'available';
-      case 'top-rated':
+      case "available":
+        return matchesSearch && mentor.availability === "available";
+      case "top-rated":
         return matchesSearch && mentor.rating >= 4.8;
-      case 'my-mentors':
+      case "my-mentors":
         // Mock: assume first mentor is connected
-        return matchesSearch && mentor.id === '1';
+        return matchesSearch && mentor.id === "1";
       default:
         return matchesSearch;
     }
@@ -135,10 +199,12 @@ export default function MentorsPage() {
     setLoading(true);
     try {
       // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('Session booking request sent! The mentor will contact you soon.');
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      toast.success(
+        "Session booking request sent! The mentor will contact you soon."
+      );
     } catch (error) {
-      toast.error('Failed to book session. Please try again.');
+      toast.error("Failed to book session. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -147,10 +213,126 @@ export default function MentorsPage() {
   const handleConnectMentor = async (mentorId: string) => {
     try {
       // TODO: Replace with actual API call
-      toast.success('Connection request sent to mentor!');
+      toast.success("Connection request sent to mentor!");
     } catch (error) {
-      toast.error('Failed to send connection request. Please try again.');
+      toast.error("Failed to send connection request. Please try again.");
     }
+  };
+
+  const handleApplicationInputChange = (
+    field: keyof MentorApplicationForm,
+    value: any
+  ) => {
+    setApplicationForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleExpertiseAdd = (skill: string) => {
+    if (skill.trim() && !applicationForm.expertise.includes(skill.trim())) {
+      setApplicationForm((prev) => ({
+        ...prev,
+        expertise: [...prev.expertise, skill.trim()],
+      }));
+    }
+  };
+
+  const handleExpertiseRemove = (skill: string) => {
+    setApplicationForm((prev) => ({
+      ...prev,
+      expertise: prev.expertise.filter((s) => s !== skill),
+    }));
+  };
+
+  const handleLanguageAdd = (language: string) => {
+    if (
+      language.trim() &&
+      !applicationForm.languages.includes(language.trim())
+    ) {
+      setApplicationForm((prev) => ({
+        ...prev,
+        languages: [...prev.languages, language.trim()],
+      }));
+    }
+  };
+
+  const handleLanguageRemove = (language: string) => {
+    if (applicationForm.languages.length > 1) {
+      setApplicationForm((prev) => ({
+        ...prev,
+        languages: prev.languages.filter((l) => l !== language),
+      }));
+    }
+  };
+
+  const handleSubmitApplication = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation
+    if (!applicationForm.motivation.trim()) {
+      toast.error("Please provide your motivation for becoming a mentor");
+      return;
+    }
+
+    if (applicationForm.expertise.length === 0) {
+      toast.error("Please add at least one area of expertise");
+      return;
+    }
+
+    if (!applicationForm.bio.trim()) {
+      toast.error("Please provide a bio describing your background");
+      return;
+    }
+
+    if (applicationForm.yearsExperience < 1) {
+      toast.error("Please specify your years of experience");
+      return;
+    }
+
+    setApplicationLoading(true);
+
+    try {
+      // TODO: Replace with actual API call
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Reset form and close modal
+      setApplicationForm({
+        motivation: "",
+        expertise: [],
+        availability: "",
+        preferredMenteeLevel: "any",
+        maxMentees: 3,
+        bio: "",
+        yearsExperience: 0,
+        hourlyRate: "",
+        languages: ["English"],
+        linkedinUrl: "",
+        portfolioUrl: "",
+      });
+
+      setShowApplicationModal(false);
+      toast.success(
+        "Mentor application submitted successfully! We will review your application and get back to you within 3-5 business days."
+      );
+    } catch (error) {
+      toast.error("Failed to submit application. Please try again.");
+    } finally {
+      setApplicationLoading(false);
+    }
+  };
+
+  const resetApplicationForm = () => {
+    setApplicationForm({
+      motivation: "",
+      expertise: [],
+      availability: "",
+      preferredMenteeLevel: "any",
+      maxMentees: 3,
+      bio: "",
+      yearsExperience: 0,
+      hourlyRate: "",
+      languages: ["English"],
+      linkedinUrl: "",
+      portfolioUrl: "",
+    });
   };
 
   return (
@@ -186,7 +368,10 @@ export default function MentorsPage() {
             </div>
             <div className="flex items-center space-x-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <Tabs value={selectedFilter} onValueChange={(value) => setSelectedFilter(value as any)}>
+              <Tabs
+                value={selectedFilter}
+                onValueChange={(value) => setSelectedFilter(value as any)}
+              >
                 <TabsList>
                   <TabsTrigger value="all">All</TabsTrigger>
                   <TabsTrigger value="available">Available</TabsTrigger>
@@ -203,13 +388,17 @@ export default function MentorsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary">{mentors.filter(m => m.availability === 'available').length}</div>
+            <div className="text-2xl font-bold text-primary">
+              {mentors.filter((m) => m.availability === "available").length}
+            </div>
             <p className="text-sm text-muted-foreground">Available Now</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary">{mentors.filter(m => m.rating >= 4.8).length}</div>
+            <div className="text-2xl font-bold text-primary">
+              {mentors.filter((m) => m.rating >= 4.8).length}
+            </div>
             <p className="text-sm text-muted-foreground">Top Rated</p>
           </CardContent>
         </Card>
@@ -237,25 +426,40 @@ export default function MentorsPage() {
                   <Avatar className="h-16 w-16">
                     <AvatarImage src={mentor.avatar} alt={mentor.name} />
                     <AvatarFallback className="text-lg">
-                      {mentor.name.split(' ').map(n => n[0]).join('')}
+                      {mentor.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-foreground truncate">{mentor.name}</h3>
-                      <Badge 
-                        variant={mentor.availability === 'available' ? 'default' : 'secondary'}
+                      <h3 className="font-semibold text-foreground truncate">
+                        {mentor.name}
+                      </h3>
+                      <Badge
+                        variant={
+                          mentor.availability === "available"
+                            ? "default"
+                            : "secondary"
+                        }
                         className="ml-2"
                       >
                         {mentor.availability}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">{mentor.designation}</p>
-                    <p className="text-sm font-medium text-primary">{mentor.company}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {mentor.designation}
+                    </p>
+                    <p className="text-sm font-medium text-primary">
+                      {mentor.company}
+                    </p>
                     <div className="flex items-center mt-2">
                       <div className="flex items-center">
                         <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                        <span className="text-sm font-medium ml-1">{mentor.rating}</span>
+                        <span className="text-sm font-medium ml-1">
+                          {mentor.rating}
+                        </span>
                       </div>
                       <span className="text-sm text-muted-foreground ml-2">
                         ({mentor.totalSessions} sessions)
@@ -264,10 +468,12 @@ export default function MentorsPage() {
                   </div>
                 </div>
               </CardHeader>
-              
+
               <CardContent className="space-y-4">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">Expertise</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Expertise
+                  </p>
                   <div className="flex flex-wrap gap-1">
                     {mentor.expertise.slice(0, 3).map((skill) => (
                       <Badge key={skill} variant="outline" className="text-xs">
@@ -299,7 +505,9 @@ export default function MentorsPage() {
 
                 {mentor.hourlyRate && (
                   <div className="text-center py-2 bg-accent rounded-lg">
-                    <span className="text-lg font-bold text-primary">${mentor.hourlyRate}</span>
+                    <span className="text-lg font-bold text-primary">
+                      ${mentor.hourlyRate}
+                    </span>
                     <span className="text-sm text-muted-foreground">/hour</span>
                   </div>
                 )}
@@ -308,7 +516,7 @@ export default function MentorsPage() {
                   <Button
                     size="sm"
                     onClick={() => handleBookSession(mentor.id)}
-                    disabled={loading || mentor.availability === 'unavailable'}
+                    disabled={loading || mentor.availability === "unavailable"}
                     className="flex-1"
                   >
                     <Calendar className="h-4 w-4 mr-1" />
@@ -334,16 +542,16 @@ export default function MentorsPage() {
             <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Mentors Found</h3>
             <p className="text-muted-foreground">
-              {searchTerm || selectedFilter !== 'all' 
-                ? 'Try adjusting your search or filters to find mentors.'
-                : 'No mentors are currently available. Check back later!'}
+              {searchTerm || selectedFilter !== "all"
+                ? "Try adjusting your search or filters to find mentors."
+                : "No mentors are currently available. Check back later!"}
             </p>
-            {(searchTerm || selectedFilter !== 'all') && (
-              <Button 
-                variant="outline" 
+            {(searchTerm || selectedFilter !== "all") && (
+              <Button
+                variant="outline"
                 onClick={() => {
-                  setSearchTerm('');
-                  setSelectedFilter('all');
+                  setSearchTerm("");
+                  setSelectedFilter("all");
                 }}
                 className="mt-4"
               >
@@ -354,6 +562,97 @@ export default function MentorsPage() {
         </Card>
       )}
 
+      {/* Become a Mentor Section */}
+      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <UserPlus className="h-5 w-5" />
+            <span>Become a Mentor</span>
+          </CardTitle>
+          <CardDescription>
+            Share your expertise and help fellow alumni grow their careers
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h4 className="font-semibold text-foreground">
+                Why Become a Mentor?
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Heart className="h-3 w-3" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">
+                      Give Back to Community
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Help fellow alumni achieve their career goals
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Award className="h-3 w-3" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Build Your Network</p>
+                    <p className="text-xs text-muted-foreground">
+                      Connect with talented professionals across industries
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <BookOpen className="h-3 w-3" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">
+                      Develop Leadership Skills
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Enhance your coaching and leadership abilities
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-semibold text-foreground">Requirements</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>2+ years of professional experience</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Alumni of this organization</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Commitment to help others grow</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Available for regular mentoring sessions</span>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => setShowApplicationModal(true)}
+                className="w-full mt-4"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Apply to Become a Mentor
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* How It Works Section */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
         <CardHeader>
@@ -361,7 +660,9 @@ export default function MentorsPage() {
             <BookOpen className="h-5 w-5" />
             <span>How Mentorship Works</span>
           </CardTitle>
-          <CardDescription>Get the most out of your mentorship experience</CardDescription>
+          <CardDescription>
+            Get the most out of your mentorship experience
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -389,12 +690,410 @@ export default function MentorsPage() {
               </div>
               <h4 className="font-medium">Grow Your Career</h4>
               <p className="text-sm text-muted-foreground">
-                Get personalized guidance and accelerate your professional growth
+                Get personalized guidance and accelerate your professional
+                growth
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Mentor Application Modal */}
+      {showApplicationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <UserPlus className="h-5 w-5" />
+                    <span>Apply to Become a Mentor</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Share your expertise and help fellow alumni grow their
+                    careers
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowApplicationModal(false);
+                    resetApplicationForm();
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmitApplication} className="space-y-6">
+                {/* Personal Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Personal Information</h3>
+                  <div className="bg-accent/20 p-4 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={user?.avatar} alt={user?.name} />
+                        <AvatarFallback>
+                          {user?.name
+                            ?.split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{user?.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {user?.designation}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Professional Background */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">
+                    Professional Background
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="yearsExperience">
+                        Years of Experience *
+                      </Label>
+                      <Input
+                        id="yearsExperience"
+                        type="number"
+                        min="1"
+                        max="50"
+                        value={applicationForm.yearsExperience}
+                        onChange={(e) =>
+                          handleApplicationInputChange(
+                            "yearsExperience",
+                            parseInt(e.target.value) || 0
+                          )
+                        }
+                        placeholder="5"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="hourlyRate">Hourly Rate (Optional)</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          id="hourlyRate"
+                          type="number"
+                          min="0"
+                          step="5"
+                          value={applicationForm.hourlyRate}
+                          onChange={(e) =>
+                            handleApplicationInputChange(
+                              "hourlyRate",
+                              e.target.value
+                            )
+                          }
+                          placeholder="75"
+                          className="pl-8"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Leave empty if you prefer to mentor for free
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Professional Bio *</Label>
+                    <Textarea
+                      id="bio"
+                      value={applicationForm.bio}
+                      onChange={(e) =>
+                        handleApplicationInputChange("bio", e.target.value)
+                      }
+                      placeholder="Tell us about your professional background, achievements, and what makes you a great mentor..."
+                      rows={4}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Areas of Expertise */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Areas of Expertise *</h3>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add a skill (e.g., React, Leadership, Product Management)"
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleExpertiseAdd(e.currentTarget.value);
+                            e.currentTarget.value = "";
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={(e) => {
+                          const input = e.currentTarget
+                            .previousElementSibling as HTMLInputElement;
+                          handleExpertiseAdd(input.value);
+                          input.value = "";
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {applicationForm.expertise.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {applicationForm.expertise.map((skill) => (
+                          <Badge
+                            key={skill}
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
+                            {skill}
+                            <button
+                              type="button"
+                              onClick={() => handleExpertiseRemove(skill)}
+                              className="ml-1 hover:text-destructive"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mentoring Preferences */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Mentoring Preferences</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="preferredMenteeLevel">
+                        Preferred Mentee Level
+                      </Label>
+                      <select
+                        id="preferredMenteeLevel"
+                        value={applicationForm.preferredMenteeLevel}
+                        onChange={(e) =>
+                          handleApplicationInputChange(
+                            "preferredMenteeLevel",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-input bg-background rounded-md"
+                      >
+                        <option value="beginner">Beginner (0-2 years)</option>
+                        <option value="intermediate">
+                          Intermediate (2-5 years)
+                        </option>
+                        <option value="advanced">Advanced (5+ years)</option>
+                        <option value="any">Any Level</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="maxMentees">Maximum Mentees</Label>
+                      <Input
+                        id="maxMentees"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={applicationForm.maxMentees}
+                        onChange={(e) =>
+                          handleApplicationInputChange(
+                            "maxMentees",
+                            parseInt(e.target.value) || 1
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="availability">Availability *</Label>
+                    <Textarea
+                      id="availability"
+                      value={applicationForm.availability}
+                      onChange={(e) =>
+                        handleApplicationInputChange(
+                          "availability",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Describe your availability (e.g., Weekends, Evenings PST, Flexible schedule)"
+                      rows={2}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Languages */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Languages</h3>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add a language (e.g., Spanish, Mandarin)"
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleLanguageAdd(e.currentTarget.value);
+                            e.currentTarget.value = "";
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={(e) => {
+                          const input = e.currentTarget
+                            .previousElementSibling as HTMLInputElement;
+                          handleLanguageAdd(input.value);
+                          input.value = "";
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {applicationForm.languages.map((language) => (
+                        <Badge
+                          key={language}
+                          variant="outline"
+                          className="flex items-center gap-1"
+                        >
+                          {language}
+                          {applicationForm.languages.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleLanguageRemove(language)}
+                              className="ml-1 hover:text-destructive"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Social Links */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">
+                    Professional Links (Optional)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="linkedinUrl">LinkedIn Profile</Label>
+                      <Input
+                        id="linkedinUrl"
+                        type="url"
+                        value={applicationForm.linkedinUrl}
+                        onChange={(e) =>
+                          handleApplicationInputChange(
+                            "linkedinUrl",
+                            e.target.value
+                          )
+                        }
+                        placeholder="https://linkedin.com/in/yourprofile"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="portfolioUrl">Portfolio/Website</Label>
+                      <Input
+                        id="portfolioUrl"
+                        type="url"
+                        value={applicationForm.portfolioUrl}
+                        onChange={(e) =>
+                          handleApplicationInputChange(
+                            "portfolioUrl",
+                            e.target.value
+                          )
+                        }
+                        placeholder="https://yourwebsite.com"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Motivation */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Motivation</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="motivation">
+                      Why do you want to become a mentor? *
+                    </Label>
+                    <Textarea
+                      id="motivation"
+                      value={applicationForm.motivation}
+                      onChange={(e) =>
+                        handleApplicationInputChange(
+                          "motivation",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Share your motivation for becoming a mentor and how you plan to help mentees..."
+                      rows={4}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex justify-end space-x-2 pt-4 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowApplicationModal(false);
+                      resetApplicationForm();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetApplicationForm}
+                  >
+                    Clear Form
+                  </Button>
+                  <Button type="submit" disabled={applicationLoading}>
+                    {applicationLoading ? (
+                      <>
+                        <LoadingSpinner size="sm" className="mr-2" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Submit Application
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
