@@ -1,48 +1,56 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useOrg } from '@/hooks/useOrg';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  Settings, 
-  Building, 
-  Users, 
-  Bell, 
-  Shield, 
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useOrg } from "@/hooks/useOrg";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Settings,
+  Building,
+  Users,
+  Bell,
+  Shield,
   CreditCard,
   Save,
   Upload,
   Trash2,
   AlertTriangle,
   CheckCircle,
-  Camera
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+  Camera,
+} from "lucide-react";
+import { toast } from "sonner";
+import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 
 export default function AdminSettingsPage() {
   const { user } = useAuth();
   const { organization, loading: orgLoading } = useOrg();
   const [loading, setLoading] = useState(false);
-  
+
   // Organization settings state
   const [orgSettings, setOrgSettings] = useState({
-    name: organization?.name || 'Tech Alumni Network',
-    description: organization?.description || 'Connecting technology professionals and fostering innovation',
-    website: 'https://techalumni.org',
-    contactEmail: 'admin@techalumni.org',
-    phone: '+1 (555) 123-4567',
-    address: '123 Tech Street, Silicon Valley, CA 94000',
-    logo: organization?.logo || '',
+    name: organization?.name || "Tech Alumni Network",
+    description:
+      organization?.description ||
+      "Connecting technology professionals and fostering innovation",
+    website: "https://techalumni.org",
+    contactEmail: "admin@techalumni.org",
+    phone: "+1 (555) 123-4567",
+    address: "123 Tech Street, Silicon Valley, CA 94000",
+    logo: organization?.logo || "",
   });
 
   // Notification settings state
@@ -65,20 +73,20 @@ export default function AdminSettingsPage() {
   });
 
   const handleOrgSettingsChange = (field: string, value: string) => {
-    setOrgSettings(prev => ({ ...prev, [field]: value }));
+    setOrgSettings((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleNotificationToggle = (setting: string) => {
-    setNotificationSettings(prev => ({ 
-      ...prev, 
-      [setting]: !prev[setting as keyof typeof prev] 
+    setNotificationSettings((prev) => ({
+      ...prev,
+      [setting]: !prev[setting as keyof typeof prev],
     }));
   };
 
   const handlePrivacyToggle = (setting: string) => {
-    setPrivacySettings(prev => ({ 
-      ...prev, 
-      [setting]: !prev[setting as keyof typeof prev] 
+    setPrivacySettings((prev) => ({
+      ...prev,
+      [setting]: !prev[setting as keyof typeof prev],
     }));
   };
 
@@ -86,22 +94,26 @@ export default function AdminSettingsPage() {
     setLoading(true);
     try {
       // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       toast.success(`${section} settings saved successfully!`);
     } catch (error) {
-      toast.error('Failed to save settings. Please try again.');
+      toast.error("Failed to save settings. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteOrganization = async () => {
-    if (window.confirm('Are you sure you want to delete this organization? This action cannot be undone.')) {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this organization? This action cannot be undone."
+      )
+    ) {
       try {
         // TODO: Replace with actual API call
-        toast.error('Organization deletion is not implemented yet.');
+        toast.error("Organization deletion is not implemented yet.");
       } catch (error) {
-        toast.error('Failed to delete organization.');
+        toast.error("Failed to delete organization.");
       }
     }
   };
@@ -135,7 +147,11 @@ export default function AdminSettingsPage() {
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
           <Badge variant="outline">
             <Building className="h-3 w-3 mr-1" />
-            {organization?.tier ? `${organization.tier.charAt(0).toUpperCase()}${organization.tier.slice(1)} Plan` : 'No Plan'}
+            {organization?.tier
+              ? organization.tier.charAt(0).toUpperCase() +
+                organization.tier.slice(1)
+              : "Unknown"}{" "}
+            Plan
           </Badge>
         </div>
       </div>
@@ -166,7 +182,10 @@ export default function AdminSettingsPage() {
                 <Avatar className="h-20 w-20">
                   <AvatarImage src={orgSettings.logo} alt="Organization Logo" />
                   <AvatarFallback className="text-lg">
-                    {orgSettings.name.split(' ').map(n => n[0]).join('')}
+                    {orgSettings.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -186,62 +205,74 @@ export default function AdminSettingsPage() {
                   <Input
                     id="orgName"
                     value={orgSettings.name}
-                    onChange={(e) => handleOrgSettingsChange('name', e.target.value)}
+                    onChange={(e) =>
+                      handleOrgSettingsChange("name", e.target.value)
+                    }
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="website">Website</Label>
                   <Input
                     id="website"
                     value={orgSettings.website}
-                    onChange={(e) => handleOrgSettingsChange('website', e.target.value)}
+                    onChange={(e) =>
+                      handleOrgSettingsChange("website", e.target.value)
+                    }
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="contactEmail">Contact Email</Label>
                   <Input
                     id="contactEmail"
                     type="email"
                     value={orgSettings.contactEmail}
-                    onChange={(e) => handleOrgSettingsChange('contactEmail', e.target.value)}
+                    onChange={(e) =>
+                      handleOrgSettingsChange("contactEmail", e.target.value)
+                    }
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
                   <Input
                     id="phone"
                     value={orgSettings.phone}
-                    onChange={(e) => handleOrgSettingsChange('phone', e.target.value)}
+                    onChange={(e) =>
+                      handleOrgSettingsChange("phone", e.target.value)
+                    }
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
                   value={orgSettings.description}
-                  onChange={(e) => handleOrgSettingsChange('description', e.target.value)}
+                  onChange={(e) =>
+                    handleOrgSettingsChange("description", e.target.value)
+                  }
                   rows={3}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
                 <Textarea
                   id="address"
                   value={orgSettings.address}
-                  onChange={(e) => handleOrgSettingsChange('address', e.target.value)}
+                  onChange={(e) =>
+                    handleOrgSettingsChange("address", e.target.value)
+                  }
                   rows={2}
                 />
               </div>
 
               <div className="flex justify-end pt-4 border-t">
-                <Button 
-                  onClick={() => handleSaveSettings('Organization')}
+                <Button
+                  onClick={() => handleSaveSettings("Organization")}
                   disabled={loading}
                 >
                   {loading ? (
@@ -284,10 +315,12 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={notificationSettings.emailNotifications}
-                    onCheckedChange={() => handleNotificationToggle('emailNotifications')}
+                    onCheckedChange={() =>
+                      handleNotificationToggle("emailNotifications")
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>New Member Notifications</Label>
@@ -297,10 +330,12 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={notificationSettings.memberJoinNotifications}
-                    onCheckedChange={() => handleNotificationToggle('memberJoinNotifications')}
+                    onCheckedChange={() =>
+                      handleNotificationToggle("memberJoinNotifications")
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Event Reminders</Label>
@@ -310,10 +345,12 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={notificationSettings.eventReminders}
-                    onCheckedChange={() => handleNotificationToggle('eventReminders')}
+                    onCheckedChange={() =>
+                      handleNotificationToggle("eventReminders")
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Donation Alerts</Label>
@@ -323,10 +360,12 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={notificationSettings.donationAlerts}
-                    onCheckedChange={() => handleNotificationToggle('donationAlerts')}
+                    onCheckedChange={() =>
+                      handleNotificationToggle("donationAlerts")
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>System Updates</Label>
@@ -336,10 +375,12 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={notificationSettings.systemUpdates}
-                    onCheckedChange={() => handleNotificationToggle('systemUpdates')}
+                    onCheckedChange={() =>
+                      handleNotificationToggle("systemUpdates")
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Weekly Reports</Label>
@@ -349,14 +390,16 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={notificationSettings.weeklyReports}
-                    onCheckedChange={() => handleNotificationToggle('weeklyReports')}
+                    onCheckedChange={() =>
+                      handleNotificationToggle("weeklyReports")
+                    }
                   />
                 </div>
               </div>
 
               <div className="flex justify-end pt-4 border-t">
-                <Button 
-                  onClick={() => handleSaveSettings('Notification')}
+                <Button
+                  onClick={() => handleSaveSettings("Notification")}
                   disabled={loading}
                 >
                   {loading ? (
@@ -399,10 +442,12 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={privacySettings.publicDirectory}
-                    onCheckedChange={() => handlePrivacyToggle('publicDirectory')}
+                    onCheckedChange={() =>
+                      handlePrivacyToggle("publicDirectory")
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Member Search</Label>
@@ -412,10 +457,12 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={privacySettings.allowMemberSearch}
-                    onCheckedChange={() => handlePrivacyToggle('allowMemberSearch')}
+                    onCheckedChange={() =>
+                      handlePrivacyToggle("allowMemberSearch")
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Show Member Count</Label>
@@ -425,10 +472,12 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={privacySettings.showMemberCount}
-                    onCheckedChange={() => handlePrivacyToggle('showMemberCount')}
+                    onCheckedChange={() =>
+                      handlePrivacyToggle("showMemberCount")
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Guest Event Access</Label>
@@ -438,10 +487,12 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={privacySettings.allowGuestEvents}
-                    onCheckedChange={() => handlePrivacyToggle('allowGuestEvents')}
+                    onCheckedChange={() =>
+                      handlePrivacyToggle("allowGuestEvents")
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Require Admin Approval</Label>
@@ -451,14 +502,16 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch
                     checked={privacySettings.requireApproval}
-                    onCheckedChange={() => handlePrivacyToggle('requireApproval')}
+                    onCheckedChange={() =>
+                      handlePrivacyToggle("requireApproval")
+                    }
                   />
                 </div>
               </div>
 
               <div className="flex justify-end pt-4 border-t">
-                <Button 
-                  onClick={() => handleSaveSettings('Privacy')}
+                <Button
+                  onClick={() => handleSaveSettings("Privacy")}
                   disabled={loading}
                 >
                   {loading ? (
@@ -496,15 +549,22 @@ export default function AdminSettingsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-lg">
-                      {organization?.tier ? `${organization.tier.charAt(0).toUpperCase()}${organization.tier.slice(1)} Plan` : 'No Plan'}
+                      {organization?.tier
+                        ? organization.tier.charAt(0).toUpperCase() +
+                          organization.tier.slice(1)
+                        : "Unknown"}{" "}
+                      Plan
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {organization?.memberCount} / {organization?.memberLimit} members used
+                      {organization?.memberCount} / {organization?.memberLimit}{" "}
+                      members used
                     </p>
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold">$99</div>
-                    <div className="text-sm text-muted-foreground">per month</div>
+                    <div className="text-sm text-muted-foreground">
+                      per month
+                    </div>
                   </div>
                 </div>
               </div>
@@ -516,7 +576,9 @@ export default function AdminSettingsPage() {
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span className="text-sm">Up to {organization?.memberLimit} members</span>
+                      <span className="text-sm">
+                        Up to {organization?.memberLimit} members
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="h-4 w-4 text-green-500" />
@@ -532,20 +594,26 @@ export default function AdminSettingsPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-3">
                   <h4 className="font-medium">Billing Information</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Next billing date:</span>
+                      <span className="text-muted-foreground">
+                        Next billing date:
+                      </span>
                       <span>January 15, 2024</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Payment method:</span>
+                      <span className="text-muted-foreground">
+                        Payment method:
+                      </span>
                       <span>•••• •••• •••• 4242</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Billing email:</span>
+                      <span className="text-muted-foreground">
+                        Billing email:
+                      </span>
                       <span>billing@techalumni.org</span>
                     </div>
                   </div>
@@ -561,9 +629,7 @@ export default function AdminSettingsPage() {
                   <Upload className="h-4 w-4 mr-2" />
                   Download Invoices
                 </Button>
-                <Button>
-                  Upgrade Plan
-                </Button>
+                <Button>Upgrade Plan</Button>
               </div>
             </CardContent>
           </Card>
@@ -583,13 +649,15 @@ export default function AdminSettingsPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 border border-destructive/20 rounded-lg">
                   <div>
-                    <h4 className="font-medium text-destructive">Delete Organization</h4>
+                    <h4 className="font-medium text-destructive">
+                      Delete Organization
+                    </h4>
                     <p className="text-sm text-muted-foreground">
                       Permanently delete this organization and all its data
                     </p>
                   </div>
-                  <Button 
-                    variant="destructive" 
+                  <Button
+                    variant="destructive"
                     onClick={handleDeleteOrganization}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
