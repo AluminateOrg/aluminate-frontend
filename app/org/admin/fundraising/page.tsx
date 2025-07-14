@@ -955,7 +955,7 @@ export default function AdminFundraisingPage() {
                                 </div>
                                 {donation.message && (
                                   <p className="text-sm bg-muted p-2 rounded mt-2 italic">
-                                    "{donation.message}"
+                                    &quot{donation.message}&quot
                                   </p>
                                 )}
                               </div>
