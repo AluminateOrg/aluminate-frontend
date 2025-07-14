@@ -348,7 +348,7 @@ Jane Smith,jane.smith@example.com,+0987654321,Product Manager,Innovation Inc,202
                   Approaching Member Limit
                 </p>
                 <p className="text-sm text-orange-700 dark:text-orange-300">
-                  You're using {organization.memberCount} of {organization.memberLimit} members. 
+                  You&#39;re using {organization.memberCount} of {organization.memberLimit} members. 
                   Consider upgrading your plan to add more members.
                 </p>
               </div>

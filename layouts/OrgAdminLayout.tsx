@@ -263,14 +263,14 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
           <div className="bg-background/80 backdrop-blur-sm rounded-xl p-4 mb-3 border border-border/30 shadow-sm">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12 ring-2 ring-primary/20 shadow-sm">
-                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarImage src={user?.avatar || ''} alt={user?.name || 'User'} />
                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30 text-primary font-semibold text-sm">
-                  {user.name.split(' ').map(n => n[0]).join('')}
+                  {user?.name ? user.name.split(' ').map(n => n[0]).join('') : 'U'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.designation}</p>
+                <p className="text-sm font-semibold text-foreground truncate">{user?.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.designation}</p>
                 <div className="flex items-center mt-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
                   <span className="text-xs text-green-600 dark:text-green-400 font-medium">Online</span>

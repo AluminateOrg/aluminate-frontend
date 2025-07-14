@@ -135,7 +135,7 @@ export default function AdminSettingsPage() {
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
           <Badge variant="outline">
             <Building className="h-3 w-3 mr-1" />
-            {organization?.tier?.charAt(0).toUpperCase() + organization?.tier?.slice(1)} Plan
+            {organization?.tier ? `${organization.tier.charAt(0).toUpperCase()}${organization.tier.slice(1)} Plan` : 'No Plan'}
           </Badge>
         </div>
       </div>
@@ -496,7 +496,7 @@ export default function AdminSettingsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-lg">
-                      {organization?.tier?.charAt(0).toUpperCase() + organization?.tier?.slice(1)} Plan
+                      {organization?.tier ? `${organization.tier.charAt(0).toUpperCase()}${organization.tier.slice(1)} Plan` : 'No Plan'}
                     </h3>
                     <p className="text-sm text-muted-foreground">
                       {organization?.memberCount} / {organization?.memberLimit} members used
