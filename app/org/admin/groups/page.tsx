@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrg } from '@/hooks/useOrg';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,8 +35,6 @@ interface Group {
   description: string;
   maxMembers: number;
   currentMembers: number;
-  adminId: string;
-  adminName: string;
   createdAt: string;
   isActive: boolean;
   category: 'professional' | 'social' | 'academic' | 'hobby';
@@ -59,7 +57,6 @@ export default function AdminGroupsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
 
-  // Group form state
   const [groupForm, setGroupForm] = useState<GroupFormData>({
     name: '',
     description: '',
@@ -67,88 +64,85 @@ export default function AdminGroupsPage() {
     category: 'professional'
   });
 
-  // Mock groups data
-  const [groups, setGroups] = useState<Group[]>([
-    {
-      id: '1',
-      name: 'Software Engineers',
-      description: 'A community for software engineering professionals to share knowledge and network',
-      maxMembers: 100,
-      currentMembers: 45,
-      adminId: user?.id || '',
-      adminName: user?.name || 'Admin',
-      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      isActive: true,
-      category: 'professional'
-    },
-    {
-      id: '2',
-      name: 'Data Scientists',
-      description: 'Data science and analytics professionals sharing insights and best practices',
-      maxMembers: 75,
-      currentMembers: 23,
-      adminId: user?.id || '',
-      adminName: user?.name || 'Admin',
-      createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-      isActive: true,
-      category: 'professional'
-    },
-    {
-      id: '3',
-      name: 'Alumni Social Club',
-      description: 'Casual meetups and social events for alumni to stay connected',
-      maxMembers: 200,
-      currentMembers: 89,
-      adminId: user?.id || '',
-      adminName: user?.name || 'Admin',
-      createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-      isActive: true,
-      category: 'social'
-    },
-    {
-      id: '4',
-      name: 'Photography Enthusiasts',
-      description: 'Share your photography skills and explore the world through the lens',
-      maxMembers: 50,
-      currentMembers: 12,
-      adminId: user?.id || '',
-      adminName: user?.name || 'Admin',
-      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-      isActive: false,
-      category: 'hobby'
+  const [groups, setGroups] = useState<Group[]>([]);
+
+  const fetchGroups = async () => {
+    setLoading(true);
+
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+
+      const response = await fetch(`${apiEndpoint}/group/get/all`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch groups');
+      }
+
+      const Data = await response.json();
+      const groups = Data.data;
+
+      // Transform API response to match Group interface
+      const transformedGroups: Group[] = groups.map((group: any) => ({
+        id: group.id,
+        name: group.name,
+        description: group.description,
+        maxMembers: group.maxMembers,
+        currentMembers: group.currentMembers,
+        createdAt: group.createdDate, // Transform `createdDate` to `createdAt`
+        isActive: group.active, // Transform `active` to `isActive`
+        category: group.category.toLowerCase() as Group['category'], // Ensure lowercase categories
+      }));
+
+      setGroups(transformedGroups);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      toast.error('Failed to load groups. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchGroups();
+  }, []);
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Validate required fields
       if (!groupForm.name || !groupForm.description) {
         toast.error('Please fill in all required fields');
+        setLoading(false);
         return;
       }
 
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+      const response = await fetch(`${apiEndpoint}/group/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: groupForm.name,
+          description: groupForm.description,
+          maxMembers: parseInt(groupForm.maxMembers, 10),
+          category: groupForm.category.toUpperCase(),
+        }),
+      });
 
-      const newGroup: Group = {
-        id: Date.now().toString(),
-        name: groupForm.name,
-        description: groupForm.description,
-        maxMembers: parseInt(groupForm.maxMembers),
-        currentMembers: 0,
-        adminId: user?.id || '',
-        adminName: user?.name || 'Admin',
-        createdAt: new Date().toISOString(),
-        isActive: true,
-        category: groupForm.category
-      };
+      if (!response.ok) {
+        throw new Error('Failed to create group');
+      }
 
-      setGroups(prev => [newGroup, ...prev]);
-      resetForm();
+      await response.json();
+
+      await fetchGroups();
+
       setShowCreateForm(false);
+      resetForm();
       toast.success('Group created successfully!');
     } catch (error) {
       toast.error('Failed to create group. Please try again.');
@@ -171,13 +165,35 @@ export default function AdminGroupsPage() {
   };
 
   const toggleGroupStatus = async (groupId: string) => {
-    try {
-      setGroups(prev => prev.map(group => 
+    const updatedGroups = groups.map(group =>
         group.id === groupId ? { ...group, isActive: !group.isActive } : group
-      ));
+    );
+    setGroups(updatedGroups);
+
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+
+      const response = await fetch(`${apiEndpoint}/group/${groupId}/toggle-status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle group status');
+      }
+
       toast.success('Group status updated successfully!');
     } catch (error) {
-      toast.error('Failed to update group status');
+      const revertedGroups = updatedGroups.map(group =>
+          group.id === groupId ? { ...group, isActive: !group.isActive } : group
+      );
+      setGroups(revertedGroups);
+
+      toast.error('Failed to update group status. Please try again.');
+      console.error(error);
     }
   };
 
@@ -187,21 +203,47 @@ export default function AdminGroupsPage() {
     }
 
     try {
-      setGroups(prev => prev.filter(group => group.id !== groupId));
-      toast.success('Group deleted successfully');
+      // Remove the group optimistically from the list
+      const updatedGroups = groups.filter(group => group.id !== groupId);
+      setGroups(updatedGroups);
+
+      // Backend API call to delete the group
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+
+      const response = await fetch(`${apiEndpoint}/group/${groupId}/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete the group');
+      }
+
+      toast.success('Group deleted successfully!');
     } catch (error) {
-      toast.error('Failed to delete group');
+      // Rollback the optimistic update in case of an error
+      const previousGroups = await fetchGroups(); // Re-load the groups to ensure data integrity
+      setGroups(previousGroups);
+
+      toast.error('Failed to delete group. Please try again.');
+      console.error(error);
     }
   };
 
   const filteredGroups = groups.filter(group => {
-    const matchesSearch = group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         group.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && group.isActive) ||
-                         (statusFilter === 'inactive' && !group.isActive);
-    
+    const groupName = group.name || '';
+    const groupDescription = group.description || '';
+
+    const matchesSearch = groupName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        groupDescription.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = statusFilter === 'all' ||
+        (statusFilter === 'active' && group.isActive) ||
+        (statusFilter === 'inactive' && !group.isActive);
+
     return matchesSearch && matchesStatus;
   });
 
@@ -324,10 +366,10 @@ export default function AdminGroupsPage() {
                         onChange={(e) => handleInputChange('category', e.target.value)}
                         className="w-full px-3 py-2 border border-input bg-background rounded-md"
                       >
-                        <option value="professional">Professional</option>
-                        <option value="social">Social</option>
-                        <option value="academic">Academic</option>
-                        <option value="hobby">Hobby</option>
+                        <option value="PROFESSIONAL">Professional</option>
+                        <option value="SOCIAL">Social</option>
+                        <option value="ACADEMIC">Academic</option>
+                        <option value="HOBBY">Hobby</option>
                       </select>
                     </div>
                   </div>
@@ -434,7 +476,7 @@ export default function AdminGroupsPage() {
                               {group.isActive ? 'Active' : 'Inactive'}
                             </Badge>
                             <Badge className={getCategoryColor(group.category)}>
-                              {group.category}
+                              {group.category.toLowerCase()}
                             </Badge>
                           </div>
                         </div>
@@ -444,10 +486,10 @@ export default function AdminGroupsPage() {
                             <Users className="h-4 w-4 text-muted-foreground" />
                             <span>{group.currentMembers} / {group.maxMembers} members</span>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Crown className="h-4 w-4 text-muted-foreground" />
-                            <span>Admin: {group.adminName}</span>
-                          </div>
+                          {/*<div className="flex items-center space-x-2">*/}
+                          {/*  <Crown className="h-4 w-4 text-muted-foreground" />*/}
+                          {/*  <span>Admin: {group.adminName}</span>*/}
+                          {/*</div>*/}
                           <div className="flex items-center space-x-2">
                             <MessageSquare className="h-4 w-4 text-muted-foreground" />
                             <span>Created {new Date(group.createdAt).toLocaleDateString()}</span>
