@@ -225,8 +225,7 @@ export default function AdminGroupsPage() {
       toast.success('Group deleted successfully!');
     } catch (error) {
       // Rollback the optimistic update in case of an error
-      const previousGroups = await fetchGroups(); // Re-load the groups to ensure data integrity
-      setGroups(previousGroups);
+      await fetchGroups(); // Re-load the groups to ensure data integrity
 
       toast.error('Failed to delete group. Please try again.');
       console.error(error);
