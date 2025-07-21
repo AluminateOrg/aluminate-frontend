@@ -101,14 +101,14 @@ export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([
     {
       id: "1",
-      name: "John Doe",
-      email: "john.doe@example.com",
+      name: "Shane Mario",
+      email: "shane.mario@example.com",
       phone: "+1234567890",
       designation: "Software Engineer",
       company: "Tech Corp",
       graduationYear: "2019",
       degree: "Computer Science",
-      location: "San Francisco, CA",
+      location: "Colombo 07, Sri Lanka",
       avatar:
         "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       status: "active",
@@ -117,8 +117,8 @@ export default function MembersPage() {
     },
     {
       id: "2",
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
+      name: "Satheera Nirmal",
+      email: "satheera.nirmal@example.com",
       designation: "Product Manager",
       company: "Innovation Inc",
       graduationYear: "2020",
@@ -268,8 +268,8 @@ export default function MembersPage() {
 
   const downloadTemplate = () => {
     const csvContent = `name,email,phone,designation,company,graduationYear,degree,location
-John Doe,john.doe@example.com,+1234567890,Software Engineer,Tech Corp,2019,Computer Science,San Francisco CA
-Jane Smith,jane.smith@example.com,+0987654321,Product Manager,Innovation Inc,2020,Business Administration,New York NY`;
+Shane Mario,shane.mario@example.com,+1234567890,Software Engineer,Tech Corp,2019,Computer Science,Colombo 07, Sri Lanka
+Satheera Nirmal,satheera.nirmal@example.com,+0987654321,Product Manager,Innovation Inc,2020,Business Administration,Colombo 07, Sri Lanka`;
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -420,7 +420,7 @@ Jane Smith,jane.smith@example.com,+0987654321,Product Manager,Innovation Inc,202
                         onChange={(e) =>
                           handleInputChange("name", e.target.value)
                         }
-                        placeholder="John Doe"
+                        placeholder="Shane Mario"
                         required
                       />
                     </div>
@@ -434,7 +434,7 @@ Jane Smith,jane.smith@example.com,+0987654321,Product Manager,Innovation Inc,202
                         onChange={(e) =>
                           handleInputChange("email", e.target.value)
                         }
-                        placeholder="john.doe@example.com"
+                        placeholder="shane.mario@example.com"
                         required
                       />
                     </div>
@@ -507,7 +507,7 @@ Jane Smith,jane.smith@example.com,+0987654321,Product Manager,Innovation Inc,202
                         onChange={(e) =>
                           handleInputChange("location", e.target.value)
                         }
-                        placeholder="San Francisco, CA"
+                        placeholder="Colombo 07, Sri Lanka"
                       />
                     </div>
                   </div>
