@@ -1,7 +1,7 @@
 // File: components/members/AddSingleMember.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOrg } from "@/hooks/useOrg";
 import { toast } from "sonner";
 import {
@@ -14,26 +14,43 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { UserPlus, Users, CheckCircle } from "lucide-react";
+import { UserPlus, CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 
 export default function AddSingleMember({ members, setMembers }: any) {
-  const { groups } = useOrg();
+  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [singleMemberForm, setSingleMemberForm] = useState({
     name: "",
-    email: "",
+    nic: "",
     phone: "",
-    designation: "",
-    company: "",
-    graduationYear: "",
-    degree: "",
-    location: "",
+    email: "",
+    regNo: "",
+    address: "",
+    batch: 0,
     selectedGroups: [] as string[],
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+        const res = await fetch(`${apiEndpoint}/group/get/all`);
+        const data = await res.json();
+        if (res.ok) {
+          setGroups(data.data);
+        } else {
+          throw new Error(data.message || "Failed to load groups.");
+        }
+      } catch (error: any) {
+        toast.error(error.message);
+      }
+    };
+    fetchGroups();
+  }, []);
+
+  const handleInputChange = (field: string, value: string | number) => {
     setSingleMemberForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -61,34 +78,43 @@ export default function AddSingleMember({ members, setMembers }: any) {
         return;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+      const response = await fetch(`${apiEndpoint}/member/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...singleMemberForm,
+          password: singleMemberForm.nic,
+          groupIds: singleMemberForm.selectedGroups,
+        }),
+      });
 
-      const newMember = {
-        id: Date.now().toString(),
-        ...singleMemberForm,
-        groupIds: singleMemberForm.selectedGroups,
-        status: "pending",
-        joinedAt: new Date().toISOString(),
-      };
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to add member.");
+      }
+
+      const newMember = result.data;
 
       setMembers((prev: any) => [newMember, ...prev]);
       setSingleMemberForm({
         name: "",
-        email: "",
+        nic: "",
         phone: "",
-        designation: "",
-        company: "",
-        graduationYear: "",
-        degree: "",
-        location: "",
+        email: "",
+        regNo: "",
+        address: "",
+        batch: 0,
         selectedGroups: [],
       });
 
-      toast.success(
-        `Member added successfully! Invitation email sent. Added to ${singleMemberForm.selectedGroups.length} group(s).`
-      );
-    } catch (error) {
-      toast.error("Failed to add member. Please try again.");
+      toast.success("Member added successfully!");
+    } catch (error: any) {
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -102,23 +128,36 @@ export default function AddSingleMember({ members, setMembers }: any) {
           <span>Add New Member</span>
         </CardTitle>
         <CardDescription>
-          Add a single member and assign them to groups. An invitation email will be sent.
+          Add a single member and assign them to groups.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField label="Full Name *" id="name" value={singleMemberForm.name} onChange={(e) => handleInputChange("name", e.target.value)} />
-            <InputField label="Email Address *" id="email" value={singleMemberForm.email} onChange={(e) => handleInputChange("email", e.target.value)} />
-            <InputField label="Phone Number" id="phone" value={singleMemberForm.phone} onChange={(e) => handleInputChange("phone", e.target.value)} />
-            <InputField label="Current Position" id="designation" value={singleMemberForm.designation} onChange={(e) => handleInputChange("designation", e.target.value)} />
-            <InputField label="Company" id="company" value={singleMemberForm.company} onChange={(e) => handleInputChange("company", e.target.value)} />
-            <InputField label="Graduation Year" id="graduationYear" value={singleMemberForm.graduationYear} onChange={(e) => handleInputChange("graduationYear", e.target.value)} />
-            <InputField label="Degree" id="degree" value={singleMemberForm.degree} onChange={(e) => handleInputChange("degree", e.target.value)} />
-            <InputField label="Location" id="location" value={singleMemberForm.location} onChange={(e) => handleInputChange("location", e.target.value)} />
+            {[
+              ["Full Name *", "name"],
+              ["NIC", "nic"],
+              ["Phone Number", "phone"],
+              ["Email Address *", "email"],
+              ["Registration No.", "regNo"],
+              ["Address", "address"],
+              ["Batch", "batch"],
+            ].map(([label, id]) => (
+              <InputField
+                key={id}
+                label={label as string}
+                id={id as string}
+                value={singleMemberForm[id as keyof typeof singleMemberForm]}
+                onChange={(e) =>
+                  handleInputChange(
+                    id,
+                    id === "batch" ? Number(e.target.value) : e.target.value
+                  )
+                }
+              />
+            ))}
           </div>
 
-          {/* Group Selection */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Group Assignment *</h3>
             <p className="text-sm text-muted-foreground">
@@ -157,13 +196,12 @@ export default function AddSingleMember({ members, setMembers }: any) {
               onClick={() =>
                 setSingleMemberForm({
                   name: "",
-                  email: "",
+                  nic: "",
                   phone: "",
-                  designation: "",
-                  company: "",
-                  graduationYear: "",
-                  degree: "",
-                  location: "",
+                  email: "",
+                  regNo: "",
+                  address: "",
+                  batch: 0,
                   selectedGroups: [],
                 })
               }
