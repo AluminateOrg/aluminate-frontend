@@ -1,4 +1,3 @@
-// File: components/members/BulkCsvUpload.tsx
 "use client";
 
 import { useState } from "react";
@@ -14,10 +13,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Download, CheckCircle, Users, X } from "lucide-react";
+import { Upload, Download } from "lucide-react";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function BulkCsvUpload() {
   const { groups } = useOrg();
@@ -27,11 +40,16 @@ export default function BulkCsvUpload() {
   const [uploadResult, setUploadResult] = useState<{
     success: number;
     failed: number;
-    errors: string[];
+    invalidRows: any[];
   } | null>(null);
   const [bulkUploadForm, setBulkUploadForm] = useState({
     selectedGroups: [] as string[],
   });
+  const [showInvalidPopup, setShowInvalidPopup] = useState(false);
+  const [editableRows, setEditableRows] = useState<any[]>([]);
+
+  const [finalizeProgress, setFinalizeProgress] = useState(0);
+  const [finalizing, setFinalizing] = useState(false);
 
   const handleGroupSelection = (groupId: string) => {
     setBulkUploadForm((prev) => ({
@@ -52,9 +70,9 @@ export default function BulkCsvUpload() {
     }
   };
 
+  /** Handle CSV Upload with Progress */
   const handleCSVUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!csvFile) {
       toast.error("Please select a CSV file");
       return;
@@ -67,38 +85,102 @@ export default function BulkCsvUpload() {
     setLoading(true);
     setUploadProgress(0);
 
-    const progressInterval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return prev;
+    const formData = new FormData();
+    formData.append("file", csvFile);
+    formData.append("groups", JSON.stringify(bulkUploadForm.selectedGroups));
+
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open(
+        "POST",
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/admin/bulk-upload`
+      );
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(percentComplete);
         }
-        return prev + 10;
-      });
+      };
+
+      xhr.onload = async () => {
+        setLoading(false);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const data = JSON.parse(xhr.responseText);
+          console.log("data from upload:", data);
+          setUploadResult(data);
+
+          if (data.invalidRows && data.invalidRows.length > 0) {
+            setEditableRows(data.invalidRows);
+            setShowInvalidPopup(true);
+          }
+
+          toast.success("Upload completed");
+        } else {
+          const errorData = JSON.parse(xhr.responseText);
+          toast.error(`Upload failed: ${errorData.message || "Unknown error"}`);
+        }
+      };
+
+      xhr.onerror = () => {
+        setLoading(false);
+        toast.error("Upload failed due to network error.");
+      };
+
+      xhr.send(formData);
+    } catch (error: any) {
+      setLoading(false);
+      console.error("Bulk upload error:", error);
+      toast.error(`Upload failed: ${error.message || "Unknown error"}`);
+    }
+  };
+
+  const handleCellChange = (rowIndex: number, field: string, value: string) => {
+    const updatedRows = [...editableRows];
+    updatedRows[rowIndex][field] = value;
+    setEditableRows(updatedRows);
+  };
+
+  /** Finalize bulk upload with simulated progress */
+  const finalizeBulkUpload = async () => {
+    setFinalizing(true);
+    setFinalizeProgress(0);
+
+    const interval = setInterval(() => {
+      setFinalizeProgress((prev) => (prev < 90 ? prev + 10 : prev));
     }, 200);
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    clearInterval(progressInterval);
-    setUploadProgress(100);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/admin/bulk-finalize`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editableRows),
+        }
+      );
 
-    const result = {
-      success: 45,
-      failed: 3,
-      errors: [
-        "Row 12: Invalid email format",
-        'Row 25: Missing required field "name"',
-        "Row 33: Duplicate email address",
-      ],
-    };
-    setUploadResult(result);
-    toast.success(
-      `Successfully processed ${result.success} members! All added to ${bulkUploadForm.selectedGroups.length} group(s).`
-    );
+      const data = await response.json();
+      console.log("data from finalize:", data);
+      setUploadResult(data);
 
-    setCsvFile(null);
-    setUploadProgress(0);
-    setBulkUploadForm({ selectedGroups: [] });
-    setLoading(false);
+      if (data.invalidRows && data.invalidRows.length > 0) {
+        setEditableRows(data.invalidRows);
+        toast.error("Some rows are still invalid. Please fix them.");
+      } else {
+        toast.success(`${data.savedCount} members saved successfully!`);
+        setShowInvalidPopup(false);
+      }
+    } catch (error: any) {
+      console.error("Finalize error:", error);
+      toast.error(`Finalize failed: ${error.message || "Unknown error"}`);
+    } finally {
+      clearInterval(interval);
+      setFinalizeProgress(100);
+      setTimeout(() => {
+        setFinalizing(false);
+      }, 500);
+    }
   };
 
   const downloadTemplate = () => {
@@ -113,164 +195,174 @@ export default function BulkCsvUpload() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Upload className="h-5 w-5" />
-          <span>Bulk CSV Upload</span>
-        </CardTitle>
-        <CardDescription>
-          Upload multiple members using a CSV file and assign them to groups.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="bg-muted p-4 rounded-lg">
-          <div className="flex items-center justify-between">
+    <>
+      {/* Upload Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Upload className="h-5 w-5" />
+            <span>Bulk CSV Upload</span>
+          </CardTitle>
+          <CardDescription>
+            Upload multiple members using a CSV file and assign them to groups.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* CSV Template */}
+          <div className="bg-muted p-4 rounded-lg flex justify-between">
             <div>
               <h4 className="font-medium">CSV Template</h4>
               <p className="text-sm text-muted-foreground">
                 Download the template file with required columns.
               </p>
             </div>
-            <Button variant="outline" onClick={downloadTemplate}>
+            <Button variant="outline" onClick={() => downloadTemplate()}>
               <Download className="mr-2 h-4 w-4" /> Download Template
             </Button>
           </div>
-        </div>
 
-        <div className="space-y-4">
-          <h4 className="font-medium">Group Assignment for All Members *</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {groups.map((group) => (
-              <div
-                key={group.id}
-                className={`border rounded-lg p-4 cursor-pointer transition-colors ${bulkUploadForm.selectedGroups.includes(group.id) ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}`}
-                onClick={() => handleGroupSelection(group.id)}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-medium">
-                    {group.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-foreground">{group.name}</h4>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {group.description || "No description available"}
-                    </p>
-                  </div>
-                  {bulkUploadForm.selectedGroups.includes(group.id) && (
-                    <CheckCircle className="h-5 w-5 text-primary" />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <form onSubmit={handleCSVUpload} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="csv-file">Select CSV File</Label>
-            <div className="flex items-center space-x-2">
-              <Input
-                id="csv-file"
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                className="flex-1"
-              />
-              {csvFile && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCsvFile(null)}
+          {/* Group Selection */}
+          <div className="space-y-4">
+            <h4 className="font-medium">Group Assignment *</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {groups.map((group) => (
+                <div
+                  key={group.id}
+                  className={`border rounded-lg p-4 cursor-pointer ${
+                    bulkUploadForm.selectedGroups.includes(group.id)
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-accent"
+                  }`}
+                  onClick={() => handleGroupSelection(group.id)}
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+                  <h4 className="font-medium">{group.name}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {group.description || "No description available"}
+                  </p>
+                </div>
+              ))}
             </div>
+          </div>
+
+          {/* File Upload */}
+          <form onSubmit={handleCSVUpload} className="space-y-4">
+            <Label htmlFor="csv-file">Select CSV File</Label>
+            <Input
+              id="csv-file"
+              type="file"
+              accept=".csv"
+              onChange={handleFileChange}
+            />
             {csvFile && (
               <p className="text-sm text-muted-foreground">
                 Selected: {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
               </p>
             )}
-          </div>
 
-          {loading && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Processing CSV file...</span>
-                <span>{uploadProgress}%</span>
+            {loading && (
+              <div className="space-y-2">
+                <Progress value={uploadProgress} className="h-2 transition-all duration-300" />
+                <p className="text-xs text-muted-foreground text-center">
+                  Uploading... {uploadProgress}%
+                </p>
               </div>
-              <Progress value={uploadProgress} className="h-2" />
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            disabled={
-              !csvFile || loading || groups.length === 0 || bulkUploadForm.selectedGroups.length === 0
-            }
-            className="w-full"
-          >
-            {loading ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" /> Processing...
-              </>
-            ) : (
-              <>
-                <Upload className="mr-2 h-4 w-4" /> Upload CSV
-              </>
             )}
-          </Button>
-        </form>
 
-        {uploadResult && (
-          <Card className="bg-muted/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center space-x-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <span>Upload Complete</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-                  <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-                    {uploadResult.success}
-                  </div>
-                  <p className="text-sm text-green-600 dark:text-green-400">
-                    Successful
-                  </p>
-                </div>
-                <div className="text-center p-3 bg-red-100 dark:bg-red-900 rounded-lg">
-                  <div className="text-2xl font-bold text-red-700 dark:text-red-300">
-                    {uploadResult.failed}
-                  </div>
-                  <p className="text-sm text-red-600 dark:text-red-400">
-                    Failed
-                  </p>
-                </div>
-              </div>
-
-              {uploadResult.errors.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-destructive mb-2">Errors:</h4>
-                  <div className="space-y-1">
-                    {uploadResult.errors.map((error, index) => (
-                      <p
-                        key={index}
-                        className="text-sm text-muted-foreground bg-destructive/10 p-2 rounded"
-                      >
-                        {error}
-                      </p>
-                    ))}
-                  </div>
-                </div>
+            <Button type="submit" disabled={!csvFile || loading}>
+              {loading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" /> Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" /> Upload CSV
+                </>
               )}
-            </CardContent>
-          </Card>
-        )}
-      </CardContent>
-    </Card>
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Invalid Rows Popup */}
+      <Dialog open={showInvalidPopup} onOpenChange={setShowInvalidPopup}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Invalid Rows - Fix and Resubmit</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-x-auto max-h-[400px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>NIC</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>RegNo</TableHead>
+                  <TableHead>Batch</TableHead>
+                  <TableHead>Errors</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {editableRows.map((row, rowIndex) => (
+                  <TableRow key={rowIndex} className="hover:bg-accent/50">
+                    {["nic", "name", "email", "phone", "regNo", "batch"].map(
+                      (field) => (
+                        <TableCell key={field}>
+                          <Input
+                            value={row[field]}
+                            onChange={(e) =>
+                              handleCellChange(rowIndex, field, e.target.value)
+                            }
+                            className={`${
+                              row.errors?.[field] ? "border-red-500" : ""
+                            }`}
+                          />
+                          {row.suggestions?.[field] && (
+                            <p className="text-green-600 text-xs">
+                              Suggestion: {row.suggestions[field]}
+                            </p>
+                          )}
+                        </TableCell>
+                      )
+                    )}
+                    <TableCell className="text-red-500 text-xs">
+                      {Object.values(row.errors || {}).join(", ")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <DialogFooter className="flex flex-col space-y-3">
+            {finalizing && (
+              <div className="w-full">
+                <Progress value={finalizeProgress} className="h-2 transition-all duration-300" />
+                <p className="text-xs text-muted-foreground mt-1 text-center">
+                  Saving... {finalizeProgress}%
+                </p>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setShowInvalidPopup(false)}
+                disabled={finalizing}
+              >
+                Cancel
+              </Button>
+              <Button onClick={finalizeBulkUpload} disabled={finalizing}>
+                {finalizing ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" /> Saving...
+                  </>
+                ) : (
+                  "Save & Resubmit"
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
