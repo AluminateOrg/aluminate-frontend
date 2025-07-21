@@ -156,8 +156,8 @@ export default function AdminFundraisingPage() {
     {
       id: "3",
       campaignId: "1",
-      donorName: "Sarah Johnson",
-      donorEmail: "sarah.johnson@example.com",
+      donorName: "Sachini Jayawardana",
+      donorEmail: "sachini.jayawardana@example.com",
       donorAvatar:
         "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       amount: 250,
@@ -170,8 +170,8 @@ export default function AdminFundraisingPage() {
     {
       id: "4",
       campaignId: "2",
-      donorName: "Michael Chen",
-      donorEmail: "michael.chen@example.com",
+      donorName: "Nirosha Yogendran",
+      donorEmail: "nirosha.yogendran@example.com",
       donorAvatar:
         "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       amount: 750,
@@ -184,8 +184,8 @@ export default function AdminFundraisingPage() {
     {
       id: "5",
       campaignId: "1",
-      donorName: "Emily Rodriguez",
-      donorEmail: "emily.rodriguez@example.com",
+      donorName: "Tharushi Rathnayake",
+      donorEmail: "tharushi.rathnayake@example.com",
       amount: 100,
       date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       isAnonymous: false,

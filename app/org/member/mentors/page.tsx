@@ -96,16 +96,16 @@ export default function MentorsPage() {
   const mentors: Mentor[] = [
     {
       id: "1",
-      name: "Sarah Johnson",
+      name: "Sachini Jayawardana",
       avatar:
         "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Senior Software Engineer",
-      company: "Google",
+      company: "Cambio",
       expertise: ["React", "Node.js", "System Design", "Career Growth"],
       rating: 4.9,
       totalSessions: 156,
       yearsExperience: 8,
-      location: "San Francisco, CA",
+      location: "Colombo 07, Sri Lanka",
       bio: "Passionate about helping junior developers grow their careers in tech. Specialized in full-stack development and system architecture.",
       availability: "available",
       hourlyRate: 75,
@@ -113,11 +113,11 @@ export default function MentorsPage() {
     },
     {
       id: "2",
-      name: "Michael Chen",
+      name: "Nirosha Yogendran",
       avatar:
         "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Product Manager",
-      company: "Microsoft",
+      company: "IFS",
       expertise: ["Product Strategy", "User Research", "Agile", "Leadership"],
       rating: 4.8,
       totalSessions: 89,
@@ -130,11 +130,11 @@ export default function MentorsPage() {
     },
     {
       id: "3",
-      name: "Emily Rodriguez",
+      name: "Tharushi Rathnayake",
       avatar:
         "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Data Science Director",
-      company: "Netflix",
+      company: "WSO2",
       expertise: [
         "Machine Learning",
         "Python",
