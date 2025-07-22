@@ -1,7 +1,9 @@
 // File: components/members/AddSingleMember.tsx
 "use client";
 
+
 import { useEffect, useState } from "react";
+
 import { useOrg } from "@/hooks/useOrg";
 import { toast } from "sonner";
 import {
@@ -14,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import { UserPlus, CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 
@@ -51,6 +54,7 @@ export default function AddSingleMember({ members, setMembers }: any) {
   }, []);
 
   const handleInputChange = (field: string, value: string | number) => {
+
     setSingleMemberForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -78,6 +82,7 @@ export default function AddSingleMember({ members, setMembers }: any) {
         return;
       }
 
+
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
       const response = await fetch(`${apiEndpoint}/member/create`, {
@@ -100,9 +105,11 @@ export default function AddSingleMember({ members, setMembers }: any) {
 
       const newMember = result.data;
 
+
       setMembers((prev: any) => [newMember, ...prev]);
       setSingleMemberForm({
         name: "",
+
         nic: "",
         phone: "",
         email: "",
@@ -115,6 +122,7 @@ export default function AddSingleMember({ members, setMembers }: any) {
       toast.success("Member added successfully!");
     } catch (error: any) {
       toast.error(error.message);
+
     } finally {
       setLoading(false);
     }
@@ -128,12 +136,15 @@ export default function AddSingleMember({ members, setMembers }: any) {
           <span>Add New Member</span>
         </CardTitle>
         <CardDescription>
+
           Add a single member and assign them to groups.
+
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
             {[
               ["Full Name *", "name"],
               ["NIC", "nic"],
@@ -157,6 +168,7 @@ export default function AddSingleMember({ members, setMembers }: any) {
               />
             ))}
           </div>
+
 
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Group Assignment *</h3>
@@ -196,6 +208,7 @@ export default function AddSingleMember({ members, setMembers }: any) {
               onClick={() =>
                 setSingleMemberForm({
                   name: "",
+
                   nic: "",
                   phone: "",
                   email: "",

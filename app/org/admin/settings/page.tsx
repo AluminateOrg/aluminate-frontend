@@ -48,8 +48,8 @@ export default function AdminSettingsPage() {
       "Connecting technology professionals and fostering innovation",
     website: "https://techalumni.org",
     contactEmail: "admin@techalumni.org",
-    phone: "+1 (555) 123-4567",
-    address: "123 Tech Street, Silicon Valley, CA 94000",
+    phone: "+94 (71) 234-5678",
+    address: "123 Innovation Avenue, Orion City IT Park, Colombo 09, Sri Lanka",
     logo: organization?.logo || "",
   });
 

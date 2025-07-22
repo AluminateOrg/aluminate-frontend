@@ -30,6 +30,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX;
+
+    if (!backendUrl || !apiPrefix) {
+        throw new Error('NEXT_PUBLIC_BACKEND_URL and NEXT_PUBLIC_API_PREFIX must be defined');
+    }
+    const apiUrl = `${backendUrl}/${apiPrefix}`;
 
   useEffect(() => {
     // Simulate checking for existing session
@@ -52,23 +59,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string, role: UserRole) => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      const mockUser: User = {
-        id: role === 'admin' ? 'admin-1' : 'member-1',
-        email,
-        name: role === 'admin' ? 'Admin User' : 'John Doe',
-        role,
-        orgId: 'org-1',
-        avatar: `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1`,
-        designation: role === 'admin' ? 'System Administrator' : 'Software Engineer',
-        phone: '+1234567890',
-        joinedAt: new Date().toISOString(),
+        if (!email || !password) {
+            throw new Error('Email and password are required');
+        }
+
+      const res = await fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          role
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Login failed');
+      }
+
+      const data = await res.json();  // data = { token: "...", member: { ... } }
+      localStorage.setItem('token', data.token);
+      const user = {
+        id: data.member.id,
+        name: data.member.name,
+        email: data.member.email,
+        role: role,
+        avatar: data.member.photoUrl || null,
+        designation: data.member.position || null,
+        joinedAt: data.member.createdAt || null,
+        token: data.token,
       };
 
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
-      // Redirect based on role
+      // @ts-ignore
+      setUser(user);  // Save real user
+      localStorage.setItem('user', JSON.stringify(user));  // Save for persistence
+
+
       router.push(role === 'admin' ? '/org/admin' : '/org/member');
     } catch (error) {
       console.error('Login failed:', error);
