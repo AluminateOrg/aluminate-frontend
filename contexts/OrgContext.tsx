@@ -43,12 +43,12 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   const fetchOrganization = async () => {
-    if (!user?.orgId) return;
+    if (!user?.id) return;
     
     try {
       // TODO: Replace with actual API call
       const mockOrg: Organization = {
-        id: user.orgId,
+        id: user.id,
         name: 'Tech Alumni Network',
         tier: 'premium',
         memberCount: 245,
