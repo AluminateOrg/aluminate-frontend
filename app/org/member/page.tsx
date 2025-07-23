@@ -97,7 +97,7 @@ export default function MemberDashboard() {
         <Card>
           <CardContent className="p-4 text-center">
             <DollarSign className="h-8 w-8 mx-auto mb-2 text-primary" />
-            <div className="text-2xl font-bold">$150</div>
+            <div className="text-2xl font-bold">LKR 150</div>
             <p className="text-sm text-muted-foreground">Total Donated</p>
           </CardContent>
         </Card>

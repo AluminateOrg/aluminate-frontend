@@ -103,8 +103,8 @@ export default function AdminMentorshipPage() {
     {
       id: '1',
       applicantId: 'member-1',
-      applicantName: 'Sarah Johnson',
-      applicantEmail: 'sarah.johnson@example.com',
+      applicantName: 'Sheane Mario',
+      applicantEmail: 'sheane.mario@example.com',
       applicantAvatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1',
       currentPosition: 'Senior Software Engineer',
       company: 'Google',
@@ -121,8 +121,8 @@ export default function AdminMentorshipPage() {
     {
       id: '2',
       applicantId: 'member-2',
-      applicantName: 'Michael Chen',
-      applicantEmail: 'michael.chen@example.com',
+      applicantName: 'Pulasthi Abishek',
+      applicantEmail: 'pulasthi.abishek@example.com',
       applicantAvatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1',
       currentPosition: 'Product Manager',
       company: 'Microsoft',
@@ -139,8 +139,8 @@ export default function AdminMentorshipPage() {
     {
       id: '3',
       applicantId: 'member-3',
-      applicantName: 'Emily Rodriguez',
-      applicantEmail: 'emily.rodriguez@example.com',
+      applicantName: 'Hashir Ahamad',
+      applicantEmail: 'hashir.ahamad@example.com',
       applicantAvatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1',
       currentPosition: 'Data Science Director',
       company: 'Netflix',
@@ -163,8 +163,8 @@ export default function AdminMentorshipPage() {
   const [mentors, setMentors] = useState<Mentor[]>([
     {
       id: 'mentor-1',
-      name: 'Emily Rodriguez',
-      email: 'emily.rodriguez@example.com',
+      name: 'Satheera Jayawardhana',
+      email: 'satheera.jayawardhana@example.com',
       avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1',
       designation: 'Data Science Director',
       company: 'Netflix',
@@ -184,9 +184,9 @@ export default function AdminMentorshipPage() {
     {
       id: 'session-1',
       mentorId: 'mentor-1',
-      mentorName: 'Emily Rodriguez',
+      mentorName: 'Mario Silva',
       menteeId: 'mentee-1',
-      menteeName: 'John Doe',
+      menteeName: 'Kamal Perera',
       scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
       duration: 60,
       status: 'scheduled',
@@ -195,9 +195,9 @@ export default function AdminMentorshipPage() {
     {
       id: 'session-2',
       mentorId: 'mentor-1',
-      mentorName: 'Emily Rodriguez',
+      mentorName: 'Sheane Mario',
       menteeId: 'mentee-2',
-      menteeName: 'Jane Smith',
+      menteeName: 'Nimal Fernando',
       scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       duration: 45,
       status: 'completed',
@@ -516,7 +516,7 @@ export default function AdminMentorshipPage() {
                 <span>Active Mentors</span>
               </CardTitle>
               <CardDescription>
-                Manage your organization's mentor network
+                Manage your organization&#39;s mentor network
               </CardDescription>
             </CardHeader>
             <CardContent>

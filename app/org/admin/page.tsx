@@ -250,7 +250,7 @@ export default function AdminDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$2,400</div>
+            <div className="text-2xl font-bold">LKR 2,400</div>
             <p className="text-xs text-muted-foreground">
               +15% from last month
             </p>
@@ -268,10 +268,10 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="space-y-4">
               {[
-                { name: 'Sarah Johnson', action: 'joined Software Engineers group', time: '2 hours ago' },
-                { name: 'Mike Chen', action: 'RSVP\'d to Alumni Networking Event', time: '4 hours ago' },
-                { name: 'Emily Davis', action: 'donated $50 to Scholarship Fund', time: '6 hours ago' },
-                { name: 'Alex Thompson', action: 'booked mentorship session', time: '1 day ago' },
+                { name: 'Sheane Mario', action: 'joined Software Engineers group', time: '2 hours ago' },
+                { name: 'Pulasthi Abishek ', action: 'RSVP\'d to Alumni Networking Event', time: '4 hours ago' },
+                { name: 'Hashir Ahamad', action: 'donated LKR 50 to Scholarship Fund', time: '6 hours ago' },
+                { name: 'Satheera Jayawardhana ', action: 'booked mentorship session', time: '1 day ago' },
               ].map((activity, index) => (
                 <div key={index} className="flex items-center space-x-3">
                   <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />

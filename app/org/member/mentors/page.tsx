@@ -96,7 +96,7 @@ export default function MentorsPage() {
   const mentors: Mentor[] = [
     {
       id: "1",
-      name: "Sarah Johnson",
+      name: "Sheane Mario",
       avatar:
         "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Senior Software Engineer",
@@ -105,15 +105,15 @@ export default function MentorsPage() {
       rating: 4.9,
       totalSessions: 156,
       yearsExperience: 8,
-      location: "San Francisco, CA",
+      location: "Negombo, LK",
       bio: "Passionate about helping junior developers grow their careers in tech. Specialized in full-stack development and system architecture.",
       availability: "available",
       hourlyRate: 75,
-      languages: ["English", "Spanish"],
+      languages: ["English", "Sinhala"],
     },
     {
       id: "2",
-      name: "Michael Chen",
+      name: "Pulasthi Abishek",
       avatar:
         "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Product Manager",
@@ -122,15 +122,15 @@ export default function MentorsPage() {
       rating: 4.8,
       totalSessions: 89,
       yearsExperience: 6,
-      location: "Seattle, WA",
+      location: "Hambantota, LK",
       bio: "Former engineer turned product manager. Love helping others transition into product roles and develop strategic thinking.",
       availability: "available",
       hourlyRate: 85,
-      languages: ["English", "Mandarin"],
+      languages: ["English", "Tamil"],
     },
     {
       id: "3",
-      name: "Emily Rodriguez",
+      name: "Satheera Jayawardhana",
       avatar:
         "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Data Science Director",
@@ -144,15 +144,15 @@ export default function MentorsPage() {
       rating: 4.9,
       totalSessions: 203,
       yearsExperience: 10,
-      location: "Los Angeles, CA",
+      location: "Colombo LK",
       bio: "Leading data science teams for 5+ years. Passionate about democratizing AI and helping others break into data science.",
       availability: "busy",
       hourlyRate: 95,
-      languages: ["English", "Spanish"],
+      languages: ["English", "Sinhala"],
     },
     {
       id: "4",
-      name: "David Kim",
+      name: "Hashir Ahamad",
       avatar:
         "https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Startup Founder",
@@ -166,11 +166,11 @@ export default function MentorsPage() {
       rating: 4.7,
       totalSessions: 67,
       yearsExperience: 12,
-      location: "Austin, TX",
+      location: "Mawanalla, LK",
       bio: "Serial entrepreneur with 2 successful exits. Mentoring aspiring founders and helping with business development.",
       availability: "available",
       hourlyRate: 120,
-      languages: ["English", "Korean"],
+      languages: ["English", "Sinhala"],
     },
   ];
 
