@@ -540,7 +540,7 @@ export default function AdminFundraisingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-             LKR
+              LKR
               {Math.round(
                 totalRaised /
                   Math.max(

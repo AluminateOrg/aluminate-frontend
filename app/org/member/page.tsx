@@ -1,30 +1,36 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/hooks/useAuth';
-import { useOrg } from '@/hooks/useOrg';
-import { useCalendar } from '@/hooks/useCalendar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Users, 
-  Calendar, 
-  MessageSquare, 
-  Heart, 
+import { useAuth } from "@/hooks/useAuth";
+import { useOrg } from "@/hooks/useOrg";
+import { useCalendar } from "@/hooks/useCalendar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Users,
+  Calendar,
+  MessageSquare,
+  Heart,
   DollarSign,
   ArrowRight,
   Clock,
-  MapPin
-} from 'lucide-react';
-import Link from 'next/link';
-import { format } from 'date-fns';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+  MapPin,
+} from "lucide-react";
+import Link from "next/link";
+import { format } from "date-fns";
+import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 
 export default function MemberDashboard() {
   const { user } = useAuth();
   const { organization, groups, loading: orgLoading } = useOrg();
-  const { events, loading: eventsLoading } = useCalendar(user?.orgId || '');
+  const { events, loading: eventsLoading } = useCalendar(user?.orgId || "");
 
   const loading = orgLoading || eventsLoading;
 
@@ -52,19 +58,22 @@ export default function MemberDashboard() {
           <Avatar className="h-16 w-16">
             <AvatarImage src={user?.avatar} alt={user?.name} />
             <AvatarFallback className="text-lg">
-              {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+              {user?.name
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("") || "U"}
             </AvatarFallback>
           </Avatar>
           <div>
             <h1 className="text-2xl font-bold text-foreground">
-              Welcome back, {user?.name || 'User'}!
+              Welcome back, {user?.name || "User"}!
             </h1>
             <p className="text-muted-foreground">
               {user?.designation} at {organization?.name}
             </p>
             {user?.joinedAt && (
               <Badge variant="secondary" className="mt-1">
-                Member since {format(new Date(user.joinedAt), 'MMM yyyy')}
+                Member since {format(new Date(user.joinedAt), "MMM yyyy")}
               </Badge>
             )}
           </div>
@@ -110,7 +119,9 @@ export default function MemberDashboard() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Upcoming Events</CardTitle>
-              <CardDescription>Events you might be interested in</CardDescription>
+              <CardDescription>
+                Events you might be interested in
+              </CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/org/member/events">
@@ -126,20 +137,25 @@ export default function MemberDashboard() {
             ) : (
               <div className="space-y-4">
                 {upcomingEvents.map((event) => (
-                  <div key={event.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-accent transition-colors">
+                  <div
+                    key={event.id}
+                    className="flex items-start space-x-3 p-3 rounded-lg hover:bg-accent transition-colors"
+                  >
                     <div className="bg-primary text-primary-foreground rounded-lg p-2 text-center min-w-[48px]">
                       <div className="text-xs font-medium">
-                        {format(new Date(event.startDate), 'MMM')}
+                        {format(new Date(event.startDate), "MMM")}
                       </div>
                       <div className="text-lg font-bold">
-                        {format(new Date(event.startDate), 'd')}
+                        {format(new Date(event.startDate), "d")}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-medium text-foreground">{event.title}</h4>
+                      <h4 className="font-medium text-foreground">
+                        {event.title}
+                      </h4>
                       <div className="flex items-center text-sm text-muted-foreground mt-1">
                         <Clock className="h-3 w-3 mr-1" />
-                        {format(new Date(event.startDate), 'h:mm a')}
+                        {format(new Date(event.startDate), "h:mm a")}
                         {event.location && (
                           <>
                             <MapPin className="h-3 w-3 ml-2 mr-1" />
@@ -179,13 +195,18 @@ export default function MemberDashboard() {
             ) : (
               <div className="space-y-3">
                 {recentGroups.map((group) => (
-                  <div key={group.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors">
+                  <div
+                    key={group.id}
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
+                  >
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-medium">
                         {group.name.charAt(0)}
                       </div>
                       <div>
-                        <h4 className="font-medium text-foreground">{group.name}</h4>
+                        <h4 className="font-medium text-foreground">
+                          {group.name}
+                        </h4>
                         <p className="text-sm text-muted-foreground">
                           {group.currentMembers} members
                         </p>

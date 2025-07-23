@@ -49,7 +49,7 @@ export default function ProfilePage() {
     phone: user?.phone || "",
     designation: user?.designation || "",
     bio: "Passionate software engineer with 5+ years of experience in full-stack development. Alumni of Computer Science program, class of 2019.",
-    location: "San Francisco, CA",
+    location: "Colombo 07, Sri Lanka",
     company: "Tech Innovations Inc.",
     graduationYear: "2019",
     degree: "Bachelor of Science in Computer Science",

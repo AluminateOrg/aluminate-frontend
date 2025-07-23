@@ -100,7 +100,7 @@ export default function MentorsPage() {
       avatar:
         "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Senior Software Engineer",
-      company: "Google",
+      company: "Cambio",
       expertise: ["React", "Node.js", "System Design", "Career Growth"],
       rating: 4.9,
       totalSessions: 156,
@@ -117,7 +117,7 @@ export default function MentorsPage() {
       avatar:
         "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Product Manager",
-      company: "Microsoft",
+      company: "IFS",
       expertise: ["Product Strategy", "User Research", "Agile", "Leadership"],
       rating: 4.8,
       totalSessions: 89,
@@ -134,7 +134,7 @@ export default function MentorsPage() {
       avatar:
         "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Data Science Director",
-      company: "Netflix",
+      company: "WSO2",
       expertise: [
         "Machine Learning",
         "Python",

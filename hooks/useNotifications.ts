@@ -62,7 +62,7 @@ export function useNotifications() {
       id: "3",
       title: "Donation Received",
       message:
-        "Thank you for your $100 donation to the Student Scholarship Fund. Your contribution makes a difference!",
+        "Thank you for your Rs.100 donation to the Student Scholarship Fund. Your contribution makes a difference!",
       type: "donation",
       read: true,
       timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
@@ -97,7 +97,7 @@ export function useNotifications() {
       id: "6",
       title: "New Message in Data Scientists Group",
       message:
-        "Michael Chen posted a new discussion about machine learning trends. Join the conversation!",
+        "Nirosha Yogendran posted a new discussion about machine learning trends. Join the conversation!",
       type: "group",
       read: true,
       timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
