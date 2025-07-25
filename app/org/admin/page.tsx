@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOrg } from "@/hooks/useOrg";
 import {
   Card,
@@ -33,6 +33,7 @@ import {
 import Link from "next/link";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import { toast } from "sonner";
+import axios from "axios";
 
 interface AnnouncementForm {
   title: string;
@@ -107,6 +108,20 @@ export default function AdminDashboard() {
     }));
   };
 
+  // useEffect(() => {
+  //   const fetchGroups = async () => {
+  //     try {
+  //       const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/group/get/all`)
+  //       console.log("response from the backend: ", response.data);
+  //       if (response.data){
+          
+  //       }
+  //     } catch (error) {
+        
+  //     }
+  //   }
+  // })
+
   const handleSendAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -127,26 +142,23 @@ export default function AdminDashboard() {
 
     try {
       // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/announcement/multicast-for-all-emails`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(announcementForm)
+      })
 
-      // Calculate recipient count
-      let recipientCount = 0;
-      switch (announcementForm.recipients) {
-        case "all":
-          recipientCount = organization.memberCount;
-          break;
-        case "groups":
-          recipientCount = announcementForm.selectedGroups.reduce(
-            (sum, groupId) => {
-              const group = groups.find((g) => g.id === groupId);
-              return sum + (group?.currentMembers || 0);
-            },
-            0
-          );
-          break;
-        default:
-          recipientCount = organization.memberCount;
+      console.log("response from API:", response);
+
+      if (!response.ok) {
+        toast.error("Failed to send announcement. Please try again.");
       }
+
+      const data = await response.json();
+      toast.success(`Announcement sent successfully to ${data.sendCount} members!`)
+
 
       // Reset form and close modal
       setAnnouncementForm({
@@ -159,10 +171,6 @@ export default function AdminDashboard() {
         sendPush: false,
       });
       setShowAnnouncementModal(false);
-
-      toast.success(
-        `Announcement sent successfully to ${recipientCount} members!`
-      );
     } catch (error) {
       toast.error("Failed to send announcement. Please try again.");
     } finally {
@@ -181,6 +189,8 @@ export default function AdminDashboard() {
       sendPush: false,
     });
   };
+
+  // console.log("groups", groups);
 
   return (
     <div className="p-6 space-y-6">
@@ -252,7 +262,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {groups.filter((g) => g.currentMembers > 0).length}
+              {Array.isArray(groups) ? groups.filter((g) => g.currentMembers > 0).length : 0}
             </div>
             <p className="text-xs text-muted-foreground">
               {groups.length} total groups
@@ -493,7 +503,7 @@ export default function AdminDashboard() {
                         Select which groups to send the announcement to:
                       </p>
                       <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
-                        {groups.map((group) => (
+                        {Array.isArray(groups.data) && groups.data.map((group) => (
                           <div
                             key={group.id}
                             className="flex items-center space-x-2"
