@@ -1,20 +1,26 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useOrg } from '@/hooks/useOrg';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  Plus, 
-  Users, 
-  Settings, 
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useOrg } from "@/hooks/useOrg";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Plus,
+  Users,
+  Settings,
   Edit,
   Trash2,
   Eye,
@@ -24,10 +30,11 @@ import {
   UserPlus,
   MessageSquare,
   Crown,
-  AlertCircle
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+  AlertCircle,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 
 interface Group {
   id: string;
@@ -37,31 +44,130 @@ interface Group {
   currentMembers: number;
   createdAt: string;
   isActive: boolean;
-  category: 'professional' | 'social' | 'academic' | 'hobby';
+  category: "professional" | "social" | "academic" | "hobby";
 }
 
 interface GroupFormData {
   name: string;
   description: string;
   maxMembers: string;
-  category: Group['category'];
+  category: Group["category"];
 }
+
+interface DeleteConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  groupName: string;
+  isDeleting: boolean;
+}
+
+const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  groupName,
+  isDeleting,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-background rounded-lg shadow-lg max-w-md w-full">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h3 className="text-lg font-semibold text-foreground">
+            Delete Group
+          </h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            disabled={isDeleting}
+            className="h-6 w-6 p-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="flex-shrink-0">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-foreground">
+                Are you sure you want to delete this group?
+              </h4>
+              <p className="text-sm text-muted-foreground mt-1">
+                This action cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-muted rounded-lg p-3 mb-6">
+            <p className="text-sm">
+              <span className="font-medium">Group:</span> {groupName}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              All group data, members, and associated content will be
+              permanently removed.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-3 p-6 border-t bg-muted/50">
+          <Button variant="outline" onClick={onClose} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Group
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function AdminGroupsPage() {
   const { user } = useAuth();
   const { organization } = useOrg();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "inactive"
+  >("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
 
   const [groupForm, setGroupForm] = useState<GroupFormData>({
-    name: '',
-    description: '',
-    maxMembers: '50',
-    category: 'professional'
+    name: "",
+    description: "",
+    maxMembers: "50",
+    category: "professional",
+  });
+
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    groupId: "",
+    groupName: "",
+    isDeleting: false,
   });
 
   const [groups, setGroups] = useState<Group[]>([]);
@@ -76,7 +182,7 @@ export default function AdminGroupsPage() {
       const response = await fetch(`${apiEndpoint}/group/get/all`);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch groups');
+        throw new Error("Failed to fetch groups");
       }
 
       const Data = await response.json();
@@ -91,13 +197,13 @@ export default function AdminGroupsPage() {
         currentMembers: group.currentMembers,
         createdAt: group.createdDate, // Transform `createdDate` to `createdAt`
         isActive: group.active, // Transform `active` to `isActive`
-        category: group.category.toLowerCase() as Group['category'], // Ensure lowercase categories
+        category: group.category.toLowerCase() as Group["category"], // Ensure lowercase categories
       }));
 
       setGroups(transformedGroups);
     } catch (error) {
-      console.error('Error fetching groups:', error);
-      toast.error('Failed to load groups. Please try again.');
+      console.error("Error fetching groups:", error);
+      toast.error("Failed to load groups. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -113,7 +219,7 @@ export default function AdminGroupsPage() {
 
     try {
       if (!groupForm.name || !groupForm.description) {
-        toast.error('Please fill in all required fields');
+        toast.error("Please fill in all required fields");
         setLoading(false);
         return;
       }
@@ -121,9 +227,9 @@ export default function AdminGroupsPage() {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
       const response = await fetch(`${apiEndpoint}/group/create`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           name: groupForm.name,
@@ -134,7 +240,7 @@ export default function AdminGroupsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create group');
+        throw new Error("Failed to create group");
       }
 
       await response.json();
@@ -143,9 +249,9 @@ export default function AdminGroupsPage() {
 
       setShowCreateForm(false);
       resetForm();
-      toast.success('Group created successfully!');
+      toast.success("Group created successfully!");
     } catch (error) {
-      toast.error('Failed to create group. Please try again.');
+      toast.error("Failed to create group. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -153,20 +259,20 @@ export default function AdminGroupsPage() {
 
   const resetForm = () => {
     setGroupForm({
-      name: '',
-      description: '',
-      maxMembers: '50',
-      category: 'professional'
+      name: "",
+      description: "",
+      maxMembers: "50",
+      category: "professional",
     });
   };
 
   const handleInputChange = (field: keyof GroupFormData, value: string) => {
-    setGroupForm(prev => ({ ...prev, [field]: value }));
+    setGroupForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const toggleGroupStatus = async (groupId: string) => {
-    const updatedGroups = groups.map(group =>
-        group.id === groupId ? { ...group, isActive: !group.isActive } : group
+    const updatedGroups = groups.map((group) =>
+      group.id === groupId ? { ...group, isActive: !group.isActive } : group
     );
     setGroups(updatedGroups);
 
@@ -174,92 +280,134 @@ export default function AdminGroupsPage() {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
 
-      const response = await fetch(`${apiEndpoint}/group/${groupId}/toggle-status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetch(
+        `${apiEndpoint}/group/${groupId}/toggle-status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to toggle group status');
+        throw new Error("Failed to toggle group status");
       }
 
-      toast.success('Group status updated successfully!');
+      toast.success("Group status updated successfully!");
     } catch (error) {
-      const revertedGroups = updatedGroups.map(group =>
-          group.id === groupId ? { ...group, isActive: !group.isActive } : group
+      const revertedGroups = updatedGroups.map((group) =>
+        group.id === groupId ? { ...group, isActive: !group.isActive } : group
       );
       setGroups(revertedGroups);
 
-      toast.error('Failed to update group status. Please try again.');
+      toast.error("Failed to update group status. Please try again.");
       console.error(error);
     }
   };
 
-  const deleteGroup = async (groupId: string) => {
-    if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
-      return;
-    }
+  const deleteGroup = async (groupId: string, groupName: string) => {
+    setDeleteModal({
+      isOpen: true,
+      groupId,
+      groupName,
+      isDeleting: false,
+    });
+  };
+
+  const confirmDeleteGroup = async () => {
+    setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
 
     try {
       // Remove the group optimistically from the list
-      const updatedGroups = groups.filter(group => group.id !== groupId);
+      const updatedGroups = groups.filter(
+        (group) => group.id !== deleteModal.groupId
+      );
       setGroups(updatedGroups);
 
       // Backend API call to delete the group
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
 
-      const response = await fetch(`${apiEndpoint}/group/${groupId}/delete`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetch(
+        `${apiEndpoint}/group/${deleteModal.groupId}/delete`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to delete the group');
+        throw new Error("Failed to delete the group");
       }
 
-      toast.success('Group deleted successfully!');
+      toast.success("Group deleted successfully!");
+      setDeleteModal({
+        isOpen: false,
+        groupId: "",
+        groupName: "",
+        isDeleting: false,
+      });
     } catch (error) {
       // Rollback the optimistic update in case of an error
       await fetchGroups(); // Re-load the groups to ensure data integrity
 
-      toast.error('Failed to delete group. Please try again.');
+      toast.error("Failed to delete group. Please try again.");
       console.error(error);
+      setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
     }
   };
 
-  const filteredGroups = groups.filter(group => {
-    const groupName = group.name || '';
-    const groupDescription = group.description || '';
+  const closeDeleteModal = () => {
+    if (!deleteModal.isDeleting) {
+      setDeleteModal({
+        isOpen: false,
+        groupId: "",
+        groupName: "",
+        isDeleting: false,
+      });
+    }
+  };
 
-    const matchesSearch = groupName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        groupDescription.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredGroups = groups.filter((group) => {
+    const groupName = group.name || "";
+    const groupDescription = group.description || "";
 
-    const matchesStatus = statusFilter === 'all' ||
-        (statusFilter === 'active' && group.isActive) ||
-        (statusFilter === 'inactive' && !group.isActive);
+    const matchesSearch =
+      groupName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      groupDescription.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && group.isActive) ||
+      (statusFilter === "inactive" && !group.isActive);
 
     return matchesSearch && matchesStatus;
   });
 
   const groupStats = {
     total: groups.length,
-    active: groups.filter(g => g.isActive).length,
+    active: groups.filter((g) => g.isActive).length,
     totalMembers: groups.reduce((sum, g) => sum + g.currentMembers, 0),
-    avgMembersPerGroup: Math.round(groups.reduce((sum, g) => sum + g.currentMembers, 0) / groups.length)
+    avgMembersPerGroup: Math.round(
+      groups.reduce((sum, g) => sum + g.currentMembers, 0) / groups.length
+    ),
   };
 
-  const getCategoryColor = (category: Group['category']) => {
+  const getCategoryColor = (category: Group["category"]) => {
     switch (category) {
-      case 'professional': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'social': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'academic': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'hobby': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      case "professional":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "social":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "academic":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
+      case "hobby":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
   };
 
@@ -268,8 +416,12 @@ export default function AdminGroupsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Group Management</h1>
-          <p className="text-muted-foreground">Create and manage organization groups</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            Group Management
+          </h1>
+          <p className="text-muted-foreground">
+            Create and manage organization groups
+          </p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
           <Badge variant="outline">
@@ -287,25 +439,33 @@ export default function AdminGroupsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary">{groupStats.total}</div>
+            <div className="text-2xl font-bold text-primary">
+              {groupStats.total}
+            </div>
             <p className="text-sm text-muted-foreground">Total Groups</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">{groupStats.active}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {groupStats.active}
+            </div>
             <p className="text-sm text-muted-foreground">Active Groups</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">{groupStats.totalMembers}</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {groupStats.totalMembers}
+            </div>
             <p className="text-sm text-muted-foreground">Total Members</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-purple-600">{groupStats.avgMembersPerGroup}</div>
+            <div className="text-2xl font-bold text-purple-600">
+              {groupStats.avgMembersPerGroup}
+            </div>
             <p className="text-sm text-muted-foreground">Avg per Group</p>
           </CardContent>
         </Card>
@@ -338,31 +498,37 @@ export default function AdminGroupsPage() {
                       <Input
                         id="name"
                         value={groupForm.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("name", e.target.value)
+                        }
                         placeholder="Software Engineers"
                         required
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="maxMembers">Max Members</Label>
                       <Input
                         id="maxMembers"
                         type="number"
                         value={groupForm.maxMembers}
-                        onChange={(e) => handleInputChange('maxMembers', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("maxMembers", e.target.value)
+                        }
                         placeholder="50"
                         min="1"
                         max="1000"
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
                       <select
                         id="category"
                         value={groupForm.category}
-                        onChange={(e) => handleInputChange('category', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("category", e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-input bg-background rounded-md"
                       >
                         <option value="PROFESSIONAL">Professional</option>
@@ -372,19 +538,21 @@ export default function AdminGroupsPage() {
                       </select>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="description">Description *</Label>
                     <Textarea
                       id="description"
                       value={groupForm.description}
-                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("description", e.target.value)
+                      }
                       placeholder="Describe the purpose and goals of this group..."
                       rows={3}
                       required
                     />
                   </div>
-                  
+
                   <div className="flex justify-end space-x-2 pt-4 border-t">
                     <Button
                       type="button"
@@ -396,11 +564,7 @@ export default function AdminGroupsPage() {
                     >
                       Cancel
                     </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={resetForm}
-                    >
+                    <Button type="button" variant="outline" onClick={resetForm}>
                       Clear Form
                     </Button>
                     <Button type="submit" disabled={loading}>
@@ -429,9 +593,7 @@ export default function AdminGroupsPage() {
                 <Users className="h-5 w-5" />
                 <span>All Groups</span>
               </CardTitle>
-              <CardDescription>
-                Manage all organization groups
-              </CardDescription>
+              <CardDescription>Manage all organization groups</CardDescription>
             </CardHeader>
             <CardContent>
               {/* Search and Filters */}
@@ -462,17 +624,26 @@ export default function AdminGroupsPage() {
               {/* Groups Grid */}
               <div className="space-y-4">
                 {filteredGroups.map((group) => (
-                  <div key={group.id} className="border rounded-lg p-6 hover:bg-accent transition-colors">
+                  <div
+                    key={group.id}
+                    className="border rounded-lg p-6 hover:bg-accent transition-colors"
+                  >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 space-y-3">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="text-lg font-semibold">{group.name}</h3>
-                            <p className="text-muted-foreground text-sm mt-1">{group.description}</p>
+                            <h3 className="text-lg font-semibold">
+                              {group.name}
+                            </h3>
+                            <p className="text-muted-foreground text-sm mt-1">
+                              {group.description}
+                            </p>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Badge variant={group.isActive ? 'default' : 'secondary'}>
-                              {group.isActive ? 'Active' : 'Inactive'}
+                            <Badge
+                              variant={group.isActive ? "default" : "secondary"}
+                            >
+                              {group.isActive ? "Active" : "Inactive"}
                             </Badge>
                             <Badge className={getCategoryColor(group.category)}>
                               {group.category.toLowerCase()}
@@ -483,7 +654,10 @@ export default function AdminGroupsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                           <div className="flex items-center space-x-2">
                             <Users className="h-4 w-4 text-muted-foreground" />
-                            <span>{group.currentMembers} / {group.maxMembers} members</span>
+                            <span>
+                              {group.currentMembers} / {group.maxMembers}{" "}
+                              members
+                            </span>
                           </div>
                           {/*<div className="flex items-center space-x-2">*/}
                           {/*  <Crown className="h-4 w-4 text-muted-foreground" />*/}
@@ -491,7 +665,10 @@ export default function AdminGroupsPage() {
                           {/*</div>*/}
                           <div className="flex items-center space-x-2">
                             <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                            <span>Created {new Date(group.createdAt).toLocaleDateString()}</span>
+                            <span>
+                              Created{" "}
+                              {new Date(group.createdAt).toLocaleDateString()}
+                            </span>
                           </div>
                         </div>
 
@@ -499,12 +676,23 @@ export default function AdminGroupsPage() {
                           <div className="w-full max-w-xs">
                             <div className="flex justify-between text-sm mb-1">
                               <span>Capacity</span>
-                              <span>{Math.round((group.currentMembers / group.maxMembers) * 100)}%</span>
+                              <span>
+                                {Math.round(
+                                  (group.currentMembers / group.maxMembers) *
+                                    100
+                                )}
+                                %
+                              </span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-primary h-2 rounded-full" 
-                                style={{ width: `${(group.currentMembers / group.maxMembers) * 100}%` }}
+                              <div
+                                className="bg-primary h-2 rounded-full"
+                                style={{
+                                  width: `${
+                                    (group.currentMembers / group.maxMembers) *
+                                    100
+                                  }%`,
+                                }}
                               ></div>
                             </div>
                           </div>
@@ -514,24 +702,24 @@ export default function AdminGroupsPage() {
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
-                            
+
                             <Button size="sm" variant="outline">
                               <Edit className="h-4 w-4 mr-1" />
                               Edit
                             </Button>
-                            
+
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => toggleGroupStatus(group.id)}
                             >
-                              {group.isActive ? 'Deactivate' : 'Activate'}
+                              {group.isActive ? "Deactivate" : "Activate"}
                             </Button>
-                            
+
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => deleteGroup(group.id)}
+                              onClick={() => deleteGroup(group.id, group.name)}
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -547,14 +735,16 @@ export default function AdminGroupsPage() {
               {filteredGroups.length === 0 && (
                 <div className="text-center py-8">
                   <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Groups Found</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    No Groups Found
+                  </h3>
                   <p className="text-muted-foreground">
-                    {searchTerm || statusFilter !== 'all'
-                      ? 'Try adjusting your search or filters.'
-                      : 'Create your first group to get started.'}
+                    {searchTerm || statusFilter !== "all"
+                      ? "Try adjusting your search or filters."
+                      : "Create your first group to get started."}
                   </p>
                   {!showCreateForm && (
-                    <Button 
+                    <Button
                       onClick={() => setShowCreateForm(true)}
                       className="mt-4"
                     >
@@ -579,15 +769,25 @@ export default function AdminGroupsPage() {
             <CardContent>
               <div className="text-center py-8">
                 <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Analytics Coming Soon</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  Analytics Coming Soon
+                </h3>
                 <p className="text-muted-foreground">
-                  Detailed group analytics and reporting features will be available soon.
+                  Detailed group analytics and reporting features will be
+                  available soon.
                 </p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDeleteGroup}
+        groupName={deleteModal.groupName}
+        isDeleting={deleteModal.isDeleting}
+      />
     </div>
   );
 }

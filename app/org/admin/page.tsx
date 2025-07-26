@@ -293,7 +293,7 @@ export default function AdminDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$2,400</div>
+            <div className="text-2xl font-bold">LKR 2,400</div>
             <p className="text-xs text-muted-foreground">
               +15% from last month
             </p>
@@ -314,22 +314,22 @@ export default function AdminDashboard() {
             <div className="space-y-4">
               {[
                 {
-                  name: "Sachini Jayawardana",
+                  name: "Sheane Mario",
                   action: "joined Software Engineers group",
                   time: "2 hours ago",
                 },
                 {
-                  name: "Suresh Bandara",
+                  name: "Pulasthi Abishek ",
                   action: "RSVP'd to Alumni Networking Event",
                   time: "4 hours ago",
                 },
                 {
-                  name: "Dilani Kumari",
-                  action: "donated $50 to Scholarship Fund",
+                  name: "Hashir Ahamad",
+                  action: "donated LKR 50 to Scholarship Fund",
                   time: "6 hours ago",
                 },
                 {
-                  name: "Sanjeewa Rajapaksha",
+                  name: "Satheera Jayawardhana ",
                   action: "booked mentorship session",
                   time: "1 day ago",
                 },

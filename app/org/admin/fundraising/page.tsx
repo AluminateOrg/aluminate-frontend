@@ -131,8 +131,8 @@ export default function AdminFundraisingPage() {
     {
       id: "1",
       campaignId: "1",
-      donorName: "John Smith",
-      donorEmail: "john.smith@example.com",
+      donorName: "Sheane Mario",
+      donorEmail: "sheane.mario@example.com",
       donorAvatar:
         "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       amount: 500,
@@ -156,8 +156,8 @@ export default function AdminFundraisingPage() {
     {
       id: "3",
       campaignId: "1",
-      donorName: "Sachini Jayawardana",
-      donorEmail: "sachini.jayawardana@example.com",
+      donorName: "Sheane Mario",
+      donorEmail: "sheane.mario@example.com",
       donorAvatar:
         "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       amount: 250,
@@ -170,8 +170,8 @@ export default function AdminFundraisingPage() {
     {
       id: "4",
       campaignId: "2",
-      donorName: "Nirosha Yogendran",
-      donorEmail: "nirosha.yogendran@example.com",
+      donorName: "Pulasthi Abishek",
+      donorEmail: "pulasthi.abishek@example.com",
       donorAvatar:
         "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       amount: 750,
@@ -184,8 +184,8 @@ export default function AdminFundraisingPage() {
     {
       id: "5",
       campaignId: "1",
-      donorName: "Tharushi Rathnayake",
-      donorEmail: "tharushi.rathnayake@example.com",
+      donorName: "Hashir Ahamad",
+      donorEmail: "hashir.ahamad@example.com",
       amount: 100,
       date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       isAnonymous: false,
@@ -357,7 +357,7 @@ export default function AdminFundraisingPage() {
           (d) =>
             `"${d.isAnonymous ? "Anonymous" : d.donorName}","${
               d.donorEmail
-            }","$${d.amount}","${format(new Date(d.date), "yyyy-MM-dd")}","${
+            }","LKR ${d.amount}","${format(new Date(d.date), "yyyy-MM-dd")}","${
               d.paymentMethod
             }","${d.status}","${d.message || ""}"`
         ),
@@ -492,7 +492,7 @@ export default function AdminFundraisingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${totalRaised.toLocaleString()}
+              LKR {totalRaised.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
               {Math.round((totalRaised / totalGoal) * 100)}% of total goal
@@ -540,7 +540,7 @@ export default function AdminFundraisingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              $
+              LKR
               {Math.round(
                 totalRaised /
                   Math.max(

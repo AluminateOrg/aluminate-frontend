@@ -74,7 +74,7 @@ export function useNotifications() {
       id: "4",
       title: "Mentorship Session Confirmed",
       message:
-        "Your mentorship session with Sachini Jayawardana has been confirmed for tomorrow at 2:00 PM.",
+        "Your mentorship session with Sheane Mario has been confirmed for tomorrow at 2:00 PM.",
       type: "mentorship",
       read: false,
       timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago

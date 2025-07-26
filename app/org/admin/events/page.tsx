@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import {
@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus,
@@ -42,6 +42,7 @@ import {
 import { format, addDays, addHours } from "date-fns";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import { DeleteConfirmationModal } from "./delete-confirmation";
 
 interface Event {
   id: string;
@@ -49,6 +50,8 @@ interface Event {
   description: string;
   startDate: string;
   endDate: string;
+  startTime: string;
+  endTime: string;
   location: string;
   type:
     | "meeting"
@@ -57,21 +60,14 @@ interface Event {
     | "fundraising"
     | "networking"
     | "webinar";
-  maxAttendees?: number;
+  maxAttendees: number;
   registrationDeadline?: string;
   isPublic: boolean;
   requiresApproval: boolean;
   status: "draft" | "published" | "cancelled" | "completed";
-  createdBy: string;
+  currentAttendees: number;
   createdAt: string;
-  attendees: {
-    registered: number;
-    confirmed: number;
-    waitlist: number;
-  };
-  tags: string[];
   price?: number;
-  currency?: string;
 }
 
 interface EventFormData {
@@ -84,12 +80,11 @@ interface EventFormData {
   location: string;
   type: Event["type"];
   maxAttendees: string;
+  currentAttendees?: string;
   registrationDeadline: string;
   isPublic: boolean;
   requiresApproval: boolean;
-  tags: string;
   price: string;
-  currency: string;
 }
 
 export default function AdminEventsPage() {
@@ -119,157 +114,67 @@ export default function AdminEventsPage() {
     registrationDeadline: format(addDays(new Date(), 5), "yyyy-MM-dd"),
     isPublic: true,
     requiresApproval: false,
-    tags: "",
     price: "",
-    currency: "USD",
   });
 
-  // Mock events data
-  const [events, setEvents] = useState<Event[]>([
-    {
-      id: "1",
-      title: "Annual Alumni Networking Event",
-      description:
-        "Join us for our biggest networking event of the year! Connect with fellow alumni, share experiences, and build lasting professional relationships.",
-      startDate: addDays(new Date(), 14).toISOString(),
-      endDate: addHours(addDays(new Date(), 14), 4).toISOString(),
-      location: "Sri Lanka Institute of Nanotechnology",
-      type: "networking",
-      maxAttendees: 200,
-      registrationDeadline: addDays(new Date(), 10).toISOString(),
-      isPublic: true,
-      requiresApproval: false,
-      status: "published",
-      createdBy: user?.id || "",
-      createdAt: new Date().toISOString(),
-      attendees: {
-        registered: 156,
-        confirmed: 142,
-        waitlist: 8,
-      },
-      tags: ["networking", "professional", "annual"],
-      price: 25,
-      currency: "USD",
-    },
-    {
-      id: "2",
-      title: "Tech Workshop: AI & Machine Learning",
-      description:
-        "Hands-on workshop covering the latest trends in AI and ML. Perfect for both beginners and experienced professionals.",
-      startDate: addDays(new Date(), 21).toISOString(),
-      endDate: addHours(addDays(new Date(), 21), 6).toISOString(),
-      location: "Virtusa Auditorium",
-      type: "workshop",
-      maxAttendees: 50,
-      registrationDeadline: addDays(new Date(), 18).toISOString(),
-      isPublic: true,
-      requiresApproval: true,
-      status: "published",
-      createdBy: user?.id || "",
-      createdAt: new Date().toISOString(),
-      attendees: {
-        registered: 45,
-        confirmed: 38,
-        waitlist: 12,
-      },
-      tags: ["technology", "workshop", "AI", "ML"],
-      price: 75,
-      currency: "USD",
-    },
-    {
-      id: "3",
-      title: "Scholarship Fundraising Gala",
-      description:
-        "Elegant evening gala to raise funds for student scholarships. Includes dinner, entertainment, and silent auction.",
-      startDate: addDays(new Date(), 35).toISOString(),
-      endDate: addHours(addDays(new Date(), 35), 5).toISOString(),
-      location: "Dialog Innovation Center",
-      type: "fundraising",
-      maxAttendees: 300,
-      registrationDeadline: addDays(new Date(), 28).toISOString(),
-      isPublic: true,
-      requiresApproval: false,
-      status: "draft",
-      createdBy: user?.id || "",
-      createdAt: new Date().toISOString(),
-      attendees: {
-        registered: 0,
-        confirmed: 0,
-        waitlist: 0,
-      },
-      tags: ["fundraising", "gala", "scholarship"],
-      price: 150,
-      currency: "USD",
-    },
-  ]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    eventId: "",
+    eventTitle: "",
+    isDeleting: false,
+  });
 
-  const handleCreateEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const fetchEvents = async () => {
     setLoading(true);
-
     try {
-      // Validate required fields
-      if (!eventForm.title || !eventForm.description || !eventForm.location) {
-        toast.error("Please fill in all required fields");
-        return;
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const response = await fetch(`${backendUrl}/api/v1/portal/event/get/all`);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch events");
       }
 
-      // Combine date and time
-      const startDateTime = new Date(
-        `${eventForm.startDate}T${eventForm.startTime}`
-      );
-      const endDateTime = new Date(`${eventForm.endDate}T${eventForm.endTime}`);
+      const data = await response.json();
 
-      if (endDateTime <= startDateTime) {
-        toast.error("End date/time must be after start date/time");
-        return;
-      }
+      // Transform the backend response to match your Event interface
+      const transformedEvents: Event[] =
+        data.data?.map((event: any) => ({
+          id: event.id.toString(),
+          title: event.title,
+          description: event.description,
+          startDate: new Date(
+            `${event.startDate}T${event.startTime}`
+          ).toISOString(),
+          endDate: new Date(`${event.endDate}T${event.endTime}`).toISOString(),
+          location: event.location,
+          type: event.type.toLowerCase() as Event["type"],
+          maxAttendees: event.maxParticipants || 0,
+          currentAttendees: event.currentParticipants || 0,
+          registrationDeadline: event.registrationDeadline
+            ? new Date(event.registrationDeadline).toISOString()
+            : undefined,
+          // isPublic: event.public,
+          requiresApproval: event.requiresApproval,
+          status: (event.status?.toLowerCase() as Event["status"]) || "draft",
+          // createdAt: event.createdAt || new Date().toISOString(),
+          price: event.price || undefined,
+        })) || [];
 
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const newEvent: Event = {
-        id: Date.now().toString(),
-        title: eventForm.title,
-        description: eventForm.description,
-        startDate: startDateTime.toISOString(),
-        endDate: endDateTime.toISOString(),
-        location: eventForm.location,
-        type: eventForm.type,
-        maxAttendees: eventForm.maxAttendees
-          ? parseInt(eventForm.maxAttendees)
-          : undefined,
-        registrationDeadline: eventForm.registrationDeadline
-          ? new Date(eventForm.registrationDeadline).toISOString()
-          : undefined,
-        isPublic: eventForm.isPublic,
-        requiresApproval: eventForm.requiresApproval,
-        status: "draft",
-        createdBy: user?.id || "",
-        createdAt: new Date().toISOString(),
-        attendees: {
-          registered: 0,
-          confirmed: 0,
-          waitlist: 0,
-        },
-        tags: eventForm.tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-        price: eventForm.price ? parseFloat(eventForm.price) : undefined,
-        currency: eventForm.currency,
-      };
-
-      setEvents((prev) => [newEvent, ...prev]);
-      resetForm();
-      setShowCreateForm(false);
-      toast.success("Event created successfully!");
+      console.log(transformedEvents);
+      setEvents(transformedEvents);
     } catch (error) {
-      toast.error("Failed to create event. Please try again.");
+      console.error("Error fetching events:", error);
+      toast.error("Failed to load events. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  // Add useEffect to fetch events on component mount
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   const resetForm = () => {
     setEventForm({
@@ -285,10 +190,86 @@ export default function AdminEventsPage() {
       registrationDeadline: format(addDays(new Date(), 5), "yyyy-MM-dd"),
       isPublic: true,
       requiresApproval: false,
-      tags: "",
       price: "",
-      currency: "USD",
     });
+  };
+
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (!eventForm.title || !eventForm.description || !eventForm.location) {
+        toast.error("Please fill in all required fields");
+        setLoading(false);
+        return;
+      }
+
+      // Combine date and time
+      const startDateTime = new Date(
+        `${eventForm.startDate}T${eventForm.startTime}`
+      );
+      const endDateTime = new Date(`${eventForm.endDate}T${eventForm.endTime}`);
+
+      if (endDateTime <= startDateTime) {
+        toast.error("End date/time must be after start date/time");
+        setLoading(false);
+        return;
+      }
+
+      // Prepare the API request payload to match your backend
+      const requestPayload = {
+        title: eventForm.title,
+        description: eventForm.description,
+        type: eventForm.type.toUpperCase(), // Convert to uppercase for backend
+        location: eventForm.location,
+        startDate: eventForm.startDate, // Send as separate date
+        startTime: eventForm.startTime + ":00", // Add seconds for backend format
+        endDate: eventForm.endDate,
+        endTime: eventForm.endTime + ":00", // Add seconds for backend format
+        maxParticipants: eventForm.maxAttendees
+          ? parseInt(eventForm.maxAttendees)
+          : null,
+        registrationDeadline: eventForm.registrationDeadline || null,
+        price: eventForm.price ? parseFloat(eventForm.price) : null,
+        public: eventForm.isPublic,
+        requiresApproval: eventForm.requiresApproval,
+      };
+
+      // Make API call to your backend
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const apiEndpoint = `${backendUrl}/api/v1/portal/event/create`;
+
+      try {
+        const response = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestPayload),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error("Failed to create event");
+        }
+
+        await response.json();
+
+        await fetchEvents();
+
+        setShowCreateForm(false);
+        resetForm();
+        toast.success("Event created successfully!");
+      } catch (error) {
+        console.error("Error creating event:", error);
+        toast.error("Failed to create event. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error("error: ", error);
+    }
   };
 
   const handleInputChange = (
@@ -300,6 +281,8 @@ export default function AdminEventsPage() {
 
   const publishEvent = async (eventId: string) => {
     try {
+      setLoading(true);
+
       setEvents((prev) =>
         prev.map((event) =>
           event.id === eventId
@@ -307,14 +290,90 @@ export default function AdminEventsPage() {
             : event
         )
       );
+
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const response = await fetch(
+        `${backendUrl}/api/v1/portal/event/${eventId}/publish`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            // Add authorization header if needed
+            // 'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to publish event");
+      }
+
+      const responseData = await response.json();
+
+      // Update the event with the response data, handling case conversion
+      if (responseData.data) {
+        setEvents((prev) =>
+          prev.map((event) =>
+            event.id === eventId
+              ? {
+                  ...event,
+                  // Transform the backend response to match frontend interface
+                  id: responseData.data.id.toString(),
+                  title: responseData.data.title,
+                  description: responseData.data.description,
+                  startDate: new Date(
+                    `${responseData.data.startDate}T${responseData.data.startTime}`
+                  ).toISOString(),
+                  endDate: new Date(
+                    `${responseData.data.endDate}T${responseData.data.endTime}`
+                  ).toISOString(),
+                  location: responseData.data.location,
+                  type: responseData.data.type.toLowerCase() as Event["type"], // Convert to lowercase
+                  maxAttendees: responseData.data.maxParticipants || 0,
+                  currentAttendees: responseData.data.currentParticipants || 0,
+                  registrationDeadline: responseData.data.registrationDeadline
+                    ? new Date(
+                        responseData.data.registrationDeadline + "T23:59:59"
+                      ).toISOString()
+                    : undefined,
+                  status:
+                    responseData.data.status.toLowerCase() as Event["status"], // Convert to lowercase
+                  price: responseData.data.price || undefined,
+                  // Keep existing frontend-only fields
+                  isPublic: event.isPublic,
+                  requiresApproval: event.requiresApproval,
+                  createdAt: event.createdAt,
+                }
+              : event
+          )
+        );
+      }
+
       toast.success("Event published successfully!");
     } catch (error) {
-      toast.error("Failed to publish event");
+      console.error("Error publishing event:", error);
+
+      // Revert optimistic update on error
+      setEvents((prev) =>
+        prev.map((event) =>
+          event.id === eventId ? { ...event, status: "draft" as const } : event
+        )
+      );
+
+      toast.error(
+        error instanceof Error ? error.message : "Failed to publish event"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   const cancelEvent = async (eventId: string) => {
     try {
+      setLoading(true);
+
+      // Update local state optimistically
       setEvents((prev) =>
         prev.map((event) =>
           event.id === eventId
@@ -322,44 +381,175 @@ export default function AdminEventsPage() {
             : event
         )
       );
+
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const response = await fetch(
+        `${backendUrl}/api/v1/portal/event/${eventId}/cancel`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            // Add authorization header if needed
+            // 'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to cancel event");
+      }
+
+      const responseData = await response.json();
+
+      // Update the event with the response data, handling case conversion
+      if (responseData.data) {
+        setEvents((prev) =>
+          prev.map((event) =>
+            event.id === eventId
+              ? {
+                  ...event,
+                  // Transform the backend response to match frontend interface
+                  id: responseData.data.id.toString(),
+                  title: responseData.data.title,
+                  description: responseData.data.description,
+                  startDate: new Date(
+                    `${responseData.data.startDate}T${responseData.data.startTime}`
+                  ).toISOString(),
+                  endDate: new Date(
+                    `${responseData.data.endDate}T${responseData.data.endTime}`
+                  ).toISOString(),
+                  location: responseData.data.location,
+                  type: responseData.data.type.toLowerCase() as Event["type"], // Convert to lowercase
+                  maxAttendees: responseData.data.maxParticipants || 0,
+                  currentAttendees: responseData.data.currentParticipants || 0,
+                  registrationDeadline: responseData.data.registrationDeadline
+                    ? new Date(
+                        responseData.data.registrationDeadline + "T23:59:59"
+                      ).toISOString()
+                    : undefined,
+                  status:
+                    responseData.data.status.toLowerCase() as Event["status"], // Convert to lowercase
+                  price: responseData.data.price || undefined,
+                  // Keep existing frontend-only fields
+                  isPublic: event.isPublic,
+                  requiresApproval: event.requiresApproval,
+                  createdAt: event.createdAt,
+                }
+              : event
+          )
+        );
+      }
+
       toast.success("Event cancelled successfully");
     } catch (error) {
-      toast.error("Failed to cancel event");
+      console.error("Error cancelling event:", error);
+
+      // Revert optimistic update on error
+      setEvents((prev) =>
+        prev.map((event) =>
+          event.id === eventId
+            ? { ...event, status: "published" as const }
+            : event
+        )
+      );
+
+      toast.error(
+        error instanceof Error ? error.message : "Failed to cancel event"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
-  const deleteEvent = async (eventId: string) => {
+  // Update the delete button click handler
+  const handleDeleteClick = (eventId: string, eventTitle: string) => {
+    setDeleteModal({
+      isOpen: true,
+      eventId,
+      eventTitle,
+      isDeleting: false,
+    });
+  };
+
+  // Updated delete function
+  const deleteEvent = async () => {
+    setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
+
     try {
-      setEvents((prev) => prev.filter((event) => event.id !== eventId));
+      // Remove from local state optimistically
+      const eventToDelete = deleteModal.eventId;
+      setEvents((prev) => prev.filter((event) => event.id !== eventToDelete));
+
+      // Make API call to delete the event
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const response = await fetch(
+        `${backendUrl}/api/v1/portal/event/${eventToDelete}/delete`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete event");
+      }
+
+      const responseData = await response.json();
+
       toast.success("Event deleted successfully");
+      setDeleteModal({
+        isOpen: false,
+        eventId: "",
+        eventTitle: "",
+        isDeleting: false,
+      });
     } catch (error) {
-      toast.error("Failed to delete event");
+      console.error("Error deleting event:", error);
+
+      // Revert optimistic update on error
+      await fetchEvents();
+
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete event"
+      );
+      setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
     }
   };
 
-  const duplicateEvent = async (event: Event) => {
-    try {
-      const duplicatedEvent: Event = {
-        ...event,
-        id: Date.now().toString(),
-        title: `${event.title} (Copy)`,
-        status: "draft",
-        startDate: addDays(new Date(event.startDate), 7).toISOString(),
-        endDate: addDays(new Date(event.endDate), 7).toISOString(),
-        createdAt: new Date().toISOString(),
-        attendees: {
-          registered: 0,
-          confirmed: 0,
-          waitlist: 0,
-        },
-      };
-
-      setEvents((prev) => [duplicatedEvent, ...prev]);
-      toast.success("Event duplicated successfully!");
-    } catch (error) {
-      toast.error("Failed to duplicate event");
+  const closeDeleteModal = () => {
+    if (!deleteModal.isDeleting) {
+      setDeleteModal({
+        isOpen: false,
+        eventId: "",
+        eventTitle: "",
+        isDeleting: false,
+      });
     }
   };
+
+  // const duplicateEvent = async (event: Event) => {
+  //   try {
+  //     const duplicatedEvent: Event = {
+  //       ...event,
+  //       id: Date.now().toString(),
+  //       title: `${event.title} (Copy)`,
+  //       status: "draft",
+  //       startDate: addDays(new Date(event.startDate), 7).toISOString(),
+  //       endDate: addDays(new Date(event.endDate), 7).toISOString(),
+  //       createdAt: new Date().toISOString(),
+  //       currentAttendees: 0,
+  //     };
+
+  //     setEvents((prev) => [duplicatedEvent, ...prev]);
+  //     toast.success("Event duplicated successfully!");
+  //   } catch (error) {
+  //     toast.error("Failed to duplicate event");
+  //   }
+  // };
 
   const exportAttendees = async (eventId: string) => {
     try {
@@ -399,7 +589,7 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
     total: events.length,
     published: events.filter((e) => e.status === "published").length,
     draft: events.filter((e) => e.status === "draft").length,
-    totalAttendees: events.reduce((sum, e) => sum + e.attendees.registered, 0),
+    totalAttendees: events.reduce((sum, e) => sum + e.currentAttendees, 0),
   };
 
   const getStatusColor = (status: Event["status"]) => {
@@ -689,7 +879,7 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                             placeholder="0.00"
                             className="flex-1"
                           />
-                          <select
+                          {/* <select
                             value={eventForm.currency}
                             onChange={(e) =>
                               handleInputChange("currency", e.target.value)
@@ -699,7 +889,7 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                             <option value="USD">USD</option>
                             <option value="EUR">EUR</option>
                             <option value="GBP">GBP</option>
-                          </select>
+                          </select> */}
                         </div>
                       </div>
                     </div>
@@ -709,7 +899,7 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Additional Settings</h3>
                     <div className="space-y-4">
-                      <div className="space-y-2">
+                      {/* <div className="space-y-2">
                         <Label htmlFor="tags">Tags (comma-separated)</Label>
                         <Input
                           id="tags"
@@ -719,7 +909,7 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                           }
                           placeholder="networking, professional, annual"
                         />
-                      </div>
+                      </div> */}
 
                       <div className="flex items-center space-x-6">
                         <div className="flex items-center space-x-2">
@@ -894,9 +1084,7 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                           <div className="flex items-center space-x-4 text-sm">
                             <div className="flex items-center space-x-1">
                               <Users className="h-4 w-4 text-muted-foreground" />
-                              <span>
-                                {event.attendees.registered} registered
-                              </span>
+                              <span>{event.currentAttendees} registered</span>
                               {event.maxAttendees && (
                                 <span className="text-muted-foreground">
                                   / {event.maxAttendees} max
@@ -905,7 +1093,7 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                             </div>
                             {event.price && (
                               <div className="text-primary font-medium">
-                                {event.currency} {event.price}
+                                LKR {event.price}
                               </div>
                             )}
                           </div>
@@ -942,13 +1130,13 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                               </>
                             )}
 
-                            <Button
+                            {/* <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => duplicateEvent(event)}
                             >
                               <Copy className="h-4 w-4" />
-                            </Button>
+                            </Button> */}
 
                             <Button size="sm" variant="ghost">
                               <Edit className="h-4 w-4" />
@@ -957,7 +1145,9 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => deleteEvent(event.id)}
+                              onClick={() =>
+                                handleDeleteClick(event.id, event.title)
+                              }
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -965,12 +1155,12 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                           </div>
                         </div>
 
-                        {event.attendees.registered > 0 && (
+                        {event.currentAttendees > 0 && (
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span>Registration Progress</span>
                               <span>
-                                {event.attendees.registered}
+                                {event.currentAttendees}
                                 {event.maxAttendees &&
                                   ` / ${event.maxAttendees}`}
                               </span>
@@ -978,7 +1168,7 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                             <Progress
                               value={
                                 event.maxAttendees
-                                  ? (event.attendees.registered /
+                                  ? (event.currentAttendees /
                                       event.maxAttendees) *
                                     100
                                   : 0
@@ -1044,6 +1234,13 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
           </Card>
         </TabsContent>
       </Tabs>
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={deleteEvent}
+        eventName={deleteModal.eventTitle} // Change prop name from groupName to eventName
+        isDeleting={deleteModal.isDeleting}
+      />
     </div>
   );
 }

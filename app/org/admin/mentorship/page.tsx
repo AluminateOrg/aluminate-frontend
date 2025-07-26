@@ -112,12 +112,12 @@ export default function AdminMentorshipPage() {
     {
       id: "1",
       applicantId: "member-1",
-      applicantName: "Sachini Jayawardana",
-      applicantEmail: "sarah.johnson@example.com",
+      applicantName: "Sheane Mario",
+      applicantEmail: "sheane.mario@example.com",
       applicantAvatar:
         "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       currentPosition: "Senior Software Engineer",
-      company: "Cambio",
+      company: "Google",
       yearsExperience: 8,
       expertise: [
         "React",
@@ -138,12 +138,12 @@ export default function AdminMentorshipPage() {
     {
       id: "2",
       applicantId: "member-2",
-      applicantName: "Nirosha Yogendran",
-      applicantEmail: "nirosha.yogendran@example.com",
+      applicantName: "Pulasthi Abishek",
+      applicantEmail: "pulasthi.abishek@example.com",
       applicantAvatar:
         "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       currentPosition: "Product Manager",
-      company: "IFS",
+      company: "Microsoft",
       yearsExperience: 6,
       expertise: [
         "Product Strategy",
@@ -164,12 +164,12 @@ export default function AdminMentorshipPage() {
     {
       id: "3",
       applicantId: "member-3",
-      applicantName: "Tharushi Rathnayake",
-      applicantEmail: "tharushi.rathnayake@example.com",
+      applicantName: "Hashir Ahamad",
+      applicantEmail: "hashir.ahamad@example.com",
       applicantAvatar:
         "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       currentPosition: "Data Science Director",
-      company: "WSO2",
+      company: "Netflix",
       yearsExperience: 10,
       expertise: [
         "Machine Learning",
@@ -197,12 +197,12 @@ export default function AdminMentorshipPage() {
   const [mentors, setMentors] = useState<Mentor[]>([
     {
       id: "mentor-1",
-      name: "Tharushi Rathnayake",
-      email: "tharushi.rathnayake@example.com",
+      name: "Satheera Jayawardhana",
+      email: "satheera.jayawardhana@example.com",
       avatar:
         "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
       designation: "Data Science Director",
-      company: "WSO2",
+      company: "Netflix",
       expertise: [
         "Machine Learning",
         "Python",
@@ -224,9 +224,9 @@ export default function AdminMentorshipPage() {
     {
       id: "session-1",
       mentorId: "mentor-1",
-      mentorName: "Tharushi Rathnayake",
+      mentorName: "Mario Silva",
       menteeId: "mentee-1",
-      menteeName: "Shane Mario",
+      menteeName: "Kamal Perera",
       scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
       duration: 60,
       status: "scheduled",
@@ -235,9 +235,9 @@ export default function AdminMentorshipPage() {
     {
       id: "session-2",
       mentorId: "mentor-1",
-      mentorName: "Tharushi Rathnayake",
+      mentorName: "Sheane Mario",
       menteeId: "mentee-2",
-      menteeName: "Satheera Nirmal",
+      menteeName: "Nimal Fernando",
       scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       duration: 45,
       status: "completed",
@@ -631,7 +631,7 @@ export default function AdminMentorshipPage() {
                 <span>Active Mentors</span>
               </CardTitle>
               <CardDescription>
-                Manage your organization's mentor network
+                Manage your organization&#39;s mentor network
               </CardDescription>
             </CardHeader>
             <CardContent>
