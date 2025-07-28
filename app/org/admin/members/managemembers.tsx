@@ -1,7 +1,7 @@
 // File: components/members/ManageMembers.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOrg } from "@/hooks/useOrg";
 import {
   Card,
@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import axios from "axios";
 
 interface Member {
   id: string;
@@ -52,8 +53,50 @@ export default function ManageMembers({ members, setMembers }: {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "inactive">("all");
 
   const getMemberGroups = (groupIds: string[]) => {
-    return groups.filter((group) => groupIds.includes(group.id));
+    return Array.isArray(groups) && groups.filter((group) => groupIds.includes(group.id));
   };
+
+  //function to get all members 
+  const getAllMembers = async () => {
+  try {
+    const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/member/get/all`);
+    // console.log("response from the backend", response.data);
+
+    if (response.data && Array.isArray(response.data.data)) {
+      const mappedMembers = response.data.data.map((member: any) => ({
+        id: member.id || member.nic, // fallback if id is missing
+        name: member.name,
+        email: member.email || "",
+        phone: member.phone || "",
+        designation: member.position || "",
+        company: member.company || "",
+        graduationYear: member.batch?.toString() || "",
+        degree: member.degree || "",
+        location: member.address || "",
+        avatar: member.photoUrl || "", // adjust if you have image URLs
+        status: "active", // default status if missing
+        joinedAt: member.createdAt || new Date().toISOString(),
+        groupIds: member.groupIds || [],
+      }));
+
+      setMembers(mappedMembers);
+    } else {
+      toast.error("Invalid data received");
+    }
+
+  } catch (error) {
+    console.error("Error fetching members:", error);
+    toast.error("Failed to fetch members");
+  }
+}
+
+
+  useEffect(() => {
+    const fetchData = setInterval(() => {
+      getAllMembers();
+    }, 5000)
+    return () => clearInterval(fetchData);
+  }, [])
 
   const deleteMember = (memberId: string) => {
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
