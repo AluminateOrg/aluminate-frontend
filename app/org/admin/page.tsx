@@ -1,18 +1,24 @@
 'use client';
 
-import { useState } from 'react';
-import { useOrg } from '@/hooks/useOrg';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { 
-  Users, 
-  Calendar, 
-  TrendingUp, 
+import { useEffect, useState } from "react";
+import { useOrg } from "@/hooks/useOrg";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Users,
+  Calendar,
+  TrendingUp,
   CreditCard,
   AlertTriangle,
   CheckCircle,
@@ -22,11 +28,12 @@ import {
   Settings,
   X,
   Mail,
-  MessageSquare
-} from 'lucide-react';
-import Link from 'next/link';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
-import { toast } from 'sonner';
+  MessageSquare,
+} from "lucide-react";
+import Link from "next/link";
+import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import { toast } from "sonner";
+import axios from "axios";
 
 interface AnnouncementForm {
   title: string;
@@ -95,6 +102,20 @@ export default function AdminDashboard() {
     }));
   };
 
+  // useEffect(() => {
+  //   const fetchGroups = async () => {
+  //     try {
+  //       const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/group/get/all`)
+  //       console.log("response from the backend: ", response.data);
+  //       if (response.data){
+          
+  //       }
+  //     } catch (error) {
+        
+  //     }
+  //   }
+  // })
+
   const handleSendAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -112,23 +133,23 @@ export default function AdminDashboard() {
 
     try {
       // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/announcement/multicast-for-all-emails`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(announcementForm)
+      })
 
-      // Calculate recipient count
-      let recipientCount = 0;
-      switch (announcementForm.recipients) {
-        case 'all':
-          recipientCount = organization.memberCount;
-          break;
-        case 'groups':
-          recipientCount = announcementForm.selectedGroups.reduce((sum, groupId) => {
-            const group = groups.find(g => g.id === groupId);
-            return sum + (group?.currentMembers || 0);
-          }, 0);
-          break;
-        default:
-          recipientCount = organization.memberCount;
+      console.log("response from API:", response);
+
+      if (!response.ok) {
+        toast.error("Failed to send announcement. Please try again.");
       }
+
+      const data = await response.json();
+      toast.success(`Announcement sent successfully to ${data.sendCount} members!`)
+
 
       // Reset form and close modal
       setAnnouncementForm({
@@ -141,8 +162,6 @@ export default function AdminDashboard() {
         sendPush: false
       });
       setShowAnnouncementModal(false);
-
-      toast.success(`Announcement sent successfully to ${recipientCount} members!`);
     } catch (error) {
       toast.error('Failed to send announcement. Please try again.');
     } finally {
@@ -161,6 +180,8 @@ export default function AdminDashboard() {
       sendPush: false
     });
   };
+
+  // console.log("groups", groups);
 
   return (
     <div className="p-6 space-y-6">
@@ -224,7 +245,9 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{groups.filter(g => g.currentMembers > 0).length}</div>
+            <div className="text-2xl font-bold">
+              {Array.isArray(groups) ? groups.filter((g) => g.currentMembers > 0).length : 0}
+            </div>
             <p className="text-xs text-muted-foreground">
               {groups.length} total groups
             </p>
@@ -250,7 +273,7 @@ export default function AdminDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$2,400</div>
+            <div className="text-2xl font-bold">LKR 2,400</div>
             <p className="text-xs text-muted-foreground">
               +15% from last month
             </p>
@@ -268,10 +291,26 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="space-y-4">
               {[
-                { name: 'Sarah Johnson', action: 'joined Software Engineers group', time: '2 hours ago' },
-                { name: 'Mike Chen', action: 'RSVP\'d to Alumni Networking Event', time: '4 hours ago' },
-                { name: 'Emily Davis', action: 'donated $50 to Scholarship Fund', time: '6 hours ago' },
-                { name: 'Alex Thompson', action: 'booked mentorship session', time: '1 day ago' },
+                {
+                  name: "Sheane Mario",
+                  action: "joined Software Engineers group",
+                  time: "2 hours ago",
+                },
+                {
+                  name: "Pulasthi Abishek ",
+                  action: "RSVP'd to Alumni Networking Event",
+                  time: "4 hours ago",
+                },
+                {
+                  name: "Hashir Ahamad",
+                  action: "donated LKR 50 to Scholarship Fund",
+                  time: "6 hours ago",
+                },
+                {
+                  name: "Satheera Jayawardhana ",
+                  action: "booked mentorship session",
+                  time: "1 day ago",
+                },
               ].map((activity, index) => (
                 <div key={index} className="flex items-center space-x-3">
                   <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -420,8 +459,11 @@ export default function AdminDashboard() {
                     <div className="space-y-3 ml-6">
                       <p className="text-sm text-muted-foreground">Select which groups to send the announcement to:</p>
                       <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
-                        {groups.map((group) => (
-                          <div key={group.id} className="flex items-center space-x-2">
+                        {Array.isArray(groups.data) && groups.data.map((group) => (
+                          <div
+                            key={group.id}
+                            className="flex items-center space-x-2"
+                          >
                             <input
                               type="checkbox"
                               id={`group-${group.id}`}

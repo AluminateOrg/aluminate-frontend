@@ -1,7 +1,6 @@
-// File: components/members/ManageMembers.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOrg } from "@/hooks/useOrg";
 import {
   Card,
@@ -25,54 +24,86 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 
 interface Member {
-  id: string;
+  id: number;
   name: string;
   email: string;
   phone?: string;
-  designation?: string;
-  company?: string;
-  graduationYear?: string;
-  degree?: string;
-  location?: string;
-  avatar?: string;
-  status: "active" | "pending" | "inactive";
-  joinedAt: string;
-  groupIds: string[];
+  nic?: string;
+  regNo?: string;
+  address?: string;
+  batch?: number;
+  isActive: boolean;
+  groupIds: number[]; // coming from backend as Longs
 }
 
-
-export default function ManageMembers({ members, setMembers }: {
-  members: Member[];
-  setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
-}) {
-  const { organization, groups } = useOrg();
+export default function ManageMembers() {
+  const { groups } = useOrg();
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "inactive">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
-  const getMemberGroups = (groupIds: string[]) => {
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX;
+        const res = await fetch(`${backendUrl}/${apiPrefix}/member/get/all`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Failed to fetch members");
+
+        setMembers(data.data);
+      } catch (err: any) {
+        toast.error(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMembers();
+  }, []);
+
+  const getMemberGroups = (groupIds: number[]) => {
     return groups.filter((group) => groupIds.includes(group.id));
   };
 
-  const deleteMember = (memberId: string) => {
-    setMembers((prev) => prev.filter((m) => m.id !== memberId));
-    toast.success("Member removed successfully");
-  };
+  const deleteMember = async (memberId: number) => {
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX;
+      const res = await fetch(`${backendUrl}/${apiPrefix}/member/${memberId}/delete`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete member");
 
-  const resendInvitation = (memberId: string) => {
-    toast.success("Invitation email sent successfully");
+      setMembers((prev) => prev.filter((m) => m.id !== memberId));
+      toast.success("Member removed successfully");
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
 
   const filteredMembers = members.filter((member) => {
     const matchesSearch =
       member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.company?.toLowerCase().includes(searchTerm.toLowerCase());
+      member.email.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || member.status === statusFilter;
+    const isActive = member.isActive ? "active" : "inactive";
+    const matchesStatus = statusFilter === "all" || statusFilter === isActive;
+
     return matchesSearch && matchesStatus;
   });
+
+  if (loading) {
+    return (
+      <div className="p-6 flex justify-center items-center h-96">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <Card>
@@ -85,7 +116,9 @@ export default function ManageMembers({ members, setMembers }: {
           View, edit, and manage all organization members and their group assignments
         </CardDescription>
       </CardHeader>
+
       <CardContent>
+        {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -98,7 +131,7 @@ export default function ManageMembers({ members, setMembers }: {
           </div>
           <div className="flex items-center space-x-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            {["all", "active", "pending", "inactive"].map((status) => (
+            {["all", "active", "inactive"].map((status) => (
               <Button
                 key={status}
                 variant={statusFilter === status ? "default" : "outline"}
@@ -111,6 +144,7 @@ export default function ManageMembers({ members, setMembers }: {
           </div>
         </div>
 
+        {/* Member List */}
         <div className="space-y-4">
           {filteredMembers.map((member) => {
             const memberGroups = getMemberGroups(member.groupIds);
@@ -121,7 +155,7 @@ export default function ManageMembers({ members, setMembers }: {
               >
                 <div className="flex items-center space-x-4">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={member.avatar} alt={member.name} />
+                    <AvatarImage src="/default-avatar.png" alt={member.name} />
                     <AvatarFallback>
                       {member.name.split(" ").map((n) => n[0]).join("")}
                     </AvatarFallback>
@@ -130,16 +164,8 @@ export default function ManageMembers({ members, setMembers }: {
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
                       <h4 className="font-medium">{member.name}</h4>
-                      <Badge
-                        variant={
-                          member.status === "active"
-                            ? "default"
-                            : member.status === "pending"
-                            ? "secondary"
-                            : "outline"
-                        }
-                      >
-                        {member.status}
+                      <Badge variant={member.isActive ? "default" : "outline"}>
+                        {member.isActive ? "active" : "inactive"}
                       </Badge>
                     </div>
                     <div className="flex items-center space-x-4 text-sm text-muted-foreground">
@@ -153,16 +179,7 @@ export default function ManageMembers({ members, setMembers }: {
                           <span>{member.phone}</span>
                         </div>
                       )}
-                      {member.company && (
-                        <div className="flex items-center space-x-1">
-                          <Briefcase className="h-3 w-3" />
-                          <span>{member.company}</span>
-                        </div>
-                      )}
                     </div>
-                    {member.designation && (
-                      <p className="text-sm text-muted-foreground">{member.designation}</p>
-                    )}
                     {memberGroups.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {memberGroups.map((group) => (
@@ -176,11 +193,6 @@ export default function ManageMembers({ members, setMembers }: {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  {member.status === "pending" && (
-                    <Button size="sm" variant="outline" onClick={() => resendInvitation(member.id)}>
-                      <Mail className="h-4 w-4 mr-1" /> Resend
-                    </Button>
-                  )}
                   <Button size="sm" variant="ghost">
                     <Edit className="h-4 w-4" />
                   </Button>

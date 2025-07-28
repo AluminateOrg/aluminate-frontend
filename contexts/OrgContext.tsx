@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-
+import axios from 'axios';
 export type SubscriptionTier = 'basic' | 'premium' | 'enterprise';
 
 export interface Organization {
@@ -43,8 +43,8 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   const fetchOrganization = async () => {
-    if (!user?.orgId) return;
-    
+    if (!user?.id) return;
+
     try {
       // TODO: Replace with actual API call
       const mockOrg: Organization = {
@@ -58,29 +58,47 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         createdAt: new Date().toISOString(),
       };
 
-      const mockGroups: Group[] = [
-        {
-          id: 'group-1',
-          name: 'Software Engineers',
-          description: 'For all software engineering professionals',
-          maxMembers: 100,
-          currentMembers: 45,
-          createdAt: new Date().toISOString(),
-          adminId: user.id,
-        },
-        {
-          id: 'group-2',
-          name: 'Data Scientists',
-          description: 'Data science and analytics professionals',
-          maxMembers: 50,
-          currentMembers: 23,
-          createdAt: new Date().toISOString(),
-          adminId: user.id,
-        },
-      ];
+      // const mockGroups: Group[] = [
+      //   {
+      //     id: 'group-1',
+      //     name: 'Software Engineers',
+      //     description: 'For all software engineering professionals',
+      //     maxMembers: 100,
+      //     currentMembers: 45,
+      //     createdAt: new Date().toISOString(),
+      //     adminId: user.id,
+      //   },
+      //   {
+      //     id: 'group-2',
+      //     name: 'Data Scientists',
+      //     description: 'Data science and analytics professionals',
+      //     maxMembers: 50,
+      //     currentMembers: 23,
+      //     createdAt: new Date().toISOString(),
+      //     adminId: user.id,
+      //   },
+      // ];
+      const fetchGroups = async (): Promise<Group[]> => {
+        try {
+          const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/group/get/all`);
+          console.log("response from the backend: ", response.data);
+          if (response.data) {
+            return response.data as Group[];
+          }
+          return [];
+        } catch (error) {
+          console.error('Failed to fetch groups:', error);
+          throw error;
+        }
+      }
+
+      const data = await fetchGroups();
+      setGroups(data);
+
+      console.log("fetched data: ", data);
 
       setOrganization(mockOrg);
-      setGroups(mockGroups);
+      // setGroups(mockGroups);
     } catch (error) {
       console.error('Failed to fetch organization:', error);
     } finally {
@@ -90,7 +108,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 
   const updateSubscription = async (tier: SubscriptionTier) => {
     if (!organization) return;
-    
+
     try {
       // TODO: Replace with actual API call
       const updatedOrg = {

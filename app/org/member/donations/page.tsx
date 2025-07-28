@@ -113,7 +113,7 @@ export default function DonationsPage() {
     try {
       // TODO: Replace with actual API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success(`Thank you for your $${amount} donation!`);
+      toast.success(`Thank you for your LKR ${amount} donation!`);
       setDonationAmount('');
       setSelectedCampaign('');
     } catch (error) {
@@ -162,7 +162,7 @@ export default function DonationsPage() {
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
           <Badge variant="outline">
             <DollarSign className="h-3 w-3 mr-1" />
-            ${totalDonated} Total Donated
+            LKR {totalDonated} Total Donated
           </Badge>
         </div>
       </div>

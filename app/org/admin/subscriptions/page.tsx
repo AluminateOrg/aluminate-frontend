@@ -90,10 +90,10 @@ export default function SubscriptionsPage() {
 
   const plans: SubscriptionPlan[] = [
     {
-      id: 'basic',
-      name: 'Basic',
-      price: 29,
-      interval: 'monthly',
+      id: "basic",
+      name: "Basic",
+      price: 29990,
+      interval: "monthly",
       memberLimit: 100,
       features: [
         'Up to 100 members',
@@ -105,10 +105,10 @@ export default function SubscriptionsPage() {
       current: organization?.tier === 'basic'
     },
     {
-      id: 'premium',
-      name: 'Premium',
-      price: 79,
-      interval: 'monthly',
+      id: "premium",
+      name: "Premium",
+      price: 79900,
+      interval: "monthly",
       memberLimit: 500,
       features: [
         'Up to 500 members',
@@ -124,10 +124,10 @@ export default function SubscriptionsPage() {
       current: organization?.tier === 'premium'
     },
     {
-      id: 'enterprise',
-      name: 'Enterprise',
-      price: 199,
-      interval: 'monthly',
+      id: "enterprise",
+      name: "Enterprise",
+      price: 199000,
+      interval: "monthly",
       memberLimit: 1000,
       features: [
         'Up to 1000 members',
@@ -287,8 +287,10 @@ export default function SubscriptionsPage() {
               <div className="space-y-2">
                 <h3 className="font-semibold text-lg">{currentPlan.name}</h3>
                 <p className="text-2xl font-bold text-primary">
-                  ${currentPlan.price}
-                  <span className="text-sm font-normal text-muted-foreground">/{currentPlan.interval}</span>
+                  LKR {currentPlan.price}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    /{currentPlan.interval}
+                  </span>
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Next billing: {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
@@ -359,8 +361,10 @@ export default function SubscriptionsPage() {
                 </div>
                 <CardTitle className="text-xl">{plan.name}</CardTitle>
                 <div className="text-3xl font-bold">
-                  ${plan.price}
-                  <span className="text-sm font-normal text-muted-foreground">/{plan.interval}</span>
+                  LKR {plan.price}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    /{plan.interval}
+                  </span>
                 </div>
                 <CardDescription>
                   Up to {plan.memberLimit} members
@@ -461,9 +465,24 @@ export default function SubscriptionsPage() {
         <CardContent>
           <div className="space-y-3">
             {[
-              { date: '2024-01-01', amount: 79, status: 'paid', plan: 'Premium' },
-              { date: '2023-12-01', amount: 79, status: 'paid', plan: 'Premium' },
-              { date: '2023-11-01', amount: 79, status: 'paid', plan: 'Premium' },
+              {
+                date: "2024-01-01",
+                amount: 79000,
+                status: "paid",
+                plan: "Premium",
+              },
+              {
+                date: "2023-12-01",
+                amount: 79000,
+                status: "paid",
+                plan: "Premium",
+              },
+              {
+                date: "2023-11-01",
+                amount: 79000,
+                status: "paid",
+                plan: "Premium",
+              },
             ].map((invoice, index) => (
               <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center space-x-3">
@@ -478,7 +497,7 @@ export default function SubscriptionsPage() {
                   <Badge variant={invoice.status === 'paid' ? 'default' : 'destructive'}>
                     {invoice.status}
                   </Badge>
-                  <span className="font-medium">${invoice.amount}</span>
+                  <span className="font-medium">LKR {invoice.amount}</span>
                   <Button variant="ghost" size="sm">
                     Download
                   </Button>
