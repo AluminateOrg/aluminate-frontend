@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { set } from "date-fns";
 
 export default function BulkCsvUpload() {
   const { groups } = useOrg();
@@ -70,7 +71,8 @@ export default function BulkCsvUpload() {
     }
   };
 
-  /** Handle CSV Upload with Progress */
+  console.log("selected group data: ", bulkUploadForm.selectedGroups);
+
   const handleCSVUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!csvFile) {
@@ -88,6 +90,8 @@ export default function BulkCsvUpload() {
     const formData = new FormData();
     formData.append("file", csvFile);
     formData.append("groups", JSON.stringify(bulkUploadForm.selectedGroups));
+
+    console.log("formData::", formData.get("groups"));
 
     try {
       const xhr = new XMLHttpRequest();
@@ -114,7 +118,8 @@ export default function BulkCsvUpload() {
             setEditableRows(data.invalidRows);
             setShowInvalidPopup(true);
           }
-
+          setCsvFile(null);
+          
           toast.success("Upload completed");
         } else {
           const errorData = JSON.parse(xhr.responseText);
@@ -141,7 +146,6 @@ export default function BulkCsvUpload() {
     setEditableRows(updatedRows);
   };
 
-  /** Finalize bulk upload with simulated progress */
   const finalizeBulkUpload = async () => {
     setFinalizing(true);
     setFinalizeProgress(0);
@@ -150,13 +154,17 @@ export default function BulkCsvUpload() {
       setFinalizeProgress((prev) => (prev < 90 ? prev + 10 : prev));
     }, 200);
 
+    const formData = new FormData();
+    formData.append("rows", JSON.stringify(editableRows));
+    formData.append("groups", JSON.stringify(bulkUploadForm.selectedGroups));
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/admin/bulk-finalize`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editableRows),
+          body: JSON.stringify({ rows: editableRows, groups: bulkUploadForm.selectedGroups }),
         }
       );
 
@@ -225,7 +233,7 @@ export default function BulkCsvUpload() {
           <div className="space-y-4">
             <h4 className="font-medium">Group Assignment *</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {groups.map((group) => (
+              {Array.isArray(groups.data) && groups.data.map((group) => (
                 <div
                   key={group.id}
                   className={`border rounded-lg p-4 cursor-pointer ${
