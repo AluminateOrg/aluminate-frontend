@@ -254,6 +254,8 @@ export default function MentorsPage() {
     }
   };
 
+  
+
   const handleLanguageRemove = (language: string) => {
     if (applicationForm.languages.length > 1) {
       setApplicationForm((prev) => ({
@@ -263,8 +265,18 @@ export default function MentorsPage() {
     }
   };
 
+  console.log("Application Form State:", applicationForm);
+
   const handleSubmitApplication = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const memberId = user?.id;
+
+    const payLoad = {
+      ...applicationForm,
+      memberId,
+    };
 
     // Validation
     if (!applicationForm.motivation.trim()) {
@@ -290,8 +302,18 @@ export default function MentorsPage() {
     setApplicationLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/apply`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payLoad)
+      })
+
+      if (!response.ok) toast.error("Failed to submit application. Please try again.");
+      const data = await response.json();
+
+      console.log("data: ", data);
 
       // Reset form and close modal
       setApplicationForm({
