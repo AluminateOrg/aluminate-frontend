@@ -61,6 +61,8 @@ export default function AdminDashboard() {
     sendPush: false,
   });
 
+  console.log("announcement form: ", announcementForm)
+
   if (loading) {
     return (
       <div className="p-6">
@@ -190,7 +192,7 @@ export default function AdminDashboard() {
     });
   };
 
-  // console.log("groups", groups);
+  // console.log("groups", groups
 
   return (
     <div className="p-6 space-y-6">
@@ -533,7 +535,7 @@ export default function AdminDashboard() {
                           group(s),{" "}
                           {announcementForm.selectedGroups.reduce(
                             (sum, groupId) => {
-                              const group = groups.find(
+                              const group = groups.data.find(
                                 (g) => g.id === groupId
                               );
                               return sum + (group?.currentMembers || 0);
