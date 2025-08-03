@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { JSXElementConstructor, Key, PromiseLikeOfReactNode, ReactElement, ReactNode, JSXElementConstructor, Key, PromiseLikeOfReactNode, ReactElement, ReactNode, JSXElementConstructor, Key, PromiseLikeOfReactNode, ReactElement, ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import {
@@ -43,6 +43,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import axios from "axios";
 
 interface MentorApplication {
   id: string;
@@ -108,116 +109,57 @@ export default function AdminMentorshipPage() {
     useState<MentorApplication | null>(null);
 
   // Mock data for mentor applications
-  const [applications, setApplications] = useState<MentorApplication[]>([
-    {
-      id: "1",
-      applicantId: "member-1",
-      applicantName: "Sheane Mario",
-      applicantEmail: "sheane.mario@example.com",
-      applicantAvatar:
-        "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      currentPosition: "Senior Software Engineer",
-      company: "Google",
-      yearsExperience: 8,
-      expertise: [
-        "React",
-        "Node.js",
-        "System Design",
-        "Career Growth",
-        "Leadership",
-      ],
-      bio: "Passionate about helping junior developers grow their careers in tech. Specialized in full-stack development and system architecture.",
-      motivation:
-        "I want to give back to the community and help others navigate their tech careers like mentors helped me.",
-      availability: "Weekends and evenings (PST)",
-      preferredMenteeLevel: "beginner",
-      maxMentees: 3,
-      status: "pending",
-      appliedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "2",
-      applicantId: "member-2",
-      applicantName: "Pulasthi Abishek",
-      applicantEmail: "pulasthi.abishek@example.com",
-      applicantAvatar:
-        "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      currentPosition: "Product Manager",
-      company: "Microsoft",
-      yearsExperience: 6,
-      expertise: [
-        "Product Strategy",
-        "User Research",
-        "Agile",
-        "Leadership",
-        "Data Analysis",
-      ],
-      bio: "Former engineer turned product manager. Love helping others transition into product roles and develop strategic thinking.",
-      motivation:
-        "I believe in the power of mentorship to accelerate career growth and want to share my transition experience.",
-      availability: "Flexible, prefer video calls",
-      preferredMenteeLevel: "any",
-      maxMentees: 5,
-      status: "pending",
-      appliedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "3",
-      applicantId: "member-3",
-      applicantName: "Hashir Ahamad",
-      applicantEmail: "hashir.ahamad@example.com",
-      applicantAvatar:
-        "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      currentPosition: "Data Science Director",
-      company: "Netflix",
-      yearsExperience: 10,
-      expertise: [
-        "Machine Learning",
-        "Python",
-        "Data Analytics",
-        "Team Management",
-        "AI Strategy",
-      ],
-      bio: "Leading data science teams for 5+ years. Passionate about democratizing AI and helping others break into data science.",
-      motivation:
-        "Data science can be intimidating for newcomers. I want to make it more accessible and help build diverse teams.",
-      availability: "Weekday evenings and Saturday mornings",
-      preferredMenteeLevel: "intermediate",
-      maxMentees: 2,
-      status: "approved",
-      appliedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-      reviewedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      reviewedBy: user?.id,
-      reviewNotes:
-        "Excellent background and clear motivation. Approved for mentorship program.",
-    },
-  ]);
+  const [applications, setApplications] = useState<MentorApplication[]>([]);
 
-  // Mock data for active mentors
-  const [mentors, setMentors] = useState<Mentor[]>([
-    {
-      id: "mentor-1",
-      name: "Satheera Jayawardhana",
-      email: "satheera.jayawardhana@example.com",
-      avatar:
-        "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      designation: "Data Science Director",
-      company: "Netflix",
-      expertise: [
-        "Machine Learning",
-        "Python",
-        "Data Analytics",
-        "Team Management",
-      ],
-      rating: 4.9,
-      totalSessions: 23,
-      activeMentees: 2,
-      maxMentees: 2,
-      yearsExperience: 10,
-      joinedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      status: "active",
-    },
-  ]);
+  const fetchApplications = async () => {
+    setLoading(true);
+    console.log("fetch applications called");
+    try {
+      const {data} = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/get-all-unapproved`);
+      setApplications(data);
+      if (data.length === 0) {
+        toast.info("No mentor applications found.");
+      }
+      console.log("Applications fetched successfully:", data);
+    } catch (error) {
+      console.log("error fetching applications:", error);
+      toast.error("Failed to fetch mentor applications. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const fetchMentors = async () => {
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/get-all-approved`);
+      const data = response.data;
+      if (!data || data.length === 0) toast.error("No mentors found.");
+      console.log("Mentors fetched successfully:", data);
+      setMentors(data);
+    } catch (error) {
+      console.log("error fetching mentors:", error);
+      toast.error("Failed to fetch mentors. Please try again.");
+    }
+  }
+
+  useEffect(() => {
+    fetchApplications();
+    fetchMentors();
+  }, [])
+
+
+  useEffect(() => {
+    const fetchData = setInterval(() => {
+      fetchApplications();
+      fetchMentors();
+    }, 500000);
+    return () => clearInterval(fetchData);
+
+  })
+
+
+
+  const [mentors, setMentors] = useState<Mentor[]>([]);
 
   // Mock data for mentorship sessions
   const [sessions, setSessions] = useState<MentorshipSession[]>([
@@ -245,6 +187,7 @@ export default function AdminMentorshipPage() {
     },
   ]);
 
+
   const handleApplicationAction = async (
     applicationId: string,
     action: "approve" | "reject",
@@ -252,8 +195,13 @@ export default function AdminMentorshipPage() {
   ) => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      const {data} = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/approve`, {
+        applicationId, 
+        action
+      })
+
+      console.log("Application action response:", data);
 
       setApplications((prev) =>
         prev.map((app) =>
@@ -308,13 +256,25 @@ export default function AdminMentorshipPage() {
     mentorId: string,
     newStatus: Mentor["status"]
   ) => {
+
     try {
+      const {data} = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/dis-approve`, {
+        mentorId,
+        newStatus
+      })
+      console.log("Mentor status change response:", data);
+      if (data.success) {
+        toast.success(`Mentor status updated to ${newStatus}`);
+        return;
+      } else {
+        toast.error("Failed to update mentor status");
+        return;
+      }
       setMentors((prev) =>
         prev.map((mentor) =>
           mentor.id === mentorId ? { ...mentor, status: newStatus } : mentor
         )
       );
-      toast.success(`Mentor status updated to ${newStatus}`);
     } catch (error) {
       toast.error("Failed to update mentor status");
     }
@@ -532,7 +492,7 @@ export default function AdminMentorshipPage() {
                           </div>
 
                           <div className="flex flex-wrap gap-1">
-                            {application.expertise.slice(0, 3).map((skill) => (
+                            {application.skills.slice(0, 3).map((skill: boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | PromiseLikeOfReactNode | Key | null | undefined) => (
                               <Badge
                                 key={skill}
                                 variant="outline"
@@ -541,9 +501,9 @@ export default function AdminMentorshipPage() {
                                 {skill}
                               </Badge>
                             ))}
-                            {application.expertise.length > 3 && (
+                            {application.skills.length > 3 && (
                               <Badge variant="outline" className="text-xs">
-                                +{application.expertise.length - 3} more
+                                +{application.skills.length - 3} more
                               </Badge>
                             )}
                           </div>
@@ -568,7 +528,7 @@ export default function AdminMentorshipPage() {
                           Review
                         </Button>
 
-                        {application.status === "pending" && (
+                        {application.approved === false && (
                           <>
                             <Button
                               size="sm"
@@ -645,25 +605,28 @@ export default function AdminMentorshipPage() {
                       <div className="flex items-start space-x-4">
                         <Avatar className="h-12 w-12">
                           <AvatarImage src={mentor.avatar} alt={mentor.name} />
-                          <AvatarFallback>
-                            {mentor.name
+                          {/* <AvatarFallback>
+                            {mentor.applicantName[0]}
+                          </AvatarFallback> */}
+                          <AvatarFallback className="text-lg">
+                            {mentor.applicantName
                               .split(" ")
-                              .map((n) => n[0])
+                              .map((n:any) => n[0])
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
 
                         <div className="space-y-2">
                           <div className="flex items-center space-x-2">
-                            <h4 className="font-semibold">{mentor.name}</h4>
+                            <h4 className="font-semibold">{mentor.applicantName}</h4>
                             <Badge
                               variant={
-                                mentor.status === "active"
+                                mentor.approved === true
                                   ? "default"
                                   : "secondary"
                               }
                             >
-                              {mentor.status}
+                              {mentor.approved === true ? "Active" : "Inactive"}
                             </Badge>
                             {mentor.rating > 0 && (
                               <div className="flex items-center space-x-1">
@@ -678,7 +641,7 @@ export default function AdminMentorshipPage() {
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
                             <div className="flex items-center space-x-1">
                               <Briefcase className="h-3 w-3" />
-                              <span>{mentor.designation}</span>
+                              <span>{mentor.currentPosition}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <Users className="h-3 w-3" />
@@ -691,10 +654,14 @@ export default function AdminMentorshipPage() {
                               <Calendar className="h-3 w-3" />
                               <span>{mentor.totalSessions} sessions</span>
                             </div>
+                            <div className="flex items-center space-x-1">
+                              <Mail className="h-3 w-3" />
+                              <span>{mentor.applicantEmail}</span>
+                            </div>
                           </div>
 
                           <div className="flex flex-wrap gap-1">
-                            {mentor.expertise.map((skill) => (
+                            {mentor.skills.map((skill: boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | PromiseLikeOfReactNode | Key | null | undefined) => (
                               <Badge
                                 key={skill}
                                 variant="outline"
@@ -713,12 +680,12 @@ export default function AdminMentorshipPage() {
                           Contact
                         </Button>
 
-                        {mentor.status === "active" ? (
+                        {mentor.approved === true ? (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                              handleMentorStatusChange(mentor.id, "inactive")
+                              handleMentorStatusChange(mentor.applicantId, "inactive")
                             }
                           >
                             <UserX className="h-4 w-4 mr-1" />
@@ -728,7 +695,7 @@ export default function AdminMentorshipPage() {
                           <Button
                             size="sm"
                             onClick={() =>
-                              handleMentorStatusChange(mentor.id, "active")
+                              handleMentorStatusChange(mentor.applicantId, "active")
                             }
                           >
                             <UserCheck className="h-4 w-4 mr-1" />
@@ -917,7 +884,7 @@ export default function AdminMentorshipPage() {
               <div>
                 <h4 className="font-medium mb-2">Areas of Expertise</h4>
                 <div className="flex flex-wrap gap-2">
-                  {selectedApplication.expertise.map((skill) => (
+                  {selectedApplication.skills.map((skill: boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | PromiseLikeOfReactNode | Key | null | undefined) => (
                     <Badge key={skill} variant="outline">
                       {skill}
                     </Badge>
