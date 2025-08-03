@@ -47,8 +47,10 @@ export default function MemberDashboard() {
     );
   }
 
+  console.log("groups", groups);
+
   const upcomingEvents = events.slice(0, 3);
-  const recentGroups = groups.slice(0, 4);
+  const recentGroups = Array.isArray(groups) && groups.slice(0, 4);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -194,7 +196,7 @@ export default function MemberDashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {recentGroups.map((group) => (
+                {Array.isArray(recentGroups) && recentGroups.map((group) => (
                   <div
                     key={group.id}
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
