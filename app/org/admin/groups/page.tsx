@@ -32,6 +32,7 @@ import {
   Crown,
   AlertCircle,
   X,
+  CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
@@ -45,6 +46,7 @@ interface Group {
   createdAt: string;
   isActive: boolean;
   category: "professional" | "social" | "academic" | "hobby";
+  requiredApproval?: boolean;
 }
 
 interface GroupFormData {
@@ -52,6 +54,7 @@ interface GroupFormData {
   description: string;
   maxMembers: string;
   category: Group["category"];
+  requiredApproval?: boolean;
 }
 
 interface DeleteConfirmationModalProps {
@@ -161,6 +164,7 @@ export default function AdminGroupsPage() {
     description: "",
     maxMembers: "50",
     category: "professional",
+    requiredApproval: false,
   });
 
   const [deleteModal, setDeleteModal] = useState({
@@ -187,6 +191,7 @@ export default function AdminGroupsPage() {
 
       const Data = await response.json();
       const groups = Data.data;
+      console.log("Fetched groups from API:", groups);
 
       // Transform API response to match Group interface
       const transformedGroups: Group[] = groups.map((group: any) => ({
@@ -198,9 +203,11 @@ export default function AdminGroupsPage() {
         createdAt: group.createdDate, // Transform `createdDate` to `createdAt`
         isActive: group.active, // Transform `active` to `isActive`
         category: group.category.toLowerCase() as Group["category"], // Ensure lowercase categories
+        requiredApproval: group.requiredApproval || false, // Default to false if not provided
       }));
 
       setGroups(transformedGroups);
+      console.log("Fetched groups:", transformedGroups);
     } catch (error) {
       console.error("Error fetching groups:", error);
       toast.error("Failed to load groups. Please try again.");
@@ -236,6 +243,7 @@ export default function AdminGroupsPage() {
           description: groupForm.description,
           maxMembers: parseInt(groupForm.maxMembers, 10),
           category: groupForm.category.toUpperCase(),
+          requiredApproval: groupForm.requiredApproval || false,
         }),
       });
 
@@ -263,10 +271,14 @@ export default function AdminGroupsPage() {
       description: "",
       maxMembers: "50",
       category: "professional",
+      requiredApproval: false,
     });
   };
 
-  const handleInputChange = (field: keyof GroupFormData, value: string) => {
+  const handleInputChange = (
+    field: keyof GroupFormData,
+    value: string | boolean
+  ) => {
     setGroupForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -553,6 +565,34 @@ export default function AdminGroupsPage() {
                     />
                   </div>
 
+                  {/* Add the new checkbox here */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="requiresApproval"
+                        checked={groupForm.requiredApproval}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "requiredApproval",
+                            e.target.checked
+                          )
+                        }
+                        className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
+                      />
+                      <Label
+                        htmlFor="requiresApproval"
+                        className="text-sm font-medium"
+                      >
+                        Requires approval to join
+                      </Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground ml-6">
+                      When enabled, members will need admin approval before
+                      joining this group
+                    </p>
+                  </div>
+
                   <div className="flex justify-end space-x-2 pt-4 border-t">
                     <Button
                       type="button"
@@ -669,6 +709,24 @@ export default function AdminGroupsPage() {
                               Created{" "}
                               {new Date(group.createdAt).toLocaleDateString()}
                             </span>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            {group.requiredApproval ? (
+                              <>
+                                <AlertCircle className="h-4 w-4 text-orange-500" />
+                                <span className="text-orange-600">
+                                  Approval Required
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <span className="text-green-600">
+                                  Open Join
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
 
