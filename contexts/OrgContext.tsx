@@ -23,6 +23,7 @@ export interface Group {
   maxMembers: number;
   currentMembers: number;
   createdAt: string;
+  requiredApproval: boolean;
   adminId: string;
 }
 
