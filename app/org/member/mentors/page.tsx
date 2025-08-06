@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Card,
@@ -34,6 +34,7 @@ import {
   Award,
 } from "lucide-react";
 import { toast } from "sonner";
+import axios from "axios";
 
 interface Mentor {
   id: string;
@@ -41,7 +42,7 @@ interface Mentor {
   avatar?: string;
   designation: string;
   company: string;
-  expertise: string[];
+  skills: string[];
   rating: number;
   totalSessions: number;
   yearsExperience: number;
@@ -53,7 +54,7 @@ interface Mentor {
 }
 interface MentorApplicationForm {
   motivation: string;
-  expertise: string[];
+  skills: string[];
   availability: string;
   preferredMenteeLevel: "beginner" | "intermediate" | "advanced" | "any";
   maxMentees: number;
@@ -74,12 +75,13 @@ export default function MentorsPage() {
   const [loading, setLoading] = useState(false);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [applicationLoading, setApplicationLoading] = useState(false);
+  const [mentors, setMentors] = useState<Mentor[]>([]);
 
   // Mentor application form state
   const [applicationForm, setApplicationForm] = useState<MentorApplicationForm>(
     {
       motivation: "",
-      expertise: [],
+      skills: [],
       availability: "",
       preferredMenteeLevel: "any",
       maxMentees: 3,
@@ -92,92 +94,35 @@ export default function MentorsPage() {
     }
   );
 
-  // Mock data - replace with actual API call
-  const mentors: Mentor[] = [
-    {
-      id: "1",
-      name: "Sheane Mario",
-      avatar:
-        "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      designation: "Senior Software Engineer",
-      company: "Cambio",
-      expertise: ["React", "Node.js", "System Design", "Career Growth"],
-      rating: 4.9,
-      totalSessions: 156,
-      yearsExperience: 8,
-      location: "Negombo, LK",
-      bio: "Passionate about helping junior developers grow their careers in tech. Specialized in full-stack development and system architecture.",
-      availability: "available",
-      hourlyRate: 75,
-      languages: ["English", "Sinhala"],
-    },
-    {
-      id: "2",
-      name: "Pulasthi Abishek",
-      avatar:
-        "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      designation: "Product Manager",
-      company: "IFS",
-      expertise: ["Product Strategy", "User Research", "Agile", "Leadership"],
-      rating: 4.8,
-      totalSessions: 89,
-      yearsExperience: 6,
-      location: "Hambantota, LK",
-      bio: "Former engineer turned product manager. Love helping others transition into product roles and develop strategic thinking.",
-      availability: "available",
-      hourlyRate: 85,
-      languages: ["English", "Tamil"],
-    },
-    {
-      id: "3",
-      name: "Satheera Jayawardhana",
-      avatar:
-        "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      designation: "Data Science Director",
-      company: "WSO2",
-      expertise: [
-        "Machine Learning",
-        "Python",
-        "Data Analytics",
-        "Team Management",
-      ],
-      rating: 4.9,
-      totalSessions: 203,
-      yearsExperience: 10,
-      location: "Colombo LK",
-      bio: "Leading data science teams for 5+ years. Passionate about democratizing AI and helping others break into data science.",
-      availability: "busy",
-      hourlyRate: 95,
-      languages: ["English", "Sinhala"],
-    },
-    {
-      id: "4",
-      name: "Hashir Ahamad",
-      avatar:
-        "https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      designation: "Startup Founder",
-      company: "TechStart Inc.",
-      expertise: [
-        "Entrepreneurship",
-        "Fundraising",
-        "Business Strategy",
-        "Networking",
-      ],
-      rating: 4.7,
-      totalSessions: 67,
-      yearsExperience: 12,
-      location: "Mawanalla, LK",
-      bio: "Serial entrepreneur with 2 successful exits. Mentoring aspiring founders and helping with business development.",
-      availability: "available",
-      hourlyRate: 120,
-      languages: ["English", "Sinhala"],
-    },
-  ];
+  
+  // const mentors: Mentor[] = [];
+
+  const fetchMentors = async () => {
+    try {
+      
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/get-all-approved`);
+      console.log("response: ", response);
+      if (response.status === 200) {
+        setMentors(response.data);
+      } else {
+        toast.error("Failed to load mentors. Please try again later.");
+        console.log("Failed to fetch mentors:", response.statusText);
+      }
+
+    } catch (error) {
+      console.log("Error fetching mentors:", error);
+      toast.error("Failed to load mentors. Please try again later.");
+    }
+  }
+
+  useEffect(() => {
+    fetchMentors();
+  },[])
 
   const filteredMentors = mentors.filter((mentor) => {
     const matchesSearch =
-      mentor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      mentor.expertise.some((skill) =>
+      mentor.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      mentor.skills.some((skill) =>
         skill.toLowerCase().includes(searchTerm.toLowerCase())
       ) ||
       mentor.company.toLowerCase().includes(searchTerm.toLowerCase());
@@ -227,10 +172,10 @@ export default function MentorsPage() {
   };
 
   const handleExpertiseAdd = (skill: string) => {
-    if (skill.trim() && !applicationForm.expertise.includes(skill.trim())) {
+    if (skill.trim() && !applicationForm.skills.includes(skill.trim())) {
       setApplicationForm((prev) => ({
         ...prev,
-        expertise: [...prev.expertise, skill.trim()],
+        skills: [...prev.skills, skill.trim()],
       }));
     }
   };
@@ -238,7 +183,7 @@ export default function MentorsPage() {
   const handleExpertiseRemove = (skill: string) => {
     setApplicationForm((prev) => ({
       ...prev,
-      expertise: prev.expertise.filter((s) => s !== skill),
+      skills: prev.skills.filter((s) => s !== skill),
     }));
   };
 
@@ -284,7 +229,7 @@ export default function MentorsPage() {
       return;
     }
 
-    if (applicationForm.expertise.length === 0) {
+    if (applicationForm.skills.length === 0) {
       toast.error("Please add at least one area of expertise");
       return;
     }
@@ -318,7 +263,7 @@ export default function MentorsPage() {
       // Reset form and close modal
       setApplicationForm({
         motivation: "",
-        expertise: [],
+        skills: [],
         availability: "",
         preferredMenteeLevel: "any",
         maxMentees: 3,
@@ -344,7 +289,7 @@ export default function MentorsPage() {
   const resetApplicationForm = () => {
     setApplicationForm({
       motivation: "",
-      expertise: [],
+      skills: [],
       availability: "",
       preferredMenteeLevel: "any",
       maxMentees: 3,
@@ -446,9 +391,9 @@ export default function MentorsPage() {
               <CardHeader className="pb-4">
                 <div className="flex items-start space-x-4">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={mentor.avatar} alt={mentor.name} />
+                    <AvatarImage src={mentor.avatar} alt={mentor.applicantName} />
                     <AvatarFallback className="text-lg">
-                      {mentor.name
+                      {mentor.applicantName
                         .split(" ")
                         .map((n) => n[0])
                         .join("")}
@@ -457,7 +402,7 @@ export default function MentorsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-foreground truncate">
-                        {mentor.name}
+                        {mentor.applicantName}
                       </h3>
                       <Badge
                         variant={
@@ -497,14 +442,14 @@ export default function MentorsPage() {
                     Expertise
                   </p>
                   <div className="flex flex-wrap gap-1">
-                    {mentor.expertise.slice(0, 3).map((skill) => (
+                    {mentor.skills.slice(0, 3).map((skill) => (
                       <Badge key={skill} variant="outline" className="text-xs">
                         {skill}
                       </Badge>
                     ))}
-                    {mentor.expertise.length > 3 && (
+                    {mentor.skills.length > 3 && (
                       <Badge variant="outline" className="text-xs">
-                        +{mentor.expertise.length - 3} more
+                        +{mentor.skills.length - 3} more
                       </Badge>
                     )}
                   </div>
@@ -876,9 +821,9 @@ export default function MentorsPage() {
                       </Button>
                     </div>
 
-                    {applicationForm.expertise.length > 0 && (
+                    {applicationForm.skills.length > 0 && (
                       <div className="flex flex-wrap gap-2">
-                        {applicationForm.expertise.map((skill) => (
+                        {applicationForm.skills.map((skill) => (
                           <Badge
                             key={skill}
                             variant="secondary"
