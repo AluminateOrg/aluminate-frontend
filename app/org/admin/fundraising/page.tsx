@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import {
@@ -35,24 +35,48 @@ import {
   Download,
   Filter,
   Search,
+  Power,
+  PowerOff,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import { DeleteCampaignConfirmationModal } from "./delete-confirmation";
+import { EditCampaignModal } from "./edit-campaign-modal";
+
+// ===========================================
+// UPDATED INTERFACES
+// ===========================================
 
 interface Campaign {
   id: string;
   title: string;
   description: string;
-  goal: number;
-  raised: number;
-  startDate: string;
-  endDate: string;
-  category: "scholarship" | "infrastructure" | "emergency" | "general";
-  donorCount: number;
-  isActive: boolean;
-  createdBy: string;
+  goal: number; // matches backend 'goal' field
+  raised: number; // matches backend 'raised' field
+  startDate: string; // matches backend 'startDate'
+  endDate: string; // matches backend 'endDate'
+  category:
+    | "general"
+    | "scholarship"
+    | "infrastructure"
+    | "emergency"
+    | "fundraising"
+    | "other"; // matches backend CampaignType enum
+  donorCount: number; // matches backend 'donorCount'
+  isActive: boolean; // matches backend 'isActive'
+  createdBy?: string; // keep if needed for frontend logic
 }
+
+interface CampaignFormData {
+  title: string;
+  description: string;
+  goal: string; // Keep as string for form input
+  endDate: string;
+  category: Campaign["category"];
+  isActive: boolean; // Add isActive field for creation
+}
+
 interface Donation {
   id: string;
   campaignId: string;
@@ -78,42 +102,26 @@ interface UpdateForm {
 export default function AdminFundraisingPage() {
   const { user } = useAuth();
   const { organization } = useOrg();
-  const [campaigns, setCampaigns] = useState<Campaign[]>([
-    {
-      id: "1",
-      title: "Student Scholarship Fund",
-      description:
-        "Supporting deserving students with financial assistance for their education",
-      goal: 50000,
-      raised: 32500,
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      category: "scholarship",
-      donorCount: 145,
-      isActive: true,
-      createdBy: user?.id || "",
-    },
-    {
-      id: "2",
-      title: "Campus Infrastructure Upgrade",
-      description:
-        "Modernizing campus facilities and technology infrastructure",
-      goal: 100000,
-      raised: 67800,
-      startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-      endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-      category: "infrastructure",
-      donorCount: 89,
-      isActive: true,
-      createdBy: user?.id || "",
-    },
-  ]);
 
+  // ===========================================
+  // STATE MANAGEMENT
+  // ===========================================
+
+  // Updated campaigns state - starts empty
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null); // For individual campaign actions
 
-  // New state for modals
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(
+    null
+  );
+
+  // Modal states
   const [showDonationsModal, setShowDonationsModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
@@ -126,73 +134,8 @@ export default function AdminFundraisingPage() {
     "all" | "completed" | "pending" | "anonymous"
   >("all");
 
-  // Mock donations data
-  const [donations, setDonations] = useState<Donation[]>([
-    {
-      id: "1",
-      campaignId: "1",
-      donorName: "Sheane Mario",
-      donorEmail: "sheane.mario@example.com",
-      donorAvatar:
-        "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      amount: 500,
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: false,
-      paymentMethod: "credit_card",
-      message: "Happy to support education for future generations!",
-      status: "completed",
-    },
-    {
-      id: "2",
-      campaignId: "1",
-      donorName: "Anonymous Donor",
-      donorEmail: "anonymous@example.com",
-      amount: 1000,
-      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: true,
-      paymentMethod: "bank_transfer",
-      status: "completed",
-    },
-    {
-      id: "3",
-      campaignId: "1",
-      donorName: "Sheane Mario",
-      donorEmail: "sheane.mario@example.com",
-      donorAvatar:
-        "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      amount: 250,
-      date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: false,
-      paymentMethod: "paypal",
-      message: "Education is the key to success!",
-      status: "completed",
-    },
-    {
-      id: "4",
-      campaignId: "2",
-      donorName: "Pulasthi Abishek",
-      donorEmail: "pulasthi.abishek@example.com",
-      donorAvatar:
-        "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      amount: 750,
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: false,
-      paymentMethod: "credit_card",
-      message: "Excited to see the new facilities!",
-      status: "completed",
-    },
-    {
-      id: "5",
-      campaignId: "1",
-      donorName: "Hashir Ahamad",
-      donorEmail: "hashir.ahamad@example.com",
-      amount: 100,
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: false,
-      paymentMethod: "credit_card",
-      status: "pending",
-    },
-  ]);
+  // Mock donations data (keep for now until donations API is implemented)
+  const [donations, setDonations] = useState<Donation[]>([]);
 
   // Update form state
   const [updateForm, setUpdateForm] = useState<UpdateForm>({
@@ -203,85 +146,338 @@ export default function AdminFundraisingPage() {
     selectedDonors: [],
   });
 
-  // Form state
-  const [formData, setFormData] = useState({
+  // Updated form state
+  const [formData, setFormData] = useState<CampaignFormData>({
     title: "",
     description: "",
     goal: "",
     endDate: "",
-    category: "general" as Campaign["category"],
+    category: "general",
+    isActive: true, // Default to active
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  // ===========================================
+  // API FUNCTIONS
+  // ===========================================
+
+  // Error handling helper
+  const handleApiError = (error: any, defaultMessage: string) => {
+    console.error("API Error:", error);
+
+    if (error.name === "TypeError" && error.message.includes("fetch")) {
+      toast.error("Network error. Please check your connection and try again.");
+    } else if (error.message) {
+      toast.error(error.message);
+    } else {
+      toast.error(defaultMessage);
+    }
+  };
+
+  // Map frontend category to backend enum
+  const mapCategoryToBackend = (category: Campaign["category"]): string => {
+    const mapping: Record<Campaign["category"], string> = {
+      general: "GENERAL",
+      scholarship: "SCHOLARSHIP",
+      infrastructure: "INFRASTRUCTURE",
+      emergency: "EMERGENCY",
+      fundraising: "FUNDRAISING",
+      other: "OTHER",
+    };
+    return mapping[category] || "GENERAL";
+  };
+
+  // Map backend enum to frontend category
+  const mapCategoryFromBackend = (type: string): Campaign["category"] => {
+    const mapping: Record<string, Campaign["category"]> = {
+      GENERAL: "general",
+      SCHOLARSHIP: "scholarship",
+      INFRASTRUCTURE: "infrastructure",
+      EMERGENCY: "emergency",
+      FUNDRAISING: "fundraising",
+      OTHER: "other",
+    };
+    return mapping[type?.toUpperCase()] || "general";
+  };
+
+  // Fetch campaigns from backend
+  const fetchCampaigns = async () => {
+    setLoading(true);
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const response = await fetch(
+        `${backendUrl}/api/v1/portal/campaign/get/all`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch campaigns");
+      }
+
+      const data = await response.json();
+
+      // Transform the backend response to match your Campaign interface
+      const transformedCampaigns: Campaign[] =
+        data.data?.map((campaign: any) => ({
+          id: campaign.id.toString(),
+          title: campaign.title,
+          description: campaign.description || "",
+          goal: campaign.goal || 0,
+          raised: campaign.raised || 0,
+          startDate: campaign.startDate
+            ? new Date(campaign.startDate).toISOString()
+            : new Date().toISOString(),
+          endDate: campaign.endDate
+            ? new Date(campaign.endDate).toISOString()
+            : new Date().toISOString(),
+          category: mapCategoryFromBackend(campaign.type),
+          donorCount: campaign.donorCount || 0,
+          isActive: campaign.isActive,
+          createdBy: "", // Set if you have this information
+        })) || [];
+
+      console.log("Transformed campaigns:", transformedCampaigns);
+      setCampaigns(transformedCampaigns);
+    } catch (error) {
+      console.error("Error fetching campaigns:", error);
+      handleApiError(error, "Failed to load campaigns. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch campaigns on component mount
+  useEffect(() => {
+    fetchCampaigns();
+  }, []);
+
+  // ===========================================
+  // EVENT HANDLERS
+  // ===========================================
+
+  const handleInputChange = (
+    field: keyof CampaignFormData,
+    value: string | boolean
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Updated create campaign function with API integration
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!formData.title || !formData.goal || !formData.endDate) {
       toast.error("Please fill in all required fields");
       return;
     }
 
+    // Validate goal is positive
+    const goalValue = parseFloat(formData.goal);
+    if (goalValue <= 0) {
+      toast.error("Goal amount must be greater than zero");
+      return;
+    }
+
+    // Validate end date is in the future
+    const endDate = new Date(formData.endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (endDate <= today) {
+      toast.error("End date must be in the future");
+      return;
+    }
+
     setLoading(true);
+
     try {
-      const newCampaign: Campaign = {
-        id: Date.now().toString(),
-        title: formData.title,
-        description: formData.description,
-        goal: Number(formData.goal),
-        raised: 0,
-        startDate: new Date().toISOString(),
-        endDate: new Date(formData.endDate).toISOString(),
-        category: formData.category,
-        donorCount: 0,
-        isActive: true,
-        createdBy: user?.id || "",
+      // Prepare the API request payload to match your backend
+      const requestPayload = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        type: mapCategoryToBackend(formData.category),
+        goal: goalValue,
+        endDate: formData.endDate, // Backend expects LocalDate format (YYYY-MM-DD)
+        isActive: formData.isActive,
       };
 
-      setCampaigns((prev) => [newCampaign, ...prev]);
+      console.log("Creating campaign with payload:", requestPayload);
+
+      // Make API call to your backend
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const apiEndpoint = `${backendUrl}/api/v1/portal/campaign/create`;
+
+      const response = await fetch(apiEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to create campaign");
+      }
+
+      const responseData = await response.json();
+      console.log("Campaign created successfully:", responseData);
+
+      // Refresh the campaigns list
+      await fetchCampaigns();
+
+      // Reset form and close modal
       setFormData({
         title: "",
         description: "",
         goal: "",
         endDate: "",
         category: "general",
+        isActive: true,
       });
       setShowCreateForm(false);
       toast.success("Campaign created successfully!");
     } catch (error) {
-      toast.error("Failed to create campaign. Please try again.");
+      console.error("Error creating campaign:", error);
+      handleApiError(error, "Failed to create campaign. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Updated toggle campaign function with API integration
   const handleToggleCampaign = async (campaignId: string) => {
     try {
+      setActionLoading(campaignId);
+
+      // Find current campaign status
+      const currentCampaign = campaigns.find((c) => c.id === campaignId);
+      if (!currentCampaign) {
+        throw new Error("Campaign not found");
+      }
+
+      const newStatus = !currentCampaign.isActive;
+
+      // Make API call to backend first
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const response = await fetch(
+        `${backendUrl}/api/v1/portal/campaign/${campaignId}/toggle-status?isActive=${newStatus}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || "Failed to update campaign status"
+        );
+      }
+
+      const responseData = await response.json();
+      console.log("Campaign status updated:", responseData);
+
+      // Update local state after successful API call
       setCampaigns((prev) =>
         prev.map((campaign) =>
           campaign.id === campaignId
-            ? { ...campaign, isActive: !campaign.isActive }
+            ? { ...campaign, isActive: newStatus }
             : campaign
         )
       );
-      toast.success("Campaign status updated successfully!");
+
+      const statusMessage = newStatus
+        ? "Campaign activated successfully!"
+        : "Campaign deactivated successfully!";
+      toast.success(statusMessage);
     } catch (error) {
-      toast.error("Failed to update campaign status.");
+      console.error("Error updating campaign status:", error);
+      handleApiError(error, "Failed to update campaign status");
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleDeleteCampaign = async (campaignId: string) => {
-    if (!confirm("Are you sure you want to delete this campaign?")) return;
+  // Updated delete campaign function to use modal
+  const handleDeleteCampaign = (campaign: Campaign) => {
+    setCampaignToDelete(campaign);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteCampaign = async () => {
+    if (!campaignToDelete) return;
 
     try {
-      setCampaigns((prev) =>
-        prev.filter((campaign) => campaign.id !== campaignId)
+      setLoading(true);
+
+      // Make API call to delete the campaign
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const response = await fetch(
+        `${backendUrl}/api/v1/portal/campaign/${campaignToDelete.id}/delete`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
       );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete campaign");
+      }
+
+      const responseData = await response.json();
+      console.log("Campaign deleted successfully:", responseData);
+
+      // Remove from local state after successful API call
+      setCampaigns((prev) =>
+        prev.filter((campaign) => campaign.id !== campaignToDelete.id)
+      );
+
       toast.success("Campaign deleted successfully!");
     } catch (error) {
-      toast.error("Failed to delete campaign.");
+      console.error("Error deleting campaign:", error);
+      handleApiError(error, "Failed to delete campaign");
+    } finally {
+      setLoading(false);
+      setShowDeleteModal(false);
+      setCampaignToDelete(null);
     }
+  };
+
+  // Edit campaign handlers
+  const handleEditCampaign = (campaign: Campaign) => {
+    setEditingCampaign(campaign);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateCampaign = async (updatedCampaign: Campaign) => {
+    try {
+      // Update local state optimistically
+      setCampaigns((prev) =>
+        prev.map((campaign) =>
+          campaign.id === updatedCampaign.id ? updatedCampaign : campaign
+        )
+      );
+
+      setShowEditModal(false);
+      setEditingCampaign(null);
+      toast.success("Campaign updated successfully!");
+    } catch (error) {
+      console.error("Error updating campaign:", error);
+      // Refresh campaigns on error
+      await fetchCampaigns();
+      handleApiError(error, "Failed to update campaign");
+    }
+  };
+
+  // View campaign details
+  const handleViewCampaign = (campaign: Campaign) => {
+    // For now, just show campaign details in console
+    // You can implement a view modal later
+    console.log("Viewing campaign:", campaign);
+    toast.info("Campaign details view coming soon!");
   };
 
   const handleViewDonations = async (campaign: Campaign) => {
@@ -380,6 +576,10 @@ export default function AdminFundraisingPage() {
     }
   };
 
+  // ===========================================
+  // UTILITY FUNCTIONS
+  // ===========================================
+
   const getCampaignDonations = (campaignId: string) => {
     return donations.filter((d) => d.campaignId === campaignId);
   };
@@ -434,8 +634,29 @@ export default function AdminFundraisingPage() {
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "emergency":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "fundraising":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
+      case "other":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getCategoryDisplayName = (category: Campaign["category"]) => {
+    switch (category) {
+      case "scholarship":
+        return "Scholarship";
+      case "infrastructure":
+        return "Infrastructure";
+      case "emergency":
+        return "Emergency";
+      case "fundraising":
+        return "Fundraising";
+      case "other":
+        return "Other";
+      default:
+        return "General";
     }
   };
 
@@ -465,6 +686,18 @@ export default function AdminFundraisingPage() {
     }
   };
 
+  // Show loading state while fetching initial data
+  if (loading && campaigns.length === 0) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center space-y-4">
+          <LoadingSpinner size="lg" />
+          <p className="text-muted-foreground">Loading campaigns...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -477,13 +710,13 @@ export default function AdminFundraisingPage() {
             Create and manage donation campaigns
           </p>
         </div>
-        <Button onClick={() => setShowCreateForm(true)}>
+        <Button onClick={() => setShowCreateForm(true)} disabled={loading}>
           <Plus className="h-4 w-4 mr-2" />
           Create Campaign
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Updated with LKR currency */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -495,7 +728,8 @@ export default function AdminFundraisingPage() {
               LKR {totalRaised.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {Math.round((totalRaised / totalGoal) * 100)}% of total goal
+              {totalGoal > 0 ? Math.round((totalRaised / totalGoal) * 100) : 0}%
+              of total goal
             </p>
           </CardContent>
         </Card>
@@ -540,7 +774,7 @@ export default function AdminFundraisingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              LKR
+              LKR{" "}
               {Math.round(
                 totalRaised /
                   Math.max(
@@ -568,10 +802,21 @@ export default function AdminFundraisingPage() {
           {showCreateForm && (
             <Card>
               <CardHeader>
-                <CardTitle>Create New Campaign</CardTitle>
-                <CardDescription>
-                  Set up a new fundraising campaign
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Create New Campaign</CardTitle>
+                    <CardDescription>
+                      Set up a new fundraising campaign
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCreateForm(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateCampaign} className="space-y-4">
@@ -589,11 +834,14 @@ export default function AdminFundraisingPage() {
                       />
                     </div>
 
+                    {/* Updated goal input with LKR */}
                     <div className="space-y-2">
-                      <Label htmlFor="goal">Fundraising Goal ($) *</Label>
+                      <Label htmlFor="goal">Fundraising Goal (LKR) *</Label>
                       <Input
                         id="goal"
                         type="number"
+                        step="0.01"
+                        min="1"
                         value={formData.goal}
                         onChange={(e) =>
                           handleInputChange("goal", e.target.value)
@@ -612,17 +860,22 @@ export default function AdminFundraisingPage() {
                         onChange={(e) =>
                           handleInputChange("endDate", e.target.value)
                         }
+                        min={new Date().toISOString().split("T")[0]}
                         required
                       />
                     </div>
 
+                    {/* Updated category select to match backend enum */}
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
                       <select
                         id="category"
                         value={formData.category}
                         onChange={(e) =>
-                          handleInputChange("category", e.target.value)
+                          handleInputChange(
+                            "category",
+                            e.target.value as Campaign["category"]
+                          )
                         }
                         className="w-full px-3 py-2 border border-input rounded-md bg-background"
                       >
@@ -630,6 +883,8 @@ export default function AdminFundraisingPage() {
                         <option value="scholarship">Scholarship</option>
                         <option value="infrastructure">Infrastructure</option>
                         <option value="emergency">Emergency</option>
+                        <option value="fundraising">Fundraising</option>
+                        <option value="other">Other</option>
                       </select>
                     </div>
                   </div>
@@ -647,9 +902,32 @@ export default function AdminFundraisingPage() {
                     />
                   </div>
 
-                  <div className="flex space-x-2">
+                  {/* Active status toggle */}
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={formData.isActive}
+                      onChange={(e) =>
+                        handleInputChange("isActive", e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                    <Label htmlFor="isActive">
+                      Create campaign as active (ready to receive donations)
+                    </Label>
+                  </div>
+
+                  <div className="flex space-x-2 pt-4 border-t">
                     <Button type="submit" disabled={loading}>
-                      {loading ? "Creating..." : "Create Campaign"}
+                      {loading ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          Creating...
+                        </>
+                      ) : (
+                        "Create Campaign"
+                      )}
                     </Button>
                     <Button
                       type="button"
@@ -666,136 +944,195 @@ export default function AdminFundraisingPage() {
 
           {/* Campaigns List */}
           <div className="space-y-4">
-            {campaigns.map((campaign) => {
-              const progressPercentage =
-                (campaign.raised / campaign.goal) * 100;
-              const daysLeft = Math.ceil(
-                (new Date(campaign.endDate).getTime() - Date.now()) /
-                  (1000 * 60 * 60 * 24)
-              );
+            {campaigns.length === 0 && !loading ? (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center">
+                    <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Campaigns Yet
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      Create your first fundraising campaign to get started.
+                    </p>
+                    <Button onClick={() => setShowCreateForm(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Campaign
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              campaigns.map((campaign) => {
+                const progressPercentage =
+                  campaign.goal > 0
+                    ? (campaign.raised / campaign.goal) * 100
+                    : 0;
+                const daysLeft = Math.ceil(
+                  (new Date(campaign.endDate).getTime() - Date.now()) /
+                    (1000 * 60 * 60 * 24)
+                );
 
-              return (
-                <Card key={campaign.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <CardTitle className="text-lg">
-                            {campaign.title}
-                          </CardTitle>
-                          <Badge
-                            className={getCategoryColor(campaign.category)}
-                          >
-                            {campaign.category}
-                          </Badge>
-                          <Badge
-                            variant={
-                              campaign.isActive ? "default" : "secondary"
-                            }
-                          >
-                            {campaign.isActive ? "Active" : "Inactive"}
-                          </Badge>
+                return (
+                  <Card key={campaign.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <CardTitle className="text-lg">
+                              {campaign.title}
+                            </CardTitle>
+                            <Badge
+                              className={getCategoryColor(campaign.category)}
+                            >
+                              {getCategoryDisplayName(campaign.category)}
+                            </Badge>
+                            <Badge
+                              variant={
+                                campaign.isActive ? "default" : "secondary"
+                              }
+                              className={
+                                campaign.isActive
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                  : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                              }
+                            >
+                              {campaign.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                          <CardDescription>
+                            {campaign.description || "No description provided"}
+                          </CardDescription>
                         </div>
-                        <CardDescription>
-                          {campaign.description}
-                        </CardDescription>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewCampaign(campaign)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditCampaign(campaign)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteCampaign(campaign)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Progress
+                          </span>
+                          {/* Updated currency display to LKR */}
+                          <span className="font-medium">
+                            LKR {campaign.raised.toLocaleString()} / LKR{" "}
+                            {campaign.goal.toLocaleString()}
+                          </span>
+                        </div>
+                        <Progress
+                          value={Math.min(progressPercentage, 100)}
+                          className="h-2"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{Math.round(progressPercentage)}% funded</span>
+                          <span>
+                            {daysLeft > 0 ? `${daysLeft} days left` : "Ended"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div className="flex items-center space-x-1">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span>{campaign.donorCount} donors</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            Started{" "}
+                            {format(new Date(campaign.startDate), "MMM d")}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Target className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            Ends {format(new Date(campaign.endDate), "MMM d")}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          {/* Updated currency display to LKR */}
+                          <span>
+                            Avg: LKR{" "}
+                            {Math.round(
+                              campaign.raised / Math.max(campaign.donorCount, 1)
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 pt-2 border-t">
+                        <Button
+                          variant={
+                            campaign.isActive ? "destructive" : "default"
+                          }
+                          size="sm"
+                          onClick={() => handleToggleCampaign(campaign.id)}
+                          disabled={actionLoading === campaign.id}
+                          className={
+                            !campaign.isActive
+                              ? "bg-green-600 hover:bg-green-700 text-white"
+                              : ""
+                          }
+                        >
+                          {actionLoading === campaign.id ? (
+                            <LoadingSpinner size="sm" className="mr-2" />
+                          ) : campaign.isActive ? (
+                            <PowerOff className="h-4 w-4 mr-1" />
+                          ) : (
+                            <Power className="h-4 w-4 mr-1" />
+                          )}
+                          {actionLoading === campaign.id
+                            ? "Updating..."
+                            : campaign.isActive
+                            ? "Deactivate"
+                            : "Activate"}
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteCampaign(campaign.id)}
+                          onClick={() => handleViewDonations(campaign)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Donations ({campaign.donorCount})
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSendUpdate(campaign)}
+                        >
+                          <Send className="h-4 w-4 mr-1" />
+                          Send Update
                         </Button>
                       </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">
-                          ${campaign.raised.toLocaleString()} / $
-                          {campaign.goal.toLocaleString()}
-                        </span>
-                      </div>
-                      <Progress value={progressPercentage} className="h-2" />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{Math.round(progressPercentage)}% funded</span>
-                        <span>
-                          {daysLeft > 0 ? `${daysLeft} days left` : "Ended"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center space-x-1">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>{campaign.donorCount} donors</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          Started{" "}
-                          {format(new Date(campaign.startDate), "MMM d")}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Target className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          Ends {format(new Date(campaign.endDate), "MMM d")}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          Avg: $
-                          {Math.round(
-                            campaign.raised / Math.max(campaign.donorCount, 1)
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-2 pt-2 border-t">
-                      <Button
-                        variant={campaign.isActive ? "outline" : "default"}
-                        size="sm"
-                        onClick={() => handleToggleCampaign(campaign.id)}
-                      >
-                        {campaign.isActive
-                          ? "Pause Campaign"
-                          : "Activate Campaign"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDonations(campaign)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View Donations
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSendUpdate(campaign)}
-                      >
-                        <Send className="h-4 w-4 mr-1" />
-                        Send Update
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </TabsContent>
 
@@ -822,6 +1159,19 @@ export default function AdminFundraisingPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Campaign Modal */}
+      {showEditModal && editingCampaign && (
+        <EditCampaignModal
+          campaign={editingCampaign}
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingCampaign(null);
+          }}
+          onUpdate={handleUpdateCampaign}
+        />
+      )}
 
       {/* View Donations Modal */}
       {showDonationsModal && selectedCampaign && (
@@ -955,14 +1305,15 @@ export default function AdminFundraisingPage() {
                                 </div>
                                 {donation.message && (
                                   <p className="text-sm bg-muted p-2 rounded mt-2 italic">
-                                    &quot{donation.message}&quot
+                                    &quot;{donation.message}&quot;
                                   </p>
                                 )}
                               </div>
                             </div>
                             <div className="text-right">
+                              {/* Updated currency display to LKR */}
                               <div className="text-lg font-bold text-primary">
-                                ${donation.amount.toLocaleString()}
+                                LKR {donation.amount.toLocaleString()}
                               </div>
                               <div className="flex space-x-1 mt-2">
                                 <Button size="sm" variant="outline">
@@ -1028,25 +1379,32 @@ export default function AdminFundraisingPage() {
                   <h4 className="font-medium mb-2">Campaign Progress</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
+                      {/* Updated currency display to LKR */}
                       <span>
-                        Raised: ${selectedCampaign.raised.toLocaleString()}
+                        Raised: LKR {selectedCampaign.raised.toLocaleString()}
                       </span>
                       <span>
-                        Goal: ${selectedCampaign.goal.toLocaleString()}
+                        Goal: LKR {selectedCampaign.goal.toLocaleString()}
                       </span>
                     </div>
                     <Progress
                       value={
-                        (selectedCampaign.raised / selectedCampaign.goal) * 100
+                        selectedCampaign.goal > 0
+                          ? (selectedCampaign.raised / selectedCampaign.goal) *
+                            100
+                          : 0
                       }
                       className="h-2"
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>
-                        {Math.round(
-                          (selectedCampaign.raised / selectedCampaign.goal) *
-                            100
-                        )}
+                        {selectedCampaign.goal > 0
+                          ? Math.round(
+                              (selectedCampaign.raised /
+                                selectedCampaign.goal) *
+                                100
+                            )
+                          : 0}
                         % funded
                       </span>
                       <span>{selectedCampaign.donorCount} donors</span>
@@ -1150,8 +1508,9 @@ export default function AdminFundraisingPage() {
                               Campaign Progress
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              ${selectedCampaign.raised.toLocaleString()} raised
-                              of ${selectedCampaign.goal.toLocaleString()} goal
+                              LKR {selectedCampaign.raised.toLocaleString()}{" "}
+                              raised of LKR{" "}
+                              {selectedCampaign.goal.toLocaleString()} goal
                             </p>
                           </div>
                         )}
@@ -1190,6 +1549,20 @@ export default function AdminFundraisingPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Delete Campaign Confirmation Modal */}
+      {showDeleteModal && campaignToDelete && (
+        <DeleteCampaignConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setCampaignToDelete(null);
+          }}
+          onConfirm={confirmDeleteCampaign}
+          campaignTitle={campaignToDelete.title}
+          isDeleting={loading}
+        />
       )}
     </div>
   );
