@@ -48,7 +48,8 @@ export default function MemberDashboard() {
   }
 
   const upcomingEvents = events.slice(0, 3);
-  const recentGroups = groups.slice(0, 4);
+  const recentGroups = Array.isArray(groups) ? groups.slice(0, 4) : [];
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">

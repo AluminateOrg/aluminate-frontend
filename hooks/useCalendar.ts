@@ -1,88 +1,78 @@
-'use client';
+// hooks/useCalendar.ts
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import { toast } from 'sonner';
 
-import { useState, useEffect, useCallback } from 'react';
-
-export interface CalendarEvent {
+interface Event {
   id: string;
   title: string;
-  description?: string;
+  description: string;
   startDate: string;
   endDate: string;
-  location?: string;
-  organizer: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  type: string;
+  status: string;
   rsvpStatus?: 'yes' | 'no' | 'maybe';
-  attendeeCount: number;
-  maxAttendees?: number;
-  type: 'meeting' | 'workshop' | 'social' | 'fundraising';
+  currentAttendees: number;
+  maxAttendees: number;
+  price?: number;
+  registrationDeadline?: string;
 }
 
-export function useCalendar(orgId: string, groupId?: string) {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+export const useCalendar = (orgId: string) => {
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchEvents = useCallback(async () => {
-    setLoading(true);
+  const fetchEvents = async () => {
     try {
-      // TODO: Replace with actual API call
-      const mockEvents: CalendarEvent[] = [
-        {
-          id: '1',
-          title: 'Alumni Networking Event',
-          description: 'Annual networking event for all alumni',
-          startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000).toISOString(),
-          location: 'Conference Center',
-          organizer: 'Admin Team',
-          attendeeCount: 45,
-          maxAttendees: 100,
-          type: 'social',
-        },
-        {
-          id: '2',
-          title: 'Tech Workshop: AI Trends',
-          description: 'Workshop on latest AI and ML trends',
-          startDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-          endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString(),
-          location: 'Online',
-          organizer: 'Tech Committee',
-          attendeeCount: 23,
-          maxAttendees: 50,
-          type: 'workshop',
-        },
-      ];
-      
-      setEvents(mockEvents);
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const res = await axios.get(`${backendUrl}/api/v1/portal/event/get/all`);
+
+      const rawEvents = res.data.data;
+
+      const transformed = rawEvents.map((event: any): Event => ({
+        id: event.id.toString(),
+        title: event.title,
+        description: event.description,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        location: event.location,
+        type: event.type.toLowerCase(),
+        status: event.status.toLowerCase(),
+        rsvpStatus: event.rsvpStatus,
+        currentAttendees: event.currentParticipants || 0,
+        maxAttendees: event.maxParticipants || 0,
+        price: event.price || undefined,
+        registrationDeadline: event.registrationDeadline || undefined,
+      }));
+
+      setEvents(transformed);
     } catch (error) {
-      console.error('Failed to fetch events:', error);
+      console.error('Failed to fetch events', error);
+      toast.error('Failed to load events');
     } finally {
       setLoading(false);
-    }
-  }, [orgId, groupId]);
-
-  const rsvpToEvent = async (eventId: string, status: 'yes' | 'no' | 'maybe') => {
-    try {
-      // TODO: Replace with actual API call
-      setEvents(prev => 
-        prev.map(event => 
-          event.id === eventId 
-            ? { ...event, rsvpStatus: status }
-            : event
-        )
-      );
-    } catch (error) {
-      console.error('Failed to RSVP:', error);
-      throw error;
     }
   };
 
   useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+    if (orgId) fetchEvents();
+  }, [orgId]);
 
-  return {
-    events,
-    loading,
-    rsvpToEvent,
-    refreshEvents: fetchEvents,
+  const rsvpToEvent = async (eventId: string, status: 'yes' | 'no' | 'maybe') => {
+    try {
+      await axios.post(`/api/event/${eventId}/rsvp`, { status });
+      toast.success('RSVP updated successfully');
+      fetchEvents(); // Refresh after RSVP
+    } catch (err) {
+      console.error('RSVP failed', err);
+      toast.error('Could not update RSVP');
+    }
   };
-}
+
+  return { events, loading, rsvpToEvent };
+};

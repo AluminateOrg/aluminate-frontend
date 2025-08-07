@@ -25,6 +25,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import axios from "axios";
 
 interface Member {
   id: number;
@@ -36,7 +37,7 @@ interface Member {
   address?: string;
   batch?: number;
   isActive: boolean;
-  groupIds: number[]; // coming from backend as Longs
+  groupIds: number[];
 }
 
 export default function ManageMembers() {
@@ -66,24 +67,72 @@ export default function ManageMembers() {
     fetchMembers();
   }, []);
 
-  const getMemberGroups = (groupIds: number[]) => {
-    return groups.filter((group) => groupIds.includes(group.id));
+  const getMemberGroups = (groupIds: string[]) => {
+    return Array.isArray(groups) && groups.filter((group) => groupIds.includes(group.id));
   };
+
+  //function to get all members 
+  const getAllMembers = async () => {
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/member/get/all`);
+      // console.log("response from the backend", response.data);
+
+      if (response.data && Array.isArray(response.data.data)) {
+        const mappedMembers = response.data.data.map((member: any) => ({
+          id: member.id || member.nic, // fallback if id is missing
+          name: member.name,
+          email: member.email || "",
+          phone: member.phone || "",
+          designation: member.position || "",
+          company: member.company || "",
+          graduationYear: member.batch?.toString() || "",
+          degree: member.degree || "",
+          location: member.address || "",
+          avatar: member.photoUrl || "", // adjust if you have image URLs
+          status: "active", // default status if missing
+          joinedAt: member.createdAt || new Date().toISOString(),
+          groupIds: member.groupIds || [],
+        }));
+
+        setMembers(mappedMembers);
+      } else {
+        toast.error("Invalid data received");
+      }
+
+    } catch (error) {
+      console.error("Error fetching members:", error);
+      toast.error("Failed to fetch members");
+    }
+  }
+
+
+  useEffect(() => {
+    const fetchData = setInterval(() => {
+      getAllMembers();
+    }, 5000)
+    return () => clearInterval(fetchData);
+  }, [])
 
   const deleteMember = async (memberId: number) => {
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX;
-      const res = await fetch(`${backendUrl}/${apiPrefix}/member/${memberId}/delete`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete member");
 
-      setMembers((prev) => prev.filter((m) => m.id !== memberId));
-      toast.success("Member removed successfully");
+      await axios.patch(`${backendUrl}/${apiPrefix}/member/${memberId}/deactivate`);
+
+      setMembers((prev) =>
+        prev.map((m) => (m.id === memberId ? { ...m, isActive: false } : m))
+      );
+
+      toast.success("Member deactivated successfully");
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error("Failed to deactivate member");
+      console.error(err);
     }
+  };
+
+  const resendInvitation = (memberId: string) => {
+    toast.success("Invitation email sent successfully");
   };
 
   const filteredMembers = members.filter((member) => {
@@ -91,11 +140,14 @@ export default function ManageMembers() {
       member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.email.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const isActive = member.isActive ? "active" : "inactive";
-    const matchesStatus = statusFilter === "all" || statusFilter === isActive;
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && member.isActive) ||
+      (statusFilter === "inactive" && !member.isActive);
 
     return matchesSearch && matchesStatus;
   });
+
 
   if (loading) {
     return (
