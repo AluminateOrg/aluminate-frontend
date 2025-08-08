@@ -25,6 +25,7 @@ export interface Group {
   createdAt: string;
   requiredApproval: boolean;
   adminId: string;
+  active: boolean;
 }
 
 interface OrgContextType {
