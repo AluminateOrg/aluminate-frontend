@@ -37,14 +37,14 @@ export default function MembersPage() {
   const [tab, setTab] = useState("add-single");
 
   useEffect(() => {
-    const selectedTab = pathToTab[pathname as keyof typeof pathToTab] || "add-single";
+    const selectedTab =
+      pathToTab[pathname as keyof typeof pathToTab] || "add-single";
     setTab(selectedTab);
   }, [pathname]);
 
   const handleTabChange = (value: string) => {
     setTab(value); // Only update tab state, not URL
   };
-
 
   interface Member {
     id: string;
@@ -63,35 +63,35 @@ export default function MembersPage() {
   }
 
   const [members, setMembers] = useState<Member[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john.doe@example.com",
-      phone: "+1234567890",
-      designation: "Software Engineer",
-      company: "Tech Corp",
-      graduationYear: "2019",
-      degree: "Computer Science",
-      location: "San Francisco, CA",
-      avatar:
-        "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      status: "active" as const,
-      joinedAt: new Date().toISOString(),
-      groupIds: ["1", "2"],
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-      designation: "Product Manager",
-      company: "Innovation Inc",
-      graduationYear: "2020",
-      degree: "Business Administration",
-      location: "New York, NY",
-      status: "pending" as const,
-      joinedAt: new Date().toISOString(),
-      groupIds: ["3"],
-    },
+    // {
+    //   id: "1",
+    //   name: "John Doe",
+    //   email: "john.doe@example.com",
+    //   phone: "+1234567890",
+    //   designation: "Software Engineer",
+    //   company: "Tech Corp",
+    //   graduationYear: "2019",
+    //   degree: "Computer Science",
+    //   location: "San Francisco, CA",
+    //   avatar:
+    //     "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
+    //   status: "active" as const,
+    //   joinedAt: new Date().toISOString(),
+    //   groupIds: ["1", "2"],
+    // },
+    // {
+    //   id: "2",
+    //   name: "Jane Smith",
+    //   email: "jane.smith@example.com",
+    //   designation: "Product Manager",
+    //   company: "Innovation Inc",
+    //   graduationYear: "2020",
+    //   degree: "Business Administration",
+    //   location: "New York, NY",
+    //   status: "pending" as const,
+    //   joinedAt: new Date().toISOString(),
+    //   groupIds: ["3"],
+    // },
   ]);
 
   if (orgLoading) {
@@ -100,7 +100,9 @@ export default function MembersPage() {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4">
             <LoadingSpinner size="lg" />
-            <p className="text-muted-foreground">Loading member management...</p>
+            <p className="text-muted-foreground">
+              Loading member management...
+            </p>
           </div>
         </div>
       </div>
@@ -109,11 +111,14 @@ export default function MembersPage() {
 
   return (
     <div className="p-6 space-y-6">
-      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Member Management</h1>
-          <p className="text-muted-foreground">Add and manage organization members</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            Member Management
+          </h1>
+          <p className="text-muted-foreground">
+            Add and manage organization members
+          </p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
           <Badge variant="outline">
@@ -121,7 +126,8 @@ export default function MembersPage() {
             {members.length} Total Members
           </Badge>
           <Badge variant="outline">
-            {organization?.memberCount || 0} / {organization?.memberLimit || 0} Used
+            {organization?.memberCount || 0} / {organization?.memberLimit || 0}{" "}
+            Used
           </Badge>
         </div>
       </div>
@@ -137,8 +143,9 @@ export default function MembersPage() {
                     Approaching Member Limit
                   </p>
                   <p className="text-sm text-orange-700 dark:text-orange-300">
-                    You’re using {organization.memberCount} of {organization.memberLimit} members.
-                    Consider upgrading your plan.
+                    You’re using {organization.memberCount} of{" "}
+                    {organization.memberLimit} members. Consider upgrading your
+                    plan.
                   </p>
                 </div>
               </div>
@@ -162,7 +169,6 @@ export default function MembersPage() {
         <TabsContent value="manage-members">
           <ManageMembers members={members} setMembers={setMembers} />
         </TabsContent>
-
       </Tabs>
     </div>
   );

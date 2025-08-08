@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import axios from 'axios';
-export type SubscriptionTier = 'basic' | 'premium' | 'enterprise';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
+import axios from "axios";
+export type SubscriptionTier = "basic" | "premium" | "enterprise";
 
 export interface Organization {
   id: string;
@@ -23,7 +23,9 @@ export interface Group {
   maxMembers: number;
   currentMembers: number;
   createdAt: string;
+  requiredApproval: boolean;
   adminId: string;
+  active: boolean;
 }
 
 interface OrgContextType {
@@ -49,48 +51,31 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       // TODO: Replace with actual API call
       const mockOrg: Organization = {
         id: user.id,
-        name: 'Tech Alumni Network',
-        tier: 'premium',
+        name: "Tech Alumni Network",
+        tier: "premium",
         memberCount: 245,
         memberLimit: 500,
-        logo: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1',
-        description: 'Connecting technology professionals and fostering innovation',
+        logo: "https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
+        description:
+          "Connecting technology professionals and fostering innovation",
         createdAt: new Date().toISOString(),
       };
 
-      // const mockGroups: Group[] = [
-      //   {
-      //     id: 'group-1',
-      //     name: 'Software Engineers',
-      //     description: 'For all software engineering professionals',
-      //     maxMembers: 100,
-      //     currentMembers: 45,
-      //     createdAt: new Date().toISOString(),
-      //     adminId: user.id,
-      //   },
-      //   {
-      //     id: 'group-2',
-      //     name: 'Data Scientists',
-      //     description: 'Data science and analytics professionals',
-      //     maxMembers: 50,
-      //     currentMembers: 23,
-      //     createdAt: new Date().toISOString(),
-      //     adminId: user.id,
-      //   },
-      // ];
       const fetchGroups = async (): Promise<Group[]> => {
         try {
-          const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/group/get/all`);
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/group/get/all`
+          );
           console.log("response from the backend: ", response.data);
           if (response.data) {
-            return response.data as Group[];
+            return response.data.data as Group[];
           }
           return [];
         } catch (error) {
-          console.error('Failed to fetch groups:', error);
+          console.error("Failed to fetch groups:", error);
           throw error;
         }
-      }
+      };
 
       const data = await fetchGroups();
       setGroups(data);
@@ -100,7 +85,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       setOrganization(mockOrg);
       // setGroups(mockGroups);
     } catch (error) {
-      console.error('Failed to fetch organization:', error);
+      console.error("Failed to fetch organization:", error);
     } finally {
       setLoading(false);
     }
@@ -114,11 +99,11 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       const updatedOrg = {
         ...organization,
         tier,
-        memberLimit: tier === 'basic' ? 100 : tier === 'premium' ? 500 : 1000,
+        memberLimit: tier === "basic" ? 100 : tier === "premium" ? 500 : 1000,
       };
       setOrganization(updatedOrg);
     } catch (error) {
-      console.error('Failed to update subscription:', error);
+      console.error("Failed to update subscription:", error);
       throw error;
     }
   };
@@ -128,13 +113,15 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   return (
-    <OrgContext.Provider value={{
-      organization,
-      groups,
-      loading,
-      refreshOrganization: fetchOrganization,
-      updateSubscription,
-    }}>
+    <OrgContext.Provider
+      value={{
+        organization,
+        groups,
+        loading,
+        refreshOrganization: fetchOrganization,
+        updateSubscription,
+      }}
+    >
       {children}
     </OrgContext.Provider>
   );
@@ -143,7 +130,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 export const useOrg = () => {
   const context = useContext(OrgContext);
   if (context === undefined) {
-    throw new Error('useOrg must be used within an OrgProvider');
+    throw new Error("useOrg must be used within an OrgProvider");
   }
   return context;
 };
