@@ -61,6 +61,8 @@ export default function AdminDashboard() {
     sendPush: false
   });
 
+  console.log("announcement form: ", announcementForm)
+
   if (loading) {
     return (
       <div className="p-6">
@@ -181,7 +183,7 @@ export default function AdminDashboard() {
     });
   };
 
-  // console.log("groups", groups);
+  // console.log("groups", groups
 
   return (
     <div className="p-6 space-y-6">
@@ -480,12 +482,18 @@ export default function AdminDashboard() {
                       
                       {announcementForm.selectedGroups.length > 0 && (
                         <p className="text-sm text-muted-foreground">
-                          Selected: {announcementForm.selectedGroups.length} group(s), 
-                          {' '}
-                          {announcementForm.selectedGroups.reduce((sum, groupId) => {
-                            const group = groups.find(g => g.id === groupId);
-                            return sum + (group?.currentMembers || 0);
-                          }, 0)} total members
+                          Selected: {announcementForm.selectedGroups.length}{" "}
+                          group(s),{" "}
+                          {announcementForm.selectedGroups.reduce(
+                            (sum, groupId) => {
+                              const group = groups.data.find(
+                                (g) => g.id === groupId
+                              );
+                              return sum + (group?.currentMembers || 0);
+                            },
+                            0
+                          )}{" "}
+                          total members
                         </p>
                       )}
                     </div>
