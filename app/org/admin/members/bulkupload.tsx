@@ -102,7 +102,9 @@ export default function BulkCsvUpload() {
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          const percentComplete = Math.round(
+            (event.loaded / event.total) * 100
+          );
           setUploadProgress(percentComplete);
         }
       };
@@ -119,7 +121,7 @@ export default function BulkCsvUpload() {
             setShowInvalidPopup(true);
           }
           setCsvFile(null);
-          
+
           toast.success("Upload completed");
         } else {
           const errorData = JSON.parse(xhr.responseText);
@@ -164,7 +166,10 @@ export default function BulkCsvUpload() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ rows: editableRows, groups: bulkUploadForm.selectedGroups }),
+          body: JSON.stringify({
+            rows: editableRows,
+            groups: bulkUploadForm.selectedGroups,
+          }),
         }
       );
 
@@ -233,22 +238,23 @@ export default function BulkCsvUpload() {
           <div className="space-y-4">
             <h4 className="font-medium">Group Assignment *</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {Array.isArray(groups.data) && groups.data.map((group) => (
-                <div
-                  key={group.id}
-                  className={`border rounded-lg p-4 cursor-pointer ${
-                    bulkUploadForm.selectedGroups.includes(group.id)
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:bg-accent"
-                  }`}
-                  onClick={() => handleGroupSelection(group.id)}
-                >
-                  <h4 className="font-medium">{group.name}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {group.description || "No description available"}
-                  </p>
-                </div>
-              ))}
+              {Array.isArray(groups) &&
+                groups.map((group) => (
+                  <div
+                    key={group.id}
+                    className={`border rounded-lg p-4 cursor-pointer ${
+                      bulkUploadForm.selectedGroups.includes(group.id)
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-accent"
+                    }`}
+                    onClick={() => handleGroupSelection(group.id)}
+                  >
+                    <h4 className="font-medium">{group.name}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {group.description || "No description available"}
+                    </p>
+                  </div>
+                ))}
             </div>
           </div>
 
@@ -269,7 +275,10 @@ export default function BulkCsvUpload() {
 
             {loading && (
               <div className="space-y-2">
-                <Progress value={uploadProgress} className="h-2 transition-all duration-300" />
+                <Progress
+                  value={uploadProgress}
+                  className="h-2 transition-all duration-300"
+                />
                 <p className="text-xs text-muted-foreground text-center">
                   Uploading... {uploadProgress}%
                 </p>
@@ -344,7 +353,10 @@ export default function BulkCsvUpload() {
           <DialogFooter className="flex flex-col space-y-3">
             {finalizing && (
               <div className="w-full">
-                <Progress value={finalizeProgress} className="h-2 transition-all duration-300" />
+                <Progress
+                  value={finalizeProgress}
+                  className="h-2 transition-all duration-300"
+                />
                 <p className="text-xs text-muted-foreground mt-1 text-center">
                   Saving... {finalizeProgress}%
                 </p>
