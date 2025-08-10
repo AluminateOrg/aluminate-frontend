@@ -1,7 +1,6 @@
 // File: components/members/AddSingleMember.tsx
 "use client";
 
-
 import { useEffect, useState } from "react";
 
 import { useOrg } from "@/hooks/useOrg";
@@ -20,8 +19,17 @@ import { Label } from "@/components/ui/label";
 import { UserPlus, CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 
+interface Group {
+  id: string;
+  name: string;
+  description?: string;
+  maxMembers?: number;
+  currentMembers?: number;
+  // Add other group properties as needed
+}
+
 export default function AddSingleMember({ members, setMembers }: any) {
-  const [groups, setGroups] = useState([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(false);
   const [singleMemberForm, setSingleMemberForm] = useState({
     name: "",
@@ -54,7 +62,6 @@ export default function AddSingleMember({ members, setMembers }: any) {
   }, []);
 
   const handleInputChange = (field: string, value: string | number) => {
-
     setSingleMemberForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -82,13 +89,12 @@ export default function AddSingleMember({ members, setMembers }: any) {
         return;
       }
 
-
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
       const response = await fetch(`${apiEndpoint}/member/create`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           ...singleMemberForm,
@@ -104,7 +110,6 @@ export default function AddSingleMember({ members, setMembers }: any) {
       }
 
       const newMember = result.data;
-
 
       setMembers((prev: any) => [newMember, ...prev]);
       setSingleMemberForm({
@@ -122,7 +127,6 @@ export default function AddSingleMember({ members, setMembers }: any) {
       toast.success("Member added successfully!");
     } catch (error: any) {
       toast.error(error.message);
-
     } finally {
       setLoading(false);
     }
@@ -136,15 +140,12 @@ export default function AddSingleMember({ members, setMembers }: any) {
           <span>Add New Member</span>
         </CardTitle>
         <CardDescription>
-
           Add a single member and assign them to groups.
-
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
             {[
               ["Full Name *", "name"],
               ["NIC", "nic"],
@@ -159,7 +160,7 @@ export default function AddSingleMember({ members, setMembers }: any) {
                 label={label as string}
                 id={id as string}
                 value={singleMemberForm[id as keyof typeof singleMemberForm]}
-                onChange={(e) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   handleInputChange(
                     id,
                     id === "batch" ? Number(e.target.value) : e.target.value
@@ -168,7 +169,6 @@ export default function AddSingleMember({ members, setMembers }: any) {
               />
             ))}
           </div>
-
 
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Group Assignment *</h3>
@@ -179,7 +179,11 @@ export default function AddSingleMember({ members, setMembers }: any) {
               {groups.map((group) => (
                 <div
                   key={group.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${singleMemberForm.selectedGroups.includes(group.id) ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}`}
+                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                    singleMemberForm.selectedGroups.includes(group.id)
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-accent"
+                  }`}
                   onClick={() => handleGroupSelection(group.id)}
                 >
                   <div className="flex items-center space-x-3">
@@ -187,7 +191,9 @@ export default function AddSingleMember({ members, setMembers }: any) {
                       {group.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-foreground">{group.name}</h4>
+                      <h4 className="font-medium text-foreground">
+                        {group.name}
+                      </h4>
                       <p className="text-sm text-muted-foreground truncate">
                         {group.description || "No description available"}
                       </p>
