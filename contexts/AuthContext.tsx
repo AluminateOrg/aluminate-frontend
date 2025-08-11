@@ -2,6 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
+import axiosGlobal from '@/axiosInstances/axiosGlobal';
+import { encryptObject, importPublicKey } from '@/util/rsa';
 
 export type UserRole = 'admin' | 'member';
 
@@ -33,10 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
   const apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX;
 
-    if (!backendUrl || !apiPrefix) {
-        throw new Error('NEXT_PUBLIC_BACKEND_URL and NEXT_PUBLIC_API_PREFIX must be defined');
-    }
-    const apiUrl = `${backendUrl}/${apiPrefix}`;
+  if (!backendUrl || !apiPrefix) {
+    throw new Error('NEXT_PUBLIC_BACKEND_URL and NEXT_PUBLIC_API_PREFIX must be defined');
+  }
+  const apiUrl = `${backendUrl}/${apiPrefix}`;
 
   useEffect(() => {
     // Simulate checking for existing session
@@ -59,27 +62,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string, role: UserRole) => {
     setLoading(true);
     try {
-        if (!email || !password) {
-            throw new Error('Email and password are required');
-        }
+      if (!email || !password) {
+        throw new Error('Email and password are required');
+      }
 
-      const res = await fetch(`${apiUrl}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          role
-        }),
-      });
+      //encrypt object
+      const pem = process.env.NEXT_PUBLIC_ORG_PUBLIC_KEY!;
+      const publicKey = await importPublicKey(pem);
 
-      if (!res.ok) {
+      const payload = await encryptObject({ email, password}, publicKey);
+
+
+      const res = await axiosGlobal.post('/auth/login', {
+        payload
+      })
+
+      if (res.status !== 200) {
         throw new Error('Login failed');
       }
 
-      const data = await res.json();  // data = { token: "...", member: { ... } }
+      const data = res.data;  // data = { token: "...", member: { ... } }
+
       localStorage.setItem('token', data.token);
       const user = {
         id: data.member.id,
