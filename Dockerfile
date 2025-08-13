@@ -51,5 +51,5 @@ USER nextjs
 
 EXPOSE 3000
 
-# Start in production mode
+# Start in production mode and let's test it
 CMD ["npm", "start"]
