@@ -37,10 +37,11 @@ jobs:
         run: npm run build
         continue-on-error: false
 
+      # TODO:
       # - name: Upload build artifacts
       #   if: success()
       #   uses: actions/upload-artifact@v4
       #   with:
       #     name: build-files-${{ matrix.node-version }}
       #     path: dist/
-      #     retention-days: 7
+      #     retention-days: 5
