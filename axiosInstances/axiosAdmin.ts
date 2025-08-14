@@ -6,7 +6,7 @@ function getCookie(name: string): string | null {
 }
 
 const apiUrl =
-  (process.env.NEXT_PUBLIC_BACKEND_URL ?? "") +
+  (process.env.NEXT_PUBLIC_BACKEND_URL ?? "") + "/" +
   (process.env.NEXT_PUBLIC_API_PREFIX ?? "") + "/admin";
 
 const axiosAdmin = axios.create({
