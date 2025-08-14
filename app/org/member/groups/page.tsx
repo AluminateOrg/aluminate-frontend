@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import {
@@ -35,7 +35,7 @@ export default function GroupsPage() {
   >([]);
   const [joinLoading, setJoinLoading] = useState<string | null>(null);
 
-  const fetchMembershipStatuses = async () => {
+  const fetchMembershipStatuses = useCallback(async () => {
     if (!user?.id || !groups.length) return;
 
     try {
@@ -54,11 +54,11 @@ export default function GroupsPage() {
       console.error("Failed to fetch membership statuses:", error);
       toast.error("Failed to load group memberships. Please try again.");
     }
-  };
+  }, [user?.id, groups]);
 
   useEffect(() => {
     fetchMembershipStatuses();
-  }, [user?.id, groups]);
+  }, [fetchMembershipStatuses]);
 
   const handleJoinGroup = async (groupId: string) => {
     if (!user?.id) {

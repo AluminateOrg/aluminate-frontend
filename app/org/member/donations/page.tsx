@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Card,
@@ -76,7 +76,7 @@ export default function DonationsPage() {
     return mapping[type?.toUpperCase()] || "general";
   };
   // Fetch campaigns from backend
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = useCallback(async () => {
     setLoading(true);
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -118,12 +118,12 @@ export default function DonationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Fetch campaigns on component mount
   useEffect(() => {
     fetchCampaigns();
-  }, []);
+  }, [fetchCampaigns]);
 
   const myDonations: Donation[] = [
     {

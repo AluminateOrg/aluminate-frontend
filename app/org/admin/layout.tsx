@@ -1,9 +1,16 @@
-import OrgAdminLayout from '@/layouts/OrgAdminLayout';
+'use client';
 
-export default function AdminLayout({
+import OrgAdminLayout from '@/layouts/OrgAdminLayout';
+import AdminAuthGuard from '@/components/AdminAuthGuard';
+
+export default function AdminLayoutWrapper({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <OrgAdminLayout>{children}</OrgAdminLayout>;
+  return (
+    <AdminAuthGuard>
+      <OrgAdminLayout>{children}</OrgAdminLayout>
+    </AdminAuthGuard>
+  );
 }
