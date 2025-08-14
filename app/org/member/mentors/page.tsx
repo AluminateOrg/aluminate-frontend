@@ -141,6 +141,7 @@ export default function MentorsPage() {
   });
 
   const handleBookSession = async (mentorId: string) => {
+    console.log("Booking session for mentor:", mentorId);
     setLoading(true);
     try {
       // TODO: Replace with actual API call
@@ -435,7 +436,7 @@ export default function MentorsPage() {
                   </div>
                 </div>
               </CardHeader>
-
+ 
               <CardContent className="space-y-4">
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">
