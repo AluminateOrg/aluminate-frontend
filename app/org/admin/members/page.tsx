@@ -20,14 +20,6 @@ export default function MembersPage() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Determine tab from URL
-  const pathToTab = {
-    "/org/admin/members/singlemember": "add-single",
-    "/org/admin/members/bulkupload": "bulk-upload",
-    "/org/admin/members/managemembers": "manage-members",
-    "/org/admin/members": "add-single", // default
-  };
-
   const tabToPath = {
     "add-single": "/org/admin/members/singlemember",
     "bulk-upload": "/org/admin/members/bulkupload",
@@ -37,6 +29,13 @@ export default function MembersPage() {
   const [tab, setTab] = useState("add-single");
 
   useEffect(() => {
+    const pathToTab = {
+      "/org/admin/members/singlemember": "add-single",
+      "/org/admin/members/bulkupload": "bulk-upload",
+      "/org/admin/members/managemembers": "manage-members",
+      "/org/admin/members": "add-single", // default
+    };
+
     const selectedTab =
       pathToTab[pathname as keyof typeof pathToTab] || "add-single";
     setTab(selectedTab);
