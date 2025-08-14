@@ -1,60 +1,197 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useOrg } from '@/hooks/useOrg';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  Users, 
-  Search, 
-  MessageSquare, 
-  UserPlus,
-  Filter,
-  Clock,
-  Crown
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useOrg } from "@/hooks/useOrg";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Users, Search, Filter, Crown } from "lucide-react";
+import { toast } from "sonner";
+import { GroupCard } from "./group-card";
+import { get } from "node:http";
+
+interface GroupMembershipStatus {
+  groupId: string;
+  status: "not_member" | "approved" | "rejected" | "pending";
+}
 
 export default function GroupsPage() {
   const { user } = useAuth();
   const { groups, loading } = useOrg();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'joined' | 'available'>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState<
+    "all" | "joined" | "available"
+  >("all");
+  const [membershipStatuses, setMembershipStatuses] = useState<
+    GroupMembershipStatus[]
+  >([]);
+  const [joinLoading, setJoinLoading] = useState<string | null>(null);
+
+  const fetchMembershipStatuses = useCallback(async () => {
+    if (!user?.id || !groups.length) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/member/${user.id}/groups/membership-status`
+      );
+      const data = await response.json();
+
+      const statuses: GroupMembershipStatus[] = data.data.map((group: any) => ({
+        groupId: group.groupId,
+        status: group.status as GroupMembershipStatus["status"],
+      }));
+
+      setMembershipStatuses(statuses);
+    } catch (error) {
+      console.error("Failed to fetch membership statuses:", error);
+      toast.error("Failed to load group memberships. Please try again.");
+    }
+  }, [user?.id, groups]);
+
+  useEffect(() => {
+    fetchMembershipStatuses();
+  }, [fetchMembershipStatuses]);
 
   const handleJoinGroup = async (groupId: string) => {
+    if (!user?.id) {
+      toast.error("Please log in to join groups");
+      return;
+    }
+
+    setJoinLoading(groupId);
+
     try {
-      // TODO: Replace with actual API call
-      toast.success('Successfully joined the group!');
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+
+      const response = await fetch(`${apiEndpoint}/group/join`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          memberId: parseInt(user.id),
+          groupId: parseInt(groupId),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        // Handle specific error cases
+        if (response.status === 400) {
+          if (errorData.message?.includes("already in this group")) {
+            toast.error("You are already a member of this group");
+          } else if (errorData.message?.includes("maximum capacity")) {
+            toast.error("Group has reached maximum capacity");
+          } else {
+            toast.error(errorData.message || "Failed to join group");
+          }
+        } else if (response.status === 404) {
+          toast.error("Group not found");
+        } else {
+          toast.error("Failed to join group. Please try again.");
+        }
+        return;
+      }
+
+      const responseData = await response.json();
+      const group = groups.find((g) => g.id === groupId);
+
+      // Update membership status based on group approval requirements
+      const newStatus = group?.requiredApproval ? "pending" : "approved";
+
+      setMembershipStatuses((prev) =>
+        prev.map((status) =>
+          status.groupId === groupId ? { ...status, status: newStatus } : status
+        )
+      );
+
+      if (group?.requiredApproval) {
+        toast.success("Join request submitted! Waiting for admin approval.");
+      } else {
+        toast.success("Successfully joined the group!");
+      }
     } catch (error) {
-      toast.error('Failed to join group. Please try again.');
+      console.error("Error joining group:", error);
+      toast.error("Failed to join group. Please try again.");
+    } finally {
+      setJoinLoading(null);
     }
   };
 
   const handleLeaveGroup = async (groupId: string) => {
+    if (!user?.id) return;
+
     try {
-      // TODO: Replace with actual API call
-      toast.success('Successfully left the group.');
+      // TODO: Implement leave group functionality
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+      const response = await fetch(
+        `${apiEndpoint}/group/${groupId}/leave/${user.id}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      setMembershipStatuses((prev) =>
+        prev.map((status) =>
+          status.groupId === groupId
+            ? { ...status, status: "not_member" }
+            : status
+        )
+      );
+
+      toast.success("Successfully left the group.");
     } catch (error) {
-      toast.error('Failed to leave group. Please try again.');
+      toast.error("Failed to leave group. Please try again.");
     }
   };
 
-  const filteredGroups = groups.filter(group => {
-    const matchesSearch = group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         group.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+  const getMembershipStatus = (
+    groupId: string
+  ): GroupMembershipStatus["status"] => {
+    return membershipStatusMap.get(groupId) || "not_member";
+  };
+
+  const membershipStatusMap = useMemo(() => {
+    const map = new Map<string, GroupMembershipStatus["status"]>();
+    membershipStatuses.forEach((status) => {
+      map.set(status.groupId, status.status);
+    });
+    return map;
+  }, [membershipStatuses]);
+
+  const filteredGroups = groups.filter((group) => {
+    if (!group.active) return false;
+
+    const matchesSearch =
+      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const membershipStatus = getMembershipStatus(group.id);
+
     switch (selectedFilter) {
-      case 'joined':
-        // TODO: Check if user is member of group
-        return matchesSearch;
-      case 'available':
-        // TODO: Check if user can join group
-        return matchesSearch && group.currentMembers < group.maxMembers;
+      case "joined":
+        return (
+          matchesSearch &&
+          (membershipStatus === "approved" || membershipStatus === "pending")
+        );
+      case "available":
+        return (
+          matchesSearch &&
+          membershipStatus === "not_member" &&
+          group.currentMembers < group.maxMembers
+        );
       default:
         return matchesSearch;
     }
@@ -88,7 +225,7 @@ export default function GroupsPage() {
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
           <Badge variant="outline">
             <Users className="h-3 w-3 mr-1" />
-            {groups.length} Groups Available
+            {groups.filter((g) => g.active).length} Groups Available
           </Badge>
         </div>
       </div>
@@ -110,13 +247,15 @@ export default function GroupsPage() {
               <Filter className="h-4 w-4 text-muted-foreground" />
               <div className="flex space-x-1">
                 {[
-                  { value: 'all', label: 'All Groups' },
-                  { value: 'joined', label: 'My Groups' },
-                  { value: 'available', label: 'Available' },
+                  { value: "all", label: "All Groups" },
+                  { value: "joined", label: "My Groups" },
+                  { value: "available", label: "Available" },
                 ].map((filter) => (
                   <Button
                     key={filter.value}
-                    variant={selectedFilter === filter.value ? 'default' : 'outline'}
+                    variant={
+                      selectedFilter === filter.value ? "default" : "outline"
+                    }
                     size="sm"
                     onClick={() => setSelectedFilter(filter.value as any)}
                   >
@@ -133,20 +272,26 @@ export default function GroupsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary">5</div>
+            <div className="text-2xl font-bold text-primary">
+              {membershipStatuses.filter((s) => s.status === "approved").length}
+            </div>
             <p className="text-sm text-muted-foreground">Groups Joined</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary">12</div>
-            <p className="text-sm text-muted-foreground">Total Messages</p>
+            <div className="text-2xl font-bold text-primary">
+              {groups.filter((g) => g.active).length}
+            </div>
+            <p className="text-sm text-muted-foreground">Active Groups</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary">3</div>
-            <p className="text-sm text-muted-foreground">Groups Created</p>
+            <div className="text-2xl font-bold text-primary">
+              {membershipStatuses.filter((s) => s.status === "pending").length}
+            </div>
+            <p className="text-sm text-muted-foreground">Pending Requests</p>
           </CardContent>
         </Card>
       </div>
@@ -160,7 +305,9 @@ export default function GroupsPage() {
               group={group}
               onJoin={handleJoinGroup}
               onLeave={handleLeaveGroup}
-              currentUserId={user?.id || ''}
+              currentUserId={user?.id || ""}
+              membershipStatus={getMembershipStatus(group.id)}
+              isJoinLoading={joinLoading === group.id}
             />
           ))}
         </div>
@@ -170,16 +317,16 @@ export default function GroupsPage() {
             <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Groups Found</h3>
             <p className="text-muted-foreground">
-              {searchTerm || selectedFilter !== 'all' 
-                ? 'Try adjusting your search or filters to find groups.'
-                : 'No groups are currently available. Check back later!'}
+              {searchTerm || selectedFilter !== "all"
+                ? "Try adjusting your search or filters to find groups."
+                : "No groups are currently available. Check back later!"}
             </p>
-            {(searchTerm || selectedFilter !== 'all') && (
-              <Button 
-                variant="outline" 
+            {(searchTerm || selectedFilter !== "all") && (
+              <Button
+                variant="outline"
                 onClick={() => {
-                  setSearchTerm('');
-                  setSelectedFilter('all');
+                  setSearchTerm("");
+                  setSelectedFilter("all");
                 }}
                 className="mt-4"
               >
@@ -191,24 +338,31 @@ export default function GroupsPage() {
       )}
 
       {/* Featured Groups Section */}
-      {selectedFilter === 'all' && !searchTerm && (
+      {selectedFilter === "all" && !searchTerm && (
         <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Crown className="h-5 w-5" />
               <span>Popular Groups</span>
             </CardTitle>
-            <CardDescription>Most active groups in your organization</CardDescription>
+            <CardDescription>
+              Most active groups in your organization
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {groups.slice(0, 2).map((group) => (
-                <div key={group.id} className="flex items-center space-x-3 p-3 rounded-lg bg-background/50">
+                <div
+                  key={group.id}
+                  className="flex items-center space-x-3 p-3 rounded-lg bg-background/50"
+                >
                   <div className="w-12 h-12 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-medium">
                     {group.name.charAt(0)}
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-medium text-foreground">{group.name}</h4>
+                    <h4 className="font-medium text-foreground">
+                      {group.name}
+                    </h4>
                     <p className="text-sm text-muted-foreground">
                       {group.currentMembers} members • Very active
                     </p>
@@ -223,132 +377,5 @@ export default function GroupsPage() {
         </Card>
       )}
     </div>
-  );
-}
-
-interface GroupCardProps {
-  group: any;
-  onJoin: (groupId: string) => void;
-  onLeave: (groupId: string) => void;
-  currentUserId: string;
-}
-
-function GroupCard({ group, onJoin, onLeave, currentUserId }: GroupCardProps) {
-  const [isJoined, setIsJoined] = useState(false); // TODO: Get from actual membership data
-  const [loading, setLoading] = useState(false);
-
-  const handleAction = async () => {
-    setLoading(true);
-    try {
-      if (isJoined) {
-        await onLeave(group.id);
-        setIsJoined(false);
-      } else {
-        await onJoin(group.id);
-        setIsJoined(true);
-      }
-    } catch (error) {
-      // Error handling is done in parent component
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isFull = group.currentMembers >= group.maxMembers;
-  const canJoin = !isJoined && !isFull;
-
-  return (
-    <Card className="card-hover">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-medium">
-              {group.name.charAt(0)}
-            </div>
-            <div>
-              <CardTitle className="text-lg">{group.name}</CardTitle>
-              <CardDescription className="mt-1">
-                {group.description || 'No description available'}
-              </CardDescription>
-            </div>
-          </div>
-          {isJoined && (
-            <Badge variant="default">
-              Joined
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center space-x-2">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span>
-              {group.currentMembers} / {group.maxMembers} members
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span>Active</span>
-          </div>
-        </div>
-
-        {/* Member Avatars Preview */}
-        <div className="flex items-center space-x-2">
-          <div className="flex -space-x-2">
-            {[...Array(Math.min(3, group.currentMembers))].map((_, i) => (
-              <Avatar key={i} className="w-8 h-8 border-2 border-background">
-                <AvatarImage src={`https://images.pexels.com/photos/${220453 + i}/pexels-photo-${220453 + i}.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&dpr=1`} />
-                <AvatarFallback className="text-xs">M{i + 1}</AvatarFallback>
-              </Avatar>
-            ))}
-          </div>
-          {group.currentMembers > 3 && (
-            <span className="text-xs text-muted-foreground">
-              +{group.currentMembers - 3} more
-            </span>
-          )}
-        </div>
-
-        <div className="flex gap-2 pt-2 border-t">
-          {isJoined ? (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleAction}
-                disabled={loading}
-                className="flex-1"
-              >
-                {loading ? <LoadingSpinner size="sm" /> : 'Leave Group'}
-              </Button>
-              <Button size="sm" className="flex-1">
-                <MessageSquare className="h-4 w-4 mr-1" />
-                Chat
-              </Button>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              onClick={handleAction}
-              disabled={loading || !canJoin}
-              className="flex-1"
-            >
-              {loading ? (
-                <LoadingSpinner size="sm" />
-              ) : isFull ? (
-                'Group Full'
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Join Group
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
   );
 }
