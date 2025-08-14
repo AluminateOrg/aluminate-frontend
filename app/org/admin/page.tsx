@@ -61,7 +61,7 @@ export default function AdminDashboard() {
     sendPush: false
   });
 
-  console.log("announcement form: ", announcementForm)
+  console.log("announcement form: ", announcementForm);
 
   if (loading) {
     return (
@@ -110,10 +110,10 @@ export default function AdminDashboard() {
   //       const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/group/get/all`)
   //       console.log("response from the backend: ", response.data);
   //       if (response.data){
-          
+
   //       }
   //     } catch (error) {
-        
+
   //     }
   //   }
   // })
@@ -135,13 +135,16 @@ export default function AdminDashboard() {
 
     try {
       // TODO: Replace with actual API call
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/announcement/multicast-for-all-emails`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(announcementForm)
-      })
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/announcement/multicast-for-all-emails`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(announcementForm),
+        }
+      );
 
       console.log("response from API:", response);
 
@@ -150,8 +153,9 @@ export default function AdminDashboard() {
       }
 
       const data = await response.json();
-      toast.success(`Announcement sent successfully to ${data.sendCount} members!`)
-
+      toast.success(
+        `Announcement sent successfully to ${data.sendCount} members!`
+      );
 
       // Reset form and close modal
       setAnnouncementForm({
@@ -248,7 +252,9 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Array.isArray(groups) ? groups.filter((g) => g.currentMembers > 0).length : 0}
+              {Array.isArray(groups)
+                ? groups.filter((g) => g.currentMembers > 0).length
+                : 0}
             </div>
             <p className="text-xs text-muted-foreground">
               {groups.length} total groups
@@ -275,7 +281,7 @@ export default function AdminDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">LKR 2,400</div>
+            <div className="text-2xl font-bold">RS. 2,400</div>
             <p className="text-xs text-muted-foreground">
               +15% from last month
             </p>
@@ -461,23 +467,29 @@ export default function AdminDashboard() {
                     <div className="space-y-3 ml-6">
                       <p className="text-sm text-muted-foreground">Select which groups to send the announcement to:</p>
                       <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
-                        {Array.isArray(groups.data) && groups.data.map((group) => (
-                          <div
-                            key={group.id}
-                            className="flex items-center space-x-2"
-                          >
-                            <input
-                              type="checkbox"
-                              id={`group-${group.id}`}
-                              checked={announcementForm.selectedGroups.includes(group.id)}
-                              onChange={() => handleGroupSelection(group.id)}
-                              className="rounded"
-                            />
-                            <Label htmlFor={`group-${group.id}`} className="text-sm">
-                              {group.name} ({group.currentMembers} members)
-                            </Label>
-                          </div>
-                        ))}
+                        {Array.isArray(groups) &&
+                          groups.map((group: any) => (
+                            <div
+                              key={group.id}
+                              className="flex items-center space-x-2"
+                            >
+                              <input
+                                type="checkbox"
+                                id={`group-${group.id}`}
+                                checked={announcementForm.selectedGroups.includes(
+                                  group.id
+                                )}
+                                onChange={() => handleGroupSelection(group.id)}
+                                className="rounded"
+                              />
+                              <Label
+                                htmlFor={`group-${group.id}`}
+                                className="text-sm"
+                              >
+                                {group.name} ({group.currentMembers} members)
+                              </Label>
+                            </div>
+                          ))}
                       </div>
                       
                       {announcementForm.selectedGroups.length > 0 && (
@@ -486,7 +498,7 @@ export default function AdminDashboard() {
                           group(s),{" "}
                           {announcementForm.selectedGroups.reduce(
                             (sum, groupId) => {
-                              const group = groups.data.find(
+                              const group = groups.find(
                                 (g) => g.id === groupId
                               );
                               return sum + (group?.currentMembers || 0);

@@ -1,59 +1,69 @@
-// hooks/useCalendar.ts
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { toast } from 'sonner';
+"use client";
 
-interface Event {
+import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
+import { set } from "date-fns";
+
+export interface CalendarEvent {
   id: string;
   title: string;
   description: string;
   startDate: string;
   endDate: string;
-  startTime: string;
-  endTime: string;
-  location: string;
-  type: string;
-  status: string;
-  rsvpStatus?: 'yes' | 'no' | 'maybe';
-  currentAttendees: number;
-  maxAttendees: number;
-  price?: number;
-  registrationDeadline?: string;
+  location?: string;
+  organizer: string;
+  rsvpStatus?: "yes" | "no" | "maybe";
+  attendeeCount: number;
+  maxAttendees?: number;
+  type:
+    | "meeting"
+    | "workshop"
+    | "social"
+    | "fundraising"
+    | "networking"
+    | "webinar";
 }
 
 export const useCalendar = (orgId: string) => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const res = await axios.get(`${backendUrl}/api/v1/portal/event/get/all`);
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/event/get/all`
+      );
+      console.log("Fetched events:", response.data);
 
-      const rawEvents = res.data.data;
+      if (response.data && Array.isArray(response.data.data)) {
+        const transformedEvents: CalendarEvent[] = response.data.data.map(
+          (event: any) => ({
+            id: event.id.toString(),
+            title: event.title,
+            description: event.description,
+            // Combine date and time for frontend
+            startDate: new Date(
+              `${event.startDate}T${event.startTime}`
+            ).toISOString(),
+            endDate: new Date(
+              `${event.endDate}T${event.endTime}`
+            ).toISOString(),
+            location: event.location,
+            organizer: "Admin", // Default since backend doesn't provide this
+            rsvpStatus: undefined, // Default - user hasn't RSVP'd yet
+            attendeeCount: event.currentParticipants || 0,
+            maxAttendees: event.maxParticipants,
+            type: event.type.toLowerCase() as CalendarEvent["type"],
+          })
+        );
 
-      const transformed = rawEvents.map((event: any): Event => ({
-        id: event.id.toString(),
-        title: event.title,
-        description: event.description,
-        startDate: event.startDate,
-        endDate: event.endDate,
-        startTime: event.startTime,
-        endTime: event.endTime,
-        location: event.location,
-        type: event.type.toLowerCase(),
-        status: event.status.toLowerCase(),
-        rsvpStatus: event.rsvpStatus,
-        currentAttendees: event.currentParticipants || 0,
-        maxAttendees: event.maxParticipants || 0,
-        price: event.price || undefined,
-        registrationDeadline: event.registrationDeadline || undefined,
-      }));
-
-      setEvents(transformed);
+        console.log("Transformed events:", transformedEvents);
+        setEvents(transformedEvents);
+      }
+      return [];
     } catch (error) {
-      console.error('Failed to fetch events', error);
-      toast.error('Failed to load events');
+      console.error("Failed to fetch events:", error);
     } finally {
       setLoading(false);
     }
@@ -63,16 +73,31 @@ export const useCalendar = (orgId: string) => {
     if (orgId) fetchEvents();
   }, [orgId]);
 
-  const rsvpToEvent = async (eventId: string, status: 'yes' | 'no' | 'maybe') => {
+  const rsvpToEvent = async (
+    eventId: string,
+    status: "yes" | "no" | "maybe"
+  ) => {
     try {
-      await axios.post(`/api/event/${eventId}/rsvp`, { status });
-      toast.success('RSVP updated successfully');
-      fetchEvents(); // Refresh after RSVP
-    } catch (err) {
-      console.error('RSVP failed', err);
-      toast.error('Could not update RSVP');
+      // TODO: Replace with actual API call
+      setEvents((prev) =>
+        prev.map((event) =>
+          event.id === eventId ? { ...event, rsvpStatus: status } : event
+        )
+      );
+    } catch (error) {
+      console.error("Failed to RSVP:", error);
+      throw error;
     }
   };
 
-  return { events, loading, rsvpToEvent };
-};
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  return {
+    events,
+    loading,
+    rsvpToEvent,
+    refreshEvents: fetchEvents,
+  };
+}

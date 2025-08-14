@@ -337,10 +337,12 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
                 <Avatar className="h-8 w-8 ring-2 ring-primary/10 transition-all duration-200 hover:ring-primary/20">
                   <AvatarImage src={user?.avatar} alt={user?.name} />
                   <AvatarFallback className="bg-gradient-to-br from-primary/10 to-primary/20 text-primary font-medium">
-                    {user?.name
+                    {(user?.name || "Unknown User")
                       .split(" ")
                       .map((n) => n[0])
-                      .join("")}
+                      .join("")
+                      .toUpperCase()
+                      .substring(0, 2)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -471,10 +473,12 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
               <Avatar className="h-12 w-12 ring-2 ring-primary/20 shadow-sm">
                 <AvatarImage src={user?.avatar} alt={user?.name} />
                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30 text-primary font-semibold text-sm">
-                  {user?.name
+                  {(user?.name || "Unknown User")
                     .split(" ")
                     .map((n) => n[0])
-                    .join("")}
+                    .join("")
+                    .toUpperCase()
+                    .substring(0, 2)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
