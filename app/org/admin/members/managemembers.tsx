@@ -1,7 +1,7 @@
 // File: components/members/ManageMembers.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useOrg } from "@/hooks/useOrg";
 import {
   Card,
@@ -78,7 +78,7 @@ export default function ManageMembers({
   };
 
   // Enhanced getAllMembers function
-  const getAllMembers = async () => {
+  const getAllMembers = useCallback(async () => {
     try {
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/member/get/all`
@@ -113,7 +113,7 @@ export default function ManageMembers({
       console.error("Error fetching members:", error);
       toast.error("Failed to fetch members");
     }
-  };
+  }, [setMembers]);
 
   // Add loading state
   const [loading, setLoading] = useState(true);
@@ -129,7 +129,7 @@ export default function ManageMembers({
 
     const interval = setInterval(fetchData, 30000); // Reduce frequency to 30 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [getAllMembers]);
 
   const deleteMember = (memberId: string) => {
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
