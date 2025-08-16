@@ -1,48 +1,38 @@
-// utils/rsa.ts
-export async function importPublicKey(pem: string): Promise<CryptoKey> {
-  // Turn escaped newlines into actual newlines
-  const pemWithRealNewlines = pem.replace(/\\n/g, '\n');
+// utils/rsa-node.ts
+import forge from 'node-forge';
 
-  // Remove header, footer, and all whitespace/newlines
-  const cleanPem = pemWithRealNewlines
-    .replace(/-----BEGIN PUBLIC KEY-----/g, '')
-    .replace(/-----END PUBLIC KEY-----/g, '')
-    .replace(/\s+/g, '') // removes spaces, tabs, and real newlines
-    .trim();
+export type ForgePublicKey = forge.pki.rsa.PublicKey;
 
-  const binaryDer = Uint8Array.from(atob(cleanPem), c => c.charCodeAt(0));
-
-  return await window.crypto.subtle.importKey(
-    'spki',
-    binaryDer.buffer,
-    {
-      name: 'RSA-OAEP',
-      hash: 'SHA-256',
-    },
-    false,
-    ['encrypt']
-  );
+// Normalizes the PEM and returns a forge PublicKey
+export function importPublicKey(pem: string): ForgePublicKey {
+  const normalized = pem.replace(/\\n/g, '\n').trim();
+  return forge.pki.publicKeyFromPem(normalized);
 }
 
-
-export async function encryptObject(obj: Record<string, any>, publicKey: CryptoKey): Promise<string> {
+// Encrypts a JSON-serializable object using RSA-OAEP with:
+// - OAEP digest: SHA-256 (matches your backend transform name)
+// - MGF1 digest: SHA-1  (matches BouncyCastle default when no OAEPParameterSpec is passed)
+export function encryptObject(obj: Record<string, any>, publicKey: ForgePublicKey): string {
   const json = JSON.stringify(obj);
-  const encoded = new TextEncoder().encode(json);
 
-  const encrypted = await window.crypto.subtle.encrypt(
-    { name: 'RSA-OAEP' },
-    publicKey,
-    encoded
-  );
-
-  return arrayBufferToBase64(encrypted);
-}
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  // (Optional) size guard: OAEP max = k - 2*hLen - 2; hLen for SHA-256 = 32
+  const keyBits = publicKey.n.bitLength();
+  const kBytes = Math.ceil(keyBits / 8);
+  const hLen = 32; // SHA-256
+  const maxPlainLen = kBytes - 2 * hLen - 2;
+  const utf8Bytes = forge.util.encodeUtf8(json);
+  if (utf8Bytes.length > maxPlainLen) {
+    throw new Error(
+      `RSA-OAEP payload too large: ${utf8Bytes.length} > ${maxPlainLen} bytes (key=${keyBits} bits, OAEP=SHA-256). ` +
+      `Use a smaller payload or switch to hybrid (AES-GCM for data + RSA-OAEP for the AES key).`
+    );
   }
-  return btoa(binary);
-}
 
+  const cipherBytes = publicKey.encrypt(utf8Bytes, 'RSA-OAEP', {
+    md: forge.md.sha256.create(),                        // OAEP digest = SHA-256
+    mgf1: forge.mgf.mgf1.create(forge.md.sha1.create()),// MGF1 digest = SHA-1 (BC default)
+    // label not set -> empty label, same as PSource.PSpecified.DEFAULT
+  });
+
+  return forge.util.encode64(cipherBytes);
+}
