@@ -1,25 +1,24 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter,usePathname } from 'next/navigation';
-import axios from 'axios';
-import axiosGlobal from '@/axiosInstances/axiosGlobal';
-import { encryptObject, importPublicKey } from '@/util/rsa';
-import { useDispatch } from 'react-redux';
-import { logoutUser, setAdminUser, setMemberUser } from '@/redux/userSlice';
-import { log } from 'console';
-import { useSelector } from 'react-redux';
-import axiosAdmin from '@/axiosInstances/axiosAdmin';
-import axiosMember from '@/axiosInstances/axiosMember';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import axios from "axios";
+import axiosGlobal from "@/axiosInstances/axiosGlobal";
+import { encryptObject, importPublicKey } from "@/util/rsa";
+import { useDispatch } from "react-redux";
+import { logoutUser, setAdminUser, setMemberUser } from "@/redux/userSlice";
+import { log } from "console";
+import { useSelector } from "react-redux";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
+import axiosMember from "@/axiosInstances/axiosMember";
 
 export type UserRole = "admin" | "member";
 
 export interface User {
-
   email: string;
   name: string;
   role: UserRole;
-
+  id?: string;
   avatar?: string | null;
   designation?: string | null;
   phone?: string | null;
@@ -46,37 +45,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathName = usePathname();
   const userFromRedux = useSelector((state: any) => state.user);
   const localUser = userFromRedux.user;
-  
 
   const getInfo = async (role: UserRole) => {
-    if (role === 'admin') {
+    if (role === "admin") {
       try {
-        const res = await axiosAdmin.get('/info/getAdminInfo');
+        const res = await axiosAdmin.get("/info/getAdminInfo");
         if (res.status === 200) {
-          const {data} = res.data;
+          const { data } = res.data;
           //setAdminUser in redux
-          dispatch(setAdminUser({
-            name: data.user.name,
-            email: data.user.email,
-            nic: data.user.nic || null,
-            role: 'admin',
-            phone: data.user.phone || null,
-            emailVerified: data.user.emailVerified || null,
-            createdAt: data.user.createdAt || null,
-          }));
+          dispatch(
+            setAdminUser({
+              name: data.user.name,
+              email: data.user.email,
+              nic: data.user.nic || null,
+              role: "admin",
+              phone: data.user.phone || null,
+              emailVerified: data.user.emailVerified || null,
+              createdAt: data.user.createdAt || null,
+            })
+          );
 
           //setUser in context
           setUser({
             email: data.user.email,
             name: data.user.name,
-            role: 'admin',
+            role: "admin",
             avatar: data.user.photoUrl || null,
             designation: data.user.position || null,
             phone: data.user.phone || null,
             joinedAt: data.user.createdAt || null,
           });
           return true;
-        }else{
+        } else {
           console.log("Failed to fetch admin info");
           console.log("Status res ", res);
           return false;
@@ -85,26 +85,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("Error fetching admin info", error);
         return false;
       }
-    }else{
+    } else {
       try {
-        const res = await axiosMember.get('/info/getMemberInfo');
+        const res = await axiosMember.get("/info/getMemberInfo");
         if (res.status === 200) {
-          const {data} = res.data;
+          const { data } = res.data;
           //setMemberUser in redux
-          dispatch(setMemberUser({
-            name: data.user.name,
-            email: data.user.email,
-            role: 'member',
-            avatar: data.user.photoUrl || null,
-            designation: data.user.position || null,
-            joinedAt: data.user.createdAt || null,
-          }));
+          dispatch(
+            setMemberUser({
+              name: data.user.name,
+              email: data.user.email,
+              role: "member",
+              avatar: data.user.photoUrl || null,
+              designation: data.user.position || null,
+              joinedAt: data.user.createdAt || null,
+            })
+          );
 
           //setUser in context
           setUser({
             email: data.user.email,
             name: data.user.name,
-            role: 'member',
+            role: "member",
             avatar: data.user.photoUrl || null,
             designation: data.user.position || null,
             phone: data.user.phone || null,
@@ -112,7 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           return true;
         } else {
-          
           console.log("Failed to fetch member info");
           console.log("Status res ", res);
           return false;
@@ -128,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       if (!email || !password) {
-        throw new Error('Email and password are required');
+        throw new Error("Email and password are required");
       }
 
       //encrypt object
@@ -137,20 +138,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const payload = await encryptObject({ email, password }, publicKey);
 
-
-      const res = await axiosGlobal.post('/auth/login', {
-        payload
-      })
+      const res = await axiosGlobal.post("/auth/login", {
+        payload,
+      });
 
       if (res.status !== 200) {
-        throw new Error('Login failed');
+        throw new Error("Login failed");
       }
 
-      const {data} = res.data; 
-      console.log("Login response data: ", data); 
-      
-      if (role === 'admin') {
-        dispatch(setAdminUser({    
+      const { data } = res.data;
+      console.log("Login response data: ", data);
+
+      if (role === "admin") {
+        dispatch(
+          setAdminUser({
             name: data.user.name,
             email: data.user.email,
             nic: data.user.nic || null,
@@ -158,20 +159,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             phone: data.user.phone || null,
             emailVerified: data.user.emailVerified || null,
             createdAt: data.user.createdAt || null,
-
-        }));
+          })
+        );
       } else {
-        dispatch(setMemberUser({
-          name: data.user.name,
-          email: data.user.email,
-          role: role,
-          avatar: data.user.photoUrl || null,
-          designation: data.user.position || null,
-          joinedAt: data.user.createdAt || null,
-
-        }));
+        dispatch(
+          setMemberUser({
+            name: data.user.name,
+            email: data.user.email,
+            role: role,
+            avatar: data.user.photoUrl || null,
+            designation: data.user.position || null,
+            joinedAt: data.user.createdAt || null,
+          })
+        );
       }
-      
 
       const user: User = {
         email: data.user.email,
@@ -184,11 +185,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       // @ts-ignore
-      setUser(user);  // Save real user
-      
+      setUser(user); // Save real user
 
       setLoading(false);
-      router.push(role === 'admin' ? '/org/admin' : '/org/member');
+      router.push(role === "admin" ? "/org/admin" : "/org/member");
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
@@ -198,30 +198,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleLogout = async () => {
-        console.log("calling logout");
-        try {
-
-            const res = await axiosGlobal.post('/auth/logout');
-            if (res.status === 200) {
-                dispatch(logoutUser());
-                router.push('/login');
-            }
-
-        } catch (error) {
-            console.error('Logout failed:', error);
-
-        }
-
-    };
+    console.log("calling logout");
+    try {
+      const res = await axiosGlobal.post("/auth/logout");
+      if (res.status === 200) {
+        dispatch(logoutUser());
+        router.push("/login");
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   const logout = () => {
     setUser(null);
     handleLogout();
-    
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, getInfo,setUser,setLoading}}>
+    <AuthContext.Provider
+      value={{ user, login, logout, loading, getInfo, setUser, setLoading }}
+    >
       {children}
     </AuthContext.Provider>
   );
