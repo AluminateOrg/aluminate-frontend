@@ -190,6 +190,16 @@ export default function DonationsPage() {
     }
   };
 
+  const isValidCampaign = (campaign: Campaign) => {
+    const now = new Date();
+    const endDate = new Date(campaign.endDate);
+    const daysLeft = Math.ceil(
+      (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    return daysLeft > 0 && campaign.raised < campaign.goal;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
@@ -205,6 +215,18 @@ export default function DonationsPage() {
             <DollarSign className="h-3 w-3 mr-1" />
             Rs.{totalDonated} Total Donated
           </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchActiveCampaignsOnly}
+            disabled={refreshing}
+            className="flex items-center space-x-1"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+            <span>Refresh</span>
+          </Button>
         </div>
       </div>
 
@@ -240,7 +262,9 @@ export default function DonationsPage() {
 
       <Tabs defaultValue="campaigns" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="campaigns">Active Campaigns</TabsTrigger>
+          <TabsTrigger value="campaigns">
+            Active Campaigns ({activeCampaigns.length})
+          </TabsTrigger>
           <TabsTrigger value="history">My Donations</TabsTrigger>
         </TabsList>
 
@@ -305,8 +329,7 @@ export default function DonationsPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-3 pt-2 border-t">
-                      <div className="flex gap-2">
+                      <div className="space-y-3 pt-2 border-t">
                         <Input
                           type="number"
                           placeholder="Amount ($)"
@@ -390,7 +413,7 @@ export default function DonationsPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-semibold text-primary">
-                          ${donation.amount}
+                          LKR {donation.amount.toLocaleString()}
                         </div>
                         <Badge variant="outline" className="text-xs">
                           <Heart className="h-3 w-3 mr-1" />

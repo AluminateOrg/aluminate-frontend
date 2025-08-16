@@ -44,37 +44,33 @@ import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import { DeleteCampaignConfirmationModal } from "./delete-confirmation";
 import { EditCampaignModal } from "./edit-campaign-modal";
 
-// ===========================================
-// UPDATED INTERFACES
-// ===========================================
-
 interface Campaign {
   id: string;
   title: string;
   description: string;
-  goal: number; // matches backend 'goal' field
-  raised: number; // matches backend 'raised' field
-  startDate: string; // matches backend 'startDate'
-  endDate: string; // matches backend 'endDate'
+  goal: number;
+  raised: number;
+  startDate: string;
+  endDate: string;
   category:
     | "general"
     | "scholarship"
     | "infrastructure"
     | "emergency"
     | "fundraising"
-    | "other"; // matches backend CampaignType enum
-  donorCount: number; // matches backend 'donorCount'
-  isActive: boolean; // matches backend 'isActive'
-  createdBy?: string; // keep if needed for frontend logic
+    | "other";
+  donorCount: number;
+  isActive: boolean;
+  createdBy?: string;
 }
 
 interface CampaignFormData {
   title: string;
   description: string;
-  goal: string; // Keep as string for form input
+  goal: string;
   endDate: string;
   category: Campaign["category"];
-  isActive: boolean; // Add isActive field for creation
+  isActive: boolean;
 }
 
 interface Donation {
@@ -103,25 +99,17 @@ export default function AdminFundraisingPage() {
   const { user } = useAuth();
   const { organization } = useOrg();
 
-  // ===========================================
-  // STATE MANAGEMENT
-  // ===========================================
-
-  // Updated campaigns state - starts empty
+  // State Management
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null); // For individual campaign actions
-
-  // Delete modal state
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(
     null
   );
-
-  // Modal states
   const [showDonationsModal, setShowDonationsModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
@@ -133,11 +121,7 @@ export default function AdminFundraisingPage() {
   const [donationFilter, setDonationFilter] = useState<
     "all" | "completed" | "pending" | "anonymous"
   >("all");
-
-  // Mock donations data (keep for now until donations API is implemented)
   const [donations, setDonations] = useState<Donation[]>([]);
-
-  // Update form state
   const [updateForm, setUpdateForm] = useState<UpdateForm>({
     subject: "",
     message: "",
@@ -145,35 +129,27 @@ export default function AdminFundraisingPage() {
     sendToAll: true,
     selectedDonors: [],
   });
-
-  // Updated form state
   const [formData, setFormData] = useState<CampaignFormData>({
     title: "",
     description: "",
     goal: "",
     endDate: "",
     category: "general",
-    isActive: true, // Default to active
+    isActive: true,
   });
 
-  // ===========================================
-  // API FUNCTIONS
-  // ===========================================
-
-  // Error handling helper
+  // API Functions
   const handleApiError = (error: any, defaultMessage: string) => {
     console.error("API Error:", error);
-
     if (error.name === "TypeError" && error.message.includes("fetch")) {
       toast.error("Network error. Please check your connection and try again.");
     } else if (error.message) {
-      toast.error(error.message);
+      toast.error(`${defaultMessage}: ${error.message}`);
     } else {
       toast.error(defaultMessage);
     }
   };
 
-  // Map frontend category to backend enum
   const mapCategoryToBackend = (category: Campaign["category"]): string => {
     const mapping: Record<Campaign["category"], string> = {
       general: "GENERAL",
@@ -186,7 +162,6 @@ export default function AdminFundraisingPage() {
     return mapping[category] || "GENERAL";
   };
 
-  // Map backend enum to frontend category
   const mapCategoryFromBackend = (type: string): Campaign["category"] => {
     const mapping: Record<string, Campaign["category"]> = {
       GENERAL: "general",
@@ -205,7 +180,10 @@ export default function AdminFundraisingPage() {
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const response = await fetch(
-        `${backendUrl}/api/v1/portal/campaign/get/all`
+        `${backendUrl}/api/v1/portal/campaign/get/all?_=${Date.now()}`,
+        {
+          cache: "no-store",
+        }
       );
 
       if (!response.ok) {
@@ -213,8 +191,8 @@ export default function AdminFundraisingPage() {
       }
 
       const data = await response.json();
+      console.log("Raw campaigns API response:", data);
 
-      // Transform the backend response to match your Campaign interface
       const transformedCampaigns: Campaign[] =
         data.data?.map((campaign: any) => ({
           id: campaign.id.toString(),
@@ -230,29 +208,24 @@ export default function AdminFundraisingPage() {
             : new Date().toISOString(),
           category: mapCategoryFromBackend(campaign.type),
           donorCount: campaign.donorCount || 0,
-          isActive: campaign.isActive,
-          createdBy: "", // Set if you have this information
+          isActive: campaign.isActive ?? campaign.active ?? false,
+          createdBy: "",
         })) || [];
 
       console.log("Transformed campaigns:", transformedCampaigns);
       setCampaigns(transformedCampaigns);
     } catch (error) {
-      console.error("Error fetching campaigns:", error);
       handleApiError(error, "Failed to load campaigns. Please try again.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Fetch campaigns on component mount
   useEffect(() => {
     fetchCampaigns();
   }, [fetchCampaigns]);
 
-  // ===========================================
-  // EVENT HANDLERS
-  // ===========================================
-
+  // Event Handlers
   const handleInputChange = (
     field: keyof CampaignFormData,
     value: string | boolean
@@ -260,7 +233,6 @@ export default function AdminFundraisingPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Updated create campaign function with API integration
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -269,14 +241,12 @@ export default function AdminFundraisingPage() {
       return;
     }
 
-    // Validate goal is positive
     const goalValue = parseFloat(formData.goal);
     if (goalValue <= 0) {
       toast.error("Goal amount must be greater than zero");
       return;
     }
 
-    // Validate end date is in the future
     const endDate = new Date(formData.endDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -288,19 +258,17 @@ export default function AdminFundraisingPage() {
     setLoading(true);
 
     try {
-      // Prepare the API request payload to match your backend
       const requestPayload = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         type: mapCategoryToBackend(formData.category),
         goal: goalValue,
-        endDate: formData.endDate, // Backend expects LocalDate format (YYYY-MM-DD)
+        endDate: formData.endDate,
         isActive: formData.isActive,
       };
 
       console.log("Creating campaign with payload:", requestPayload);
 
-      // Make API call to your backend
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const apiEndpoint = `${backendUrl}/api/v1/portal/campaign/create`;
 
@@ -318,12 +286,10 @@ export default function AdminFundraisingPage() {
       }
 
       const responseData = await response.json();
-      console.log("Campaign created successfully:", responseData);
+      console.log("Create campaign response:", responseData);
 
-      // Refresh the campaigns list
       await fetchCampaigns();
 
-      // Reset form and close modal
       setFormData({
         title: "",
         description: "",
@@ -335,27 +301,21 @@ export default function AdminFundraisingPage() {
       setShowCreateForm(false);
       toast.success("Campaign created successfully!");
     } catch (error) {
-      console.error("Error creating campaign:", error);
       handleApiError(error, "Failed to create campaign. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Updated toggle campaign function with API integration
   const handleToggleCampaign = async (campaignId: string) => {
     try {
       setActionLoading(campaignId);
-
-      // Find current campaign status
       const currentCampaign = campaigns.find((c) => c.id === campaignId);
       if (!currentCampaign) {
         throw new Error("Campaign not found");
       }
 
       const newStatus = !currentCampaign.isActive;
-
-      // Make API call to backend first
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const response = await fetch(
         `${backendUrl}/api/v1/portal/campaign/${campaignId}/toggle-status?isActive=${newStatus}`,
@@ -375,30 +335,22 @@ export default function AdminFundraisingPage() {
       }
 
       const responseData = await response.json();
-      console.log("Campaign status updated:", responseData);
+      console.log("Toggle campaign response:", responseData);
 
-      // Update local state after successful API call
-      setCampaigns((prev) =>
-        prev.map((campaign) =>
-          campaign.id === campaignId
-            ? { ...campaign, isActive: newStatus }
-            : campaign
-        )
+      await fetchCampaigns();
+
+      toast.success(
+        newStatus
+          ? "Campaign activated successfully!"
+          : "Campaign deactivated successfully!"
       );
-
-      const statusMessage = newStatus
-        ? "Campaign activated successfully!"
-        : "Campaign deactivated successfully!";
-      toast.success(statusMessage);
     } catch (error) {
-      console.error("Error updating campaign status:", error);
       handleApiError(error, "Failed to update campaign status");
     } finally {
       setActionLoading(null);
     }
   };
 
-  // Updated delete campaign function to use modal
   const handleDeleteCampaign = (campaign: Campaign) => {
     setCampaignToDelete(campaign);
     setShowDeleteModal(true);
@@ -409,8 +361,6 @@ export default function AdminFundraisingPage() {
 
     try {
       setLoading(true);
-
-      // Make API call to delete the campaign
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const response = await fetch(
         `${backendUrl}/api/v1/portal/campaign/${campaignToDelete.id}/delete`,
@@ -430,14 +380,12 @@ export default function AdminFundraisingPage() {
       const responseData = await response.json();
       console.log("Campaign deleted successfully:", responseData);
 
-      // Remove from local state after successful API call
       setCampaigns((prev) =>
         prev.filter((campaign) => campaign.id !== campaignToDelete.id)
       );
 
       toast.success("Campaign deleted successfully!");
     } catch (error) {
-      console.error("Error deleting campaign:", error);
       handleApiError(error, "Failed to delete campaign");
     } finally {
       setLoading(false);
@@ -446,7 +394,6 @@ export default function AdminFundraisingPage() {
     }
   };
 
-  // Edit campaign handlers
   const handleEditCampaign = (campaign: Campaign) => {
     setEditingCampaign(campaign);
     setShowEditModal(true);
@@ -454,7 +401,6 @@ export default function AdminFundraisingPage() {
 
   const handleUpdateCampaign = async (updatedCampaign: Campaign) => {
     try {
-      // Update local state optimistically
       setCampaigns((prev) =>
         prev.map((campaign) =>
           campaign.id === updatedCampaign.id ? updatedCampaign : campaign
@@ -465,17 +411,12 @@ export default function AdminFundraisingPage() {
       setEditingCampaign(null);
       toast.success("Campaign updated successfully!");
     } catch (error) {
-      console.error("Error updating campaign:", error);
-      // Refresh campaigns on error
       await fetchCampaigns();
       handleApiError(error, "Failed to update campaign");
     }
   };
 
-  // View campaign details
   const handleViewCampaign = (campaign: Campaign) => {
-    // For now, just show campaign details in console
-    // You can implement a view modal later
     console.log("Viewing campaign:", campaign);
     toast.info("Campaign details view coming soon!");
   };
@@ -486,9 +427,7 @@ export default function AdminFundraisingPage() {
     setDonationsLoading(true);
 
     try {
-      // TODO: Replace with actual API call to fetch donations
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      // Donations are already loaded in state for demo
     } catch (error) {
       toast.error("Failed to load donations");
     } finally {
@@ -519,9 +458,7 @@ export default function AdminFundraisingPage() {
     setUpdateLoading(true);
 
     try {
-      // TODO: Replace with actual API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
-
       const recipientCount = updateForm.sendToAll
         ? selectedCampaign?.donorCount || 0
         : updateForm.selectedDonors.length;
@@ -576,10 +513,7 @@ export default function AdminFundraisingPage() {
     }
   };
 
-  // ===========================================
-  // UTILITY FUNCTIONS
-  // ===========================================
-
+  // Utility Functions
   const getCampaignDonations = (campaignId: string) => {
     return donations.filter((d) => d.campaignId === campaignId);
   };
@@ -587,7 +521,6 @@ export default function AdminFundraisingPage() {
   const getFilteredDonations = (campaignId: string) => {
     let campaignDonations = getCampaignDonations(campaignId);
 
-    // Apply search filter
     if (donationSearchTerm) {
       campaignDonations = campaignDonations.filter(
         (d) =>
@@ -602,7 +535,6 @@ export default function AdminFundraisingPage() {
       );
     }
 
-    // Apply status filter
     switch (donationFilter) {
       case "completed":
         return campaignDonations.filter((d) => d.status === "completed");
@@ -686,7 +618,6 @@ export default function AdminFundraisingPage() {
     }
   };
 
-  // Show loading state while fetching initial data
   if (loading && campaigns.length === 0) {
     return (
       <div className="p-6 flex items-center justify-center min-h-screen">
@@ -700,7 +631,6 @@ export default function AdminFundraisingPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
@@ -716,7 +646,6 @@ export default function AdminFundraisingPage() {
         </Button>
       </div>
 
-      {/* Stats Cards - Updated with LKR currency */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -798,7 +727,6 @@ export default function AdminFundraisingPage() {
         </TabsList>
 
         <TabsContent value="campaigns" className="space-y-6">
-          {/* Create Campaign Form */}
           {showCreateForm && (
             <Card>
               <CardHeader>
@@ -833,8 +761,6 @@ export default function AdminFundraisingPage() {
                         required
                       />
                     </div>
-
-                    {/* Updated goal input with LKR */}
                     <div className="space-y-2">
                       <Label htmlFor="goal">Fundraising Goal (LKR) *</Label>
                       <Input
@@ -850,7 +776,6 @@ export default function AdminFundraisingPage() {
                         required
                       />
                     </div>
-
                     <div className="space-y-2">
                       <Label htmlFor="endDate">End Date *</Label>
                       <Input
@@ -864,8 +789,6 @@ export default function AdminFundraisingPage() {
                         required
                       />
                     </div>
-
-                    {/* Updated category select to match backend enum */}
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
                       <select
@@ -888,7 +811,6 @@ export default function AdminFundraisingPage() {
                       </select>
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="description">Description</Label>
                     <Textarea
@@ -901,8 +823,6 @@ export default function AdminFundraisingPage() {
                       rows={3}
                     />
                   </div>
-
-                  {/* Active status toggle */}
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -917,7 +837,6 @@ export default function AdminFundraisingPage() {
                       Create campaign as active (ready to receive donations)
                     </Label>
                   </div>
-
                   <div className="flex space-x-2 pt-4 border-t">
                     <Button type="submit" disabled={loading}>
                       {loading ? (
@@ -942,7 +861,6 @@ export default function AdminFundraisingPage() {
             </Card>
           )}
 
-          {/* Campaigns List */}
           <div className="space-y-4">
             {campaigns.length === 0 && !loading ? (
               <Card>
@@ -1029,14 +947,12 @@ export default function AdminFundraisingPage() {
                         </div>
                       </div>
                     </CardHeader>
-
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">
                             Progress
                           </span>
-                          {/* Updated currency display to LKR */}
                           <span className="font-medium">
                             LKR {campaign.raised.toLocaleString()} / LKR{" "}
                             {campaign.goal.toLocaleString()}
@@ -1053,7 +969,6 @@ export default function AdminFundraisingPage() {
                           </span>
                         </div>
                       </div>
-
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div className="flex items-center space-x-1">
                           <Users className="h-4 w-4 text-muted-foreground" />
@@ -1074,7 +989,6 @@ export default function AdminFundraisingPage() {
                         </div>
                         <div className="flex items-center space-x-1">
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          {/* Updated currency display to LKR */}
                           <span>
                             Avg: LKR{" "}
                             {Math.round(
@@ -1083,7 +997,6 @@ export default function AdminFundraisingPage() {
                           </span>
                         </div>
                       </div>
-
                       <div className="flex flex-wrap gap-2 pt-2 border-t">
                         <Button
                           variant={
@@ -1160,7 +1073,6 @@ export default function AdminFundraisingPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Campaign Modal */}
       {showEditModal && editingCampaign && (
         <EditCampaignModal
           campaign={editingCampaign}
@@ -1173,7 +1085,6 @@ export default function AdminFundraisingPage() {
         />
       )}
 
-      {/* View Donations Modal */}
       {showDonationsModal && selectedCampaign && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-6xl max-h-[90vh] overflow-y-auto">
@@ -1194,7 +1105,7 @@ export default function AdminFundraisingPage() {
                     size="sm"
                     onClick={() => handleExportDonations(selectedCampaign.id)}
                   >
-                    <Download className="h-4 w-4 mr-1" />
+                    <Download classriendo="h-4 w-4 mr-1" />
                     Export CSV
                   </Button>
                   <Button
@@ -1214,7 +1125,6 @@ export default function AdminFundraisingPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Search and Filters */}
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1241,8 +1151,6 @@ export default function AdminFundraisingPage() {
                       </select>
                     </div>
                   </div>
-
-                  {/* Donations List */}
                   <div className="space-y-3">
                     {getFilteredDonations(selectedCampaign.id).map(
                       (donation) => (
@@ -1311,7 +1219,6 @@ export default function AdminFundraisingPage() {
                               </div>
                             </div>
                             <div className="text-right">
-                              {/* Updated currency display to LKR */}
                               <div className="text-lg font-bold text-primary">
                                 LKR {donation.amount.toLocaleString()}
                               </div>
@@ -1327,7 +1234,6 @@ export default function AdminFundraisingPage() {
                       )
                     )}
                   </div>
-
                   {getFilteredDonations(selectedCampaign.id).length === 0 && (
                     <div className="text-center py-8">
                       <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -1348,7 +1254,6 @@ export default function AdminFundraisingPage() {
         </div>
       )}
 
-      {/* Send Update Modal */}
       {showUpdateModal && selectedCampaign && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1374,12 +1279,10 @@ export default function AdminFundraisingPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmitUpdate} className="space-y-6">
-                {/* Campaign Progress Summary */}
                 <div className="bg-accent/20 p-4 rounded-lg">
                   <h4 className="font-medium mb-2">Campaign Progress</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      {/* Updated currency display to LKR */}
                       <span>
                         Raised: LKR {selectedCampaign.raised.toLocaleString()}
                       </span>
@@ -1411,8 +1314,6 @@ export default function AdminFundraisingPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Update Content */}
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="subject">Subject *</Label>
@@ -1426,7 +1327,6 @@ export default function AdminFundraisingPage() {
                       required
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="message">Message *</Label>
                     <Textarea
@@ -1441,11 +1341,8 @@ export default function AdminFundraisingPage() {
                     />
                   </div>
                 </div>
-
-                {/* Update Options */}
                 <div className="space-y-4">
                   <h4 className="font-medium">Update Options</h4>
-
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2">
                       <input
@@ -1464,7 +1361,6 @@ export default function AdminFundraisingPage() {
                         Include campaign progress chart
                       </Label>
                     </div>
-
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -1482,8 +1378,6 @@ export default function AdminFundraisingPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Preview */}
                 <div className="space-y-2">
                   <Label>Email Preview</Label>
                   <div className="border rounded-lg p-4 bg-muted/20">
@@ -1521,8 +1415,6 @@ export default function AdminFundraisingPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Form Actions */}
                 <div className="flex justify-end space-x-2 pt-4 border-t">
                   <Button
                     type="button"
@@ -1551,7 +1443,6 @@ export default function AdminFundraisingPage() {
         </div>
       )}
 
-      {/* Delete Campaign Confirmation Modal */}
       {showDeleteModal && campaignToDelete && (
         <DeleteCampaignConfirmationModal
           isOpen={showDeleteModal}
