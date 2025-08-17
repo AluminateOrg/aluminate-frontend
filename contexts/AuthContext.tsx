@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const localUser = userFromRedux.user;
 
   const getInfo = async (role: UserRole) => {
+    console.log("hii");
     if (role === "admin") {
       try {
         const res = await axiosAdmin.get("/info/getAdminInfo");
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           //setAdminUser in redux
           dispatch(
             setAdminUser({
+              id: data.user.id,
               name: data.user.name,
               email: data.user.email,
               nic: data.user.nic || null,
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: data.user.email,
             name: data.user.name,
             role: "admin",
+            id: data.user.id,
             avatar: data.user.photoUrl || null,
             designation: data.user.position || null,
             phone: data.user.phone || null,
@@ -93,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           //setMemberUser in redux
           dispatch(
             setMemberUser({
+              id: data.user.id,
               name: data.user.name,
               email: data.user.email,
               role: "member",
@@ -107,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: data.user.email,
             name: data.user.name,
             role: "member",
+            id: data.user.id,
             avatar: data.user.photoUrl || null,
             designation: data.user.position || null,
             phone: data.user.phone || null,
@@ -147,11 +152,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const { data } = res.data;
-      console.log("Login response data: ", data);
+      console.log("Login response data: ", data.user);
 
       if (role === "admin") {
         dispatch(
           setAdminUser({
+            id: data.user.id,
             name: data.user.name,
             email: data.user.email,
             nic: data.user.nic || null,
@@ -164,6 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         dispatch(
           setMemberUser({
+            id: data.user.id,
             name: data.user.name,
             email: data.user.email,
             role: role,
@@ -178,6 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: data.user.email,
         name: data.user.name,
         role: role,
+        id: data.user.id,
         avatar: data.user.photoUrl || null,
         designation: data.user.position || null,
         phone: data.user.phone || null,
