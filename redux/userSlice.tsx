@@ -1,6 +1,7 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface Member {
+  id: string;
   name: string;
   email: string;
   role: string;
@@ -10,16 +11,15 @@ interface Member {
 }
 
 interface Admin {
+  id: string;
   name: string;
   email: string;
-  role:string;
+  role: string;
   nic: string | null;
   phone: string | null;
   emailVerified: boolean;
   createdAt: string | null;
 }
-
-
 
 interface UserState {
   admin: Admin | null;
@@ -34,14 +34,11 @@ const initialState: UserState = {
 };
 
 const userSlice = createSlice({
-  name: 'user',
+  name: "user",
   initialState,
   reducers: {
     // Set admin + organization (used for admin logins)
-    setAdminUser(
-      state,
-      action: PayloadAction<Admin>
-    ) {
+    setAdminUser(state, action: PayloadAction<Admin>) {
       state.admin = action.payload;
       state.member = null;
       state.isAuthenticated = true;

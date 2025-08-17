@@ -34,6 +34,7 @@ import Link from "next/link";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import { toast } from "sonner";
 import axios from "axios";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface AnnouncementForm {
   title: string;
@@ -62,6 +63,7 @@ export default function AdminDashboard() {
   });
 
   console.log("announcement form: ", announcementForm);
+  console.log("groups: ", groups);
 
   if (loading) {
     return (
@@ -143,25 +145,18 @@ export default function AdminDashboard() {
     setSendingAnnouncement(true);
 
     try {
-      // TODO: Replace with actual API call
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/announcement/multicast-for-all-emails`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(announcementForm),
-        }
+      const response = await axiosAdmin.post(
+        `/announcement/multicast-for-all-emails`,
+        announcementForm
       );
 
       console.log("response from API:", response);
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         toast.error("Failed to send announcement. Please try again.");
       }
 
-      const data = await response.json();
+      const data = response.data;
       toast.success(
         `Announcement sent successfully to ${data.sendCount} members!`
       );
