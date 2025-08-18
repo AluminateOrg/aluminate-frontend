@@ -4,17 +4,19 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import axios from "axios";
 import axiosCommon from "@/axiosInstances/axiosCommon";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 export type SubscriptionTier = "basic" | "premium" | "enterprise";
+import { useDispatch, useSelector } from "react-redux";
+import { set } from "date-fns";
+import { setOrganization as setOrganizationRedux } from "@/redux/userSlice";
 
 export interface Organization {
   id: string;
-  name: string;
-  tier: SubscriptionTier;
-  memberCount: number;
-  memberLimit: number;
-  logo?: string;
-  description?: string;
-  createdAt: string;
+  organizationName: string;
+  membershipFree: boolean;
+  maxMemberCount: number;
+  currentMemberCount: number;
+  deleted: boolean;
 }
 
 export interface Group {
@@ -40,58 +42,53 @@ interface OrgContextType {
 const OrgContext = createContext<OrgContextType | undefined>(undefined);
 
 export function OrgProvider({ children }: { children: React.ReactNode }) {
-  const [organization, setOrganization] = useState<Organization | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const dispatch = useDispatch();
+
+  const adminId = useSelector((state: any) => state.user.admin?.id)
+  const organization = useSelector((state: any) => state.user.organization);
+  console.log("admin id from redux: >>>", adminId);
 
   const fetchOrganization = async () => {
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
 
     try {
-      // TODO: Replace with actual API call
-      const mockOrg: Organization = {
-        id: user.id,
-        name: "Tech Alumni Network",
-        tier: "premium",
-        memberCount: 245,
-        memberLimit: 500,
-        logo: "https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-        description:
-          "Connecting technology professionals and fostering innovation",
-        createdAt: new Date().toISOString(),
-      };
 
-      const fetchGroups = async (): Promise<Group[]> => {
-        try {
-          const response = await axiosCommon.get(`/group/get/all`);
-          console.log("response from the backend: ", response.data);
-          if (response.data) {
-            return response.data.data as Group[];
-          }
-          return [];
-        } catch (error) {
-          console.error("Failed to fetch groups:", error);
-          throw error;
-        }
-      };
+      const response = await axiosAdmin.get(`/get-org/${adminId}`);
+      console.log("response from the backend: ", response.data);
+      if (response.data) {
+        dispatch(setOrganizationRedux(response.data as Organization));
+      }
 
-      const data = await fetchGroups();
-      setGroups(data);
+      // const fetchGroups = async (): Promise<Group[]> => {
+      //   try {
+      //     const response = await axiosCommon.get(`/group/get/all`);
+      //     console.log("response from the backend: ", response.data);
+      //     if (response.data) {
+      //       return response.data.data as Group[];
+      //     }
+      //     return [];
+      //   } catch (error) {
+      //     console.error("Failed to fetch groups:", error);
+      //     throw error;
+      //   }
+      // };
 
-      console.log("fetched data: ", data);
+      // const data = await fetchGroups();
+      // setGroups(data);
 
-      setOrganization(mockOrg);
+      // console.log("fetched data: ", data);
+
       // setGroups(mockGroups);
+
     } catch (error) {
       console.error("Failed to fetch organization:", error);
     } finally {
       setLoading(false);
     }
   };
+
 
   const updateSubscription = async (tier: SubscriptionTier) => {
     if (!organization) return;
@@ -103,7 +100,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         tier,
         memberLimit: tier === "basic" ? 100 : tier === "premium" ? 500 : 1000,
       };
-      setOrganization(updatedOrg);
+      // setOrganization(updatedOrg);
     } catch (error) {
       console.error("Failed to update subscription:", error);
       throw error;
