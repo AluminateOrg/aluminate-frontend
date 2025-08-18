@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import axios from "axios";
+import axiosCommon from "@/axiosInstances/axiosCommon";
 export type SubscriptionTier = "basic" | "premium" | "enterprise";
 
 export interface Organization {
@@ -45,7 +46,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   const fetchOrganization = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
 
     try {
       // TODO: Replace with actual API call
@@ -63,9 +67,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 
       const fetchGroups = async (): Promise<Group[]> => {
         try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/group/get/all`
-          );
+          const response = await axiosCommon.get(`/group/get/all`);
           console.log("response from the backend: ", response.data);
           if (response.data) {
             return response.data.data as Group[];
