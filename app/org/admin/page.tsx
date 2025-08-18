@@ -62,6 +62,8 @@ export default function AdminDashboard() {
     sendPush: false,
   });
 
+  console.log("organization: ", organization);
+
   console.log("announcement form: ", announcementForm);
   console.log("groups: ", groups);
 
@@ -205,11 +207,9 @@ export default function AdminDashboard() {
         </div>
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
           <Badge
-            variant={organization.tier === "premium" ? "default" : "secondary"}
+            variant={organization.membershipFree === true ? "default" : "secondary"}
           >
-            {organization.tier.charAt(0).toUpperCase() +
-              organization.tier.slice(1)}{" "}
-            Plan
+            {organization.membershipFree ? "Free Plan" : "Paid Plan"}
           </Badge>
         </div>
       </div>

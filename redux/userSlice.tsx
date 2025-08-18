@@ -21,16 +21,27 @@ interface Admin {
   createdAt: string | null;
 }
 
+interface Organization {
+  id: string;
+  organizationName: string;
+  membershipFree: boolean;
+  maxMemberCount: number;
+  currentMemberCount: number;
+  deleted: boolean;
+}
+
 interface UserState {
   admin: Admin | null;
   member: Member | null;
   isAuthenticated: boolean;
+  organization: Organization | null; 
 }
 
 const initialState: UserState = {
   admin: null,
   member: null,
   isAuthenticated: false,
+  organization: null, 
 };
 
 const userSlice = createSlice({
@@ -51,6 +62,10 @@ const userSlice = createSlice({
       state.isAuthenticated = true;
     },
 
+    setOrganization(state, action: PayloadAction<Organization>) {
+      state.organization = action.payload;
+    },
+
     logoutUser(state) {
       state.admin = null;
       state.member = null;
@@ -59,5 +74,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { setAdminUser, setMemberUser, logoutUser } = userSlice.actions;
+export const { setAdminUser, setMemberUser, logoutUser, setOrganization } = userSlice.actions;
 export default userSlice.reducer;
