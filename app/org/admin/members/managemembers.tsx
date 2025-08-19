@@ -26,6 +26,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import axios from "axios";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface Member {
   id: string;
@@ -80,9 +81,7 @@ export default function ManageMembers({
   // Enhanced getAllMembers function
   const getAllMembers = useCallback(async () => {
     try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/member/get/all`
-      );
+      const response = await axiosAdmin.get(`/member/get/all`);
 
       if (response.data && Array.isArray(response.data.data)) {
         const mappedMembers = response.data.data.map((member: any) => ({
@@ -127,7 +126,7 @@ export default function ManageMembers({
 
     fetchData();
 
-    const interval = setInterval(fetchData, 30000); // Reduce frequency to 30 seconds
+    const interval = setInterval(fetchData, 300000); // Reduce frequency to 5 minutes
     return () => clearInterval(interval);
   }, [getAllMembers]);
 

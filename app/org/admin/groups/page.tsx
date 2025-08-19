@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface Group {
   id: string;
@@ -192,16 +193,13 @@ export default function AdminGroupsPage() {
     setLoading(true);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+      const response = await axiosAdmin.get("/group/get/all");
 
-      const response = await fetch(`${apiEndpoint}/group/get/all`);
-
-      if (!response.ok) {
+      if (response.status != 200) {
         throw new Error("Failed to fetch groups");
       }
 
-      const Data = await response.json();
+      const Data = response.data;
       const groups = Data.data;
       console.log("Fetched groups from API:", groups);
 
@@ -235,16 +233,13 @@ export default function AdminGroupsPage() {
   const fetchPendingRequests = async () => {
     setRequestsLoading(true);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+      const response = await axiosAdmin.get("/group/get/pending-requests");
 
-      const response = await fetch(`${apiEndpoint}/group/get/pending-requests`);
-
-      if (!response.ok) {
+      if (response.status != 200) {
         throw new Error("Failed to fetch pending requests");
       }
 
-      const data = await response.json();
+      const data = await response.data;
       setPendingRequests(data.data || []);
     } catch (error) {
       console.error("Error fetching pending requests:", error);
@@ -261,21 +256,12 @@ export default function AdminGroupsPage() {
 
   const handleApproveRequest = async (groupId: string, memberId: string) => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-
-      const response = await fetch(
-        `${apiEndpoint}/group/${groupId}/approve/${memberId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axiosAdmin.put(
+        `/group/${groupId}/approve/${memberId}`
       );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      if (response.status != 200) {
+        const errorData = await response.data;
         if (errorData.message?.includes("maximum capacity")) {
           toast.error("Cannot approve: Group has reached maximum capacity");
         } else {
@@ -303,21 +289,12 @@ export default function AdminGroupsPage() {
 
   const handleRejectRequest = async (groupId: string, memberId: string) => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-
-      const response = await fetch(
-        `${apiEndpoint}/group/${groupId}/reject/${memberId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axiosAdmin.put(
+        `/group/${groupId}/reject/${memberId}`
       );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      if (response.status != 200) {
+        const errorData = await response.data.catch(() => ({}));
         toast.error(errorData.message || "Failed to reject request");
         return;
       }
@@ -347,27 +324,20 @@ export default function AdminGroupsPage() {
         return;
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-      const response = await fetch(`${apiEndpoint}/group/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: groupForm.name,
-          description: groupForm.description,
-          maxMembers: parseInt(groupForm.maxMembers, 10),
-          category: groupForm.category.toUpperCase(),
-          requiredApproval: groupForm.requiredApproval || false,
-        }),
-      });
+      const payload = {
+        name: groupForm.name,
+        description: groupForm.description,
+        maxMembers: parseInt(groupForm.maxMembers, 10),
+        category: groupForm.category.toUpperCase(),
+        requiredApproval: groupForm.requiredApproval || false,
+      };
+      const response = await axiosAdmin.post("/group/create", payload);
 
-      if (!response.ok) {
+      if (response.status != 200) {
         throw new Error("Failed to create group");
       }
 
-      await response.json();
+      await response.data;
 
       await fetchGroups();
 
@@ -405,20 +375,9 @@ export default function AdminGroupsPage() {
     setGroups(updatedGroups);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+      const response = await axiosAdmin.put(`/group/${groupId}/toggle-status`);
 
-      const response = await fetch(
-        `${apiEndpoint}/group/${groupId}/toggle-status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
+      if (response.status != 200) {
         throw new Error("Failed to toggle group status");
       }
 
@@ -453,21 +412,11 @@ export default function AdminGroupsPage() {
       );
       setGroups(updatedGroups);
 
-      // Backend API call to delete the group
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-
-      const response = await fetch(
-        `${apiEndpoint}/group/${deleteModal.groupId}/delete`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axiosAdmin.delete(
+        `/group/${deleteModal.groupId}/delete`
       );
 
-      if (!response.ok) {
+      if (response.status != 200) {
         throw new Error("Failed to delete the group");
       }
 
@@ -519,9 +468,12 @@ export default function AdminGroupsPage() {
     total: groups.length,
     active: groups.filter((g) => g.isActive).length,
     totalMembers: groups.reduce((sum, g) => sum + g.currentMembers, 0),
-    avgMembersPerGroup: Math.round(
-      groups.reduce((sum, g) => sum + g.currentMembers, 0) / groups.length
-    ),
+    avgMembersPerGroup:
+      groups.length === 0
+        ? 0
+        : Math.round(
+            groups.reduce((sum, g) => sum + g.currentMembers, 0) / groups.length
+          ),
   };
 
   const getCategoryColor = (category: Group["category"]) => {
@@ -600,7 +552,7 @@ export default function AdminGroupsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Group Overview</TabsTrigger>
           <TabsTrigger value="pending" className="relative">
             Pending Requests
