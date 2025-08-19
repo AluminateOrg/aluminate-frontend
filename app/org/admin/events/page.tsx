@@ -43,6 +43,7 @@ import { format, addDays, addHours } from "date-fns";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import { DeleteConfirmationModal } from "./delete-confirmation";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface Event {
   id: string;
@@ -126,14 +127,13 @@ export default function AdminEventsPage() {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const response = await fetch(`${backendUrl}/api/v1/portal/event/get/all`);
+      const response = await axiosAdmin.get("/event/get/all");
 
-      if (!response.ok) {
+      if (response.status != 200) {
         throw new Error("Failed to fetch events");
       }
 
-      const data = await response.json();
+      const data = await response.data;
 
       // Transform the backend response to match your Event interface
       const transformedEvents: Event[] =
@@ -232,25 +232,21 @@ export default function AdminEventsPage() {
         requiresApproval: eventForm.requiresApproval,
       };
 
-      // Make API call to your backend
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/api/v1/portal/event/create`;
-
       try {
-        const response = await fetch(apiEndpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestPayload),
-        });
+        const response = await axiosAdmin.post("/event/create", requestPayload);
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+        if (response.status != 200) {
           throw new Error("Failed to create event");
         }
 
-        await response.json();
+        await fetchEvents();
+
+        if (response.status != 200) {
+          const errorData = await response.data.catch(() => ({}));
+          throw new Error("Failed to create event");
+        }
+
+        await response.data;
 
         await fetchEvents();
 
@@ -284,25 +280,14 @@ export default function AdminEventsPage() {
         )
       );
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const response = await fetch(
-        `${backendUrl}/api/v1/portal/event/${eventId}/publish`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            // Add authorization header if needed
-            // 'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axiosAdmin.put(`/event/${eventId}/publish`);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      if (response.status != 200) {
+        const errorData = await response.data.catch(() => ({}));
         throw new Error(errorData.message || "Failed to publish event");
       }
 
-      const responseData = await response.json();
+      const responseData = await response.data;
 
       // Update the event with the response data, handling case conversion
       if (responseData.data) {
@@ -375,25 +360,14 @@ export default function AdminEventsPage() {
         )
       );
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const response = await fetch(
-        `${backendUrl}/api/v1/portal/event/${eventId}/cancel`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            // Add authorization header if needed
-            // 'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axiosAdmin.put(`/event/${eventId}/cancel`);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      if (response.status != 200) {
+        const errorData = await response.data.catch(() => ({}));
         throw new Error(errorData.message || "Failed to cancel event");
       }
 
-      const responseData = await response.json();
+      const responseData = await response.data;
 
       // Update the event with the response data, handling case conversion
       if (responseData.data) {
@@ -475,23 +449,16 @@ export default function AdminEventsPage() {
       setEvents((prev) => prev.filter((event) => event.id !== eventToDelete));
 
       // Make API call to delete the event
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const response = await fetch(
-        `${backendUrl}/api/v1/portal/event/${eventToDelete}/delete`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axiosAdmin.delete(
+        `/event/${eventToDelete}/delete`
       );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      if (response.status != 200) {
+        const errorData = await response.data.catch(() => ({}));
         throw new Error(errorData.message || "Failed to delete event");
       }
 
-      const responseData = await response.json();
+      const responseData = await response.data;
 
       toast.success("Event deleted successfully");
       setDeleteModal({
