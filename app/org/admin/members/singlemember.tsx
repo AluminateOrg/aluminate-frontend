@@ -15,9 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import { UserPlus, CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+
 
 interface Group {
   id: string;
@@ -29,7 +29,8 @@ interface Group {
 }
 
 export default function AddSingleMember({ members, setMembers }: any) {
-  const [groups, setGroups] = useState<Group[]>([]);
+  // const [groups, setGroups] = useState<Group[]>([]);
+  const { groups } = useOrg();
   const [loading, setLoading] = useState(false);
   const [singleMemberForm, setSingleMemberForm] = useState({
     name: "",
@@ -42,24 +43,24 @@ export default function AddSingleMember({ members, setMembers }: any) {
     selectedGroups: [] as string[],
   });
 
-  useEffect(() => {
-    const fetchGroups = async () => {
-      try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-        const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-        const res = await fetch(`${apiEndpoint}/group/get/all`);
-        const data = await res.json();
-        if (res.ok) {
-          setGroups(data.data);
-        } else {
-          throw new Error(data.message || "Failed to load groups.");
-        }
-      } catch (error: any) {
-        toast.error(error.message);
-      }
-    };
-    fetchGroups();
-  }, []);
+  // useEffect(() => {
+  //   const fetchGroups = async () => {
+  //     try {
+  //       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  //       const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+  //       const res = await fetch(`${apiEndpoint}/group/get/all`);
+  //       const data = await res.json();
+  //       if (res.ok) {
+  //         setGroups(data.data);
+  //       } else {
+  //         throw new Error(data.message || "Failed to load groups.");
+  //       }
+  //     } catch (error: any) {
+  //       toast.error(error.message);
+  //     }
+  //   };
+  //   fetchGroups();
+  // }, []);
 
   const handleInputChange = (field: string, value: string | number) => {
     setSingleMemberForm((prev) => ({ ...prev, [field]: value }));
@@ -176,7 +177,7 @@ export default function AddSingleMember({ members, setMembers }: any) {
               Select groups the member should join.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {groups.map((group) => (
+              {Array.isArray(groups) && groups.map((group) => (
                 <div
                   key={group.id}
                   className={`border rounded-lg p-4 cursor-pointer transition-colors ${
