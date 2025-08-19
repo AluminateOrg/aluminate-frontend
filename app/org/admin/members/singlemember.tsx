@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 
 import { UserPlus, CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface Group {
   id: string;
@@ -45,11 +46,9 @@ export default function AddSingleMember({ members, setMembers }: any) {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-        const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-        const res = await fetch(`${apiEndpoint}/group/get/all`);
-        const data = await res.json();
-        if (res.ok) {
+        const res = await axiosAdmin.get(`/group/get/all`);
+        const data = res.data;
+        if (res.status === 200) {
           setGroups(data.data);
         } else {
           throw new Error(data.message || "Failed to load groups.");
@@ -89,23 +88,15 @@ export default function AddSingleMember({ members, setMembers }: any) {
         return;
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-      const response = await fetch(`${apiEndpoint}/member/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...singleMemberForm,
-          password: singleMemberForm.nic,
-          groupIds: singleMemberForm.selectedGroups,
-        }),
+      const response = await axiosAdmin.post(`/member/create`, {
+        ...singleMemberForm,
+        password: singleMemberForm.nic,
+        groupIds: singleMemberForm.selectedGroups,
       });
 
-      const result = await response.json();
+      const result = response.data;
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(result.message || "Failed to add member.");
       }
 

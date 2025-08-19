@@ -95,7 +95,7 @@ export default function AdminDashboard() {
   }
 
   const memberUsagePercent =
-    (organization.memberCount / organization.memberLimit) * 100;
+    (organization.currentMemberCount / organization.maxMemberCount) * 100;
   const isNearLimit = memberUsagePercent > 80;
 
   const handleAnnouncementInputChange = (
@@ -207,7 +207,9 @@ export default function AdminDashboard() {
         </div>
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
           <Badge
-            variant={organization.membershipFree === true ? "default" : "secondary"}
+            variant={
+              organization.membershipFree === true ? "default" : "secondary"
+            }
           >
             {organization.membershipFree ? "Free Plan" : "Paid Plan"}
           </Badge>
@@ -225,8 +227,8 @@ export default function AdminDashboard() {
                   Approaching Member Limit
                 </p>
                 <p className="text-sm text-orange-700 dark:text-orange-300">
-                  You're using {organization.memberCount} of{" "}
-                  {organization.memberLimit} members. Consider upgrading your
+                  You're using {organization.currentMemberCount} of{" "}
+                  {organization.maxMemberCount} members. Consider upgrading your
                   plan to add more members.
                 </p>
               </div>
@@ -246,11 +248,14 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{organization.memberCount}</div>
+            <div className="text-2xl font-bold">
+              {organization.currentMemberCount}
+            </div>
             <div className="space-y-2 mt-2">
               <Progress value={memberUsagePercent} className="h-2" />
               <p className="text-xs text-muted-foreground">
-                {organization.memberCount} of {organization.memberLimit} used
+                {organization.currentMemberCount} of{" "}
+                {organization.maxMemberCount} used
               </p>
             </div>
           </CardContent>
@@ -476,7 +481,7 @@ export default function AdminDashboard() {
                         className="rounded"
                       />
                       <Label htmlFor="all-members">
-                        All Members ({organization.memberCount} members)
+                        All Members ({organization.currentMemberCount} members)
                       </Label>
                     </div>
 
