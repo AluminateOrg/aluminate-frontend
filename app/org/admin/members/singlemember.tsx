@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus, CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
-
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
+import { useSelector, UseSelector } from "react-redux";
 
 interface Group {
   id: string;
@@ -29,9 +30,10 @@ interface Group {
 }
 
 export default function AddSingleMember({ members, setMembers }: any) {
-  // const [groups, setGroups] = useState<Group[]>([]);
-  const { groups } = useOrg();
+  const [groups, setGroups] = useState<Group[]>([]);
+  // const { groups } = useOrg();
   const [loading, setLoading] = useState(false);
+  const orgId = useSelector((state: any) => state.user?.organization.id);
   const [singleMemberForm, setSingleMemberForm] = useState({
     name: "",
     nic: "",
@@ -43,24 +45,24 @@ export default function AddSingleMember({ members, setMembers }: any) {
     selectedGroups: [] as string[],
   });
 
-  // useEffect(() => {
-  //   const fetchGroups = async () => {
-  //     try {
-  //       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-  //       const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-  //       const res = await fetch(`${apiEndpoint}/group/get/all`);
-  //       const data = await res.json();
-  //       if (res.ok) {
-  //         setGroups(data.data);
-  //       } else {
-  //         throw new Error(data.message || "Failed to load groups.");
-  //       }
-  //     } catch (error: any) {
-  //       toast.error(error.message);
-  //     }
-  //   };
-  //   fetchGroups();
-  // }, []);
+  console.log("orgId from redux: ", orgId);
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const res = await axiosAdmin.get(`/group/get/all`);
+        const data = res.data;
+        if (res.status === 200) {
+          setGroups(data.data);
+        } else {
+          throw new Error(data.message || "Failed to load groups.");
+        }
+      } catch (error: any) {
+        toast.error(error.message);
+      }
+    };
+    fetchGroups();
+  }, []);
 
   const handleInputChange = (field: string, value: string | number) => {
     setSingleMemberForm((prev) => ({ ...prev, [field]: value }));
@@ -90,23 +92,20 @@ export default function AddSingleMember({ members, setMembers }: any) {
         return;
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-      const response = await fetch(`${apiEndpoint}/member/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...singleMemberForm,
-          password: singleMemberForm.nic,
-          groupIds: singleMemberForm.selectedGroups,
-        }),
+      console.log("member creation function called with: ", singleMemberForm);
+
+      const response = await axiosAdmin.post(`/member/create`, {
+        ...singleMemberForm,
+        password: singleMemberForm.nic,
+        groupIds: singleMemberForm.selectedGroups,
+        organizationId: orgId,
       });
 
-      const result = await response.json();
+      console.log("response from the server: ", response);
 
-      if (!response.ok) {
+      const result = response.data;
+
+      if (response.status !== 200) {
         throw new Error(result.message || "Failed to add member.");
       }
 

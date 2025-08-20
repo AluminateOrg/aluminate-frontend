@@ -125,14 +125,15 @@ export default function MembersPage() {
             {members.length} Total Members
           </Badge>
           <Badge variant="outline">
-            {organization?.memberCount || 0} / {organization?.memberLimit || 0}{" "}
-            Used
+            {organization?.currentMemberCount || 0} /{" "}
+            {organization?.maxMemberCount || 0} Used
           </Badge>
         </div>
       </div>
 
       {organization &&
-        organization.memberCount >= organization.memberLimit * 0.9 && (
+        organization.currentMemberCount >=
+          organization.maxMemberCount * 0.9 && (
           <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
             <CardContent className="pt-6">
               <div className="flex items-center space-x-3">
@@ -142,9 +143,9 @@ export default function MembersPage() {
                     Approaching Member Limit
                   </p>
                   <p className="text-sm text-orange-700 dark:text-orange-300">
-                    You’re using {organization.memberCount} of{" "}
-                    {organization.memberLimit} members. Consider upgrading your
-                    plan.
+                    You’re using {organization.currentMemberCount} of{" "}
+                    {organization.maxMemberCount} members. Consider upgrading
+                    your plan.
                   </p>
                 </div>
               </div>
