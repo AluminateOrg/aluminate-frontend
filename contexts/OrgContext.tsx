@@ -71,7 +71,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 
   const fetchGroups = async () => {
     try {
-      const { data } = await axiosAdmin.get('/group/get/all');
+      const { data } = await axiosCommon.get('/group/get/all');
       console.log("Groups fetched from backend: ", data);
       if (data) {
         setGroups(data as Group[]);
