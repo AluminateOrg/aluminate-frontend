@@ -15,10 +15,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import { UserPlus, CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
+import { useSelector, UseSelector } from "react-redux";
 
 interface Group {
   id: string;
@@ -31,7 +31,9 @@ interface Group {
 
 export default function AddSingleMember({ members, setMembers }: any) {
   const [groups, setGroups] = useState<Group[]>([]);
+  // const { groups } = useOrg();
   const [loading, setLoading] = useState(false);
+  const orgId = useSelector((state: any) => state.user?.organization.id);
   const [singleMemberForm, setSingleMemberForm] = useState({
     name: "",
     nic: "",
@@ -42,6 +44,8 @@ export default function AddSingleMember({ members, setMembers }: any) {
     batch: 0,
     selectedGroups: [] as string[],
   });
+
+  console.log("orgId from redux: ", orgId);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -88,11 +92,16 @@ export default function AddSingleMember({ members, setMembers }: any) {
         return;
       }
 
+      console.log("member creation function called with: ", singleMemberForm);
+
       const response = await axiosAdmin.post(`/member/create`, {
         ...singleMemberForm,
         password: singleMemberForm.nic,
         groupIds: singleMemberForm.selectedGroups,
+        organizationId: orgId,
       });
+
+      console.log("response from the server: ", response);
 
       const result = response.data;
 
@@ -167,7 +176,7 @@ export default function AddSingleMember({ members, setMembers }: any) {
               Select groups the member should join.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {groups.map((group) => (
+              {Array.isArray(groups) && groups.map((group) => (
                 <div
                   key={group.id}
                   className={`border rounded-lg p-4 cursor-pointer transition-colors ${
