@@ -1,12 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { OrgProvider } from "@/contexts/OrgContext";
-import { PayHereProvider } from "@/contexts/PayHereContext";
-import { Toaster } from "@/components/ui/sonner";
+import { Providers } from "../components/InfoProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,16 +25,7 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        <ThemeProvider>
-          <AuthProvider>
-            <OrgProvider>
-              <PayHereProvider>
-                {children}
-                <Toaster />
-              </PayHereProvider>
-            </OrgProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

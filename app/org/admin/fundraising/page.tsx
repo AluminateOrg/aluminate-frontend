@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import {
@@ -174,7 +174,8 @@ export default function AdminFundraisingPage() {
     return mapping[type?.toUpperCase()] || "general";
   };
 
-  const fetchCampaigns = async () => {
+  // Fetch campaigns from backend
+  const fetchCampaigns = useCallback(async () => {
     setLoading(true);
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -218,11 +219,11 @@ export default function AdminFundraisingPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCampaigns();
-  }, []);
+  }, [fetchCampaigns]);
 
   // Event Handlers
   const handleInputChange = (

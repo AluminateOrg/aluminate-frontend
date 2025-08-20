@@ -32,9 +32,11 @@ import {
   Crown,
   AlertCircle,
   X,
+  CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface Group {
   id: string;
@@ -45,6 +47,7 @@ interface Group {
   createdAt: string;
   isActive: boolean;
   category: "professional" | "social" | "academic" | "hobby";
+  requiredApproval?: boolean;
 }
 
 interface GroupFormData {
@@ -52,6 +55,7 @@ interface GroupFormData {
   description: string;
   maxMembers: string;
   category: Group["category"];
+  requiredApproval?: boolean;
 }
 
 interface DeleteConfirmationModalProps {
@@ -60,6 +64,16 @@ interface DeleteConfirmationModalProps {
   onConfirm: () => void;
   groupName: string;
   isDeleting: boolean;
+}
+
+interface PendingRequest {
+  id: string;
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  groupId: string;
+  groupName: string;
+  requestDate: string;
 }
 
 const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
@@ -155,12 +169,15 @@ export default function AdminGroupsPage() {
   >("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
 
   const [groupForm, setGroupForm] = useState<GroupFormData>({
     name: "",
     description: "",
     maxMembers: "50",
     category: "professional",
+    requiredApproval: false,
   });
 
   const [deleteModal, setDeleteModal] = useState({
@@ -176,17 +193,15 @@ export default function AdminGroupsPage() {
     setLoading(true);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+      const response = await axiosAdmin.get("/group/get/all");
 
-      const response = await fetch(`${apiEndpoint}/group/get/all`);
-
-      if (!response.ok) {
+      if (response.status != 200) {
         throw new Error("Failed to fetch groups");
       }
 
-      const Data = await response.json();
+      const Data = response.data;
       const groups = Data.data;
+      console.log("Fetched groups from API:", groups);
 
       // Transform API response to match Group interface
       const transformedGroups: Group[] = groups.map((group: any) => ({
@@ -198,9 +213,11 @@ export default function AdminGroupsPage() {
         createdAt: group.createdDate, // Transform `createdDate` to `createdAt`
         isActive: group.active, // Transform `active` to `isActive`
         category: group.category.toLowerCase() as Group["category"], // Ensure lowercase categories
+        requiredApproval: group.requiredApproval || false, // Default to false if not provided
       }));
 
       setGroups(transformedGroups);
+      console.log("Fetched groups:", transformedGroups);
     } catch (error) {
       console.error("Error fetching groups:", error);
       toast.error("Failed to load groups. Please try again.");
@@ -213,6 +230,89 @@ export default function AdminGroupsPage() {
     fetchGroups();
   }, []);
 
+  const fetchPendingRequests = async () => {
+    setRequestsLoading(true);
+    try {
+      const response = await axiosAdmin.get("/group/get/pending-requests");
+
+      if (response.status != 200) {
+        throw new Error("Failed to fetch pending requests");
+      }
+
+      const data = await response.data;
+      setPendingRequests(data.data || []);
+    } catch (error) {
+      console.error("Error fetching pending requests:", error);
+      toast.error("Failed to load pending requests");
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  // Add this useEffect to fetch pending requests
+  useEffect(() => {
+    fetchPendingRequests();
+  }, []);
+
+  const handleApproveRequest = async (groupId: string, memberId: string) => {
+    try {
+      const response = await axiosAdmin.put(
+        `/group/${groupId}/approve/${memberId}`
+      );
+
+      if (response.status != 200) {
+        const errorData = await response.data;
+        if (errorData.message?.includes("maximum capacity")) {
+          toast.error("Cannot approve: Group has reached maximum capacity");
+        } else {
+          toast.error(errorData.message || "Failed to approve request");
+        }
+        return;
+      }
+
+      // Remove from pending requests
+      setPendingRequests((prev) =>
+        prev.filter(
+          (req) => !(req.groupId === groupId && req.memberId === memberId)
+        )
+      );
+
+      // Refresh groups to update member count
+      await fetchGroups();
+
+      toast.success("Join request approved successfully!");
+    } catch (error) {
+      console.error("Error approving request:", error);
+      toast.error("Failed to approve request. Please try again.");
+    }
+  };
+
+  const handleRejectRequest = async (groupId: string, memberId: string) => {
+    try {
+      const response = await axiosAdmin.put(
+        `/group/${groupId}/reject/${memberId}`
+      );
+
+      if (response.status != 200) {
+        const errorData = await response.data.catch(() => ({}));
+        toast.error(errorData.message || "Failed to reject request");
+        return;
+      }
+
+      // Remove from pending requests
+      setPendingRequests((prev) =>
+        prev.filter(
+          (req) => !(req.groupId === groupId && req.memberId === memberId)
+        )
+      );
+
+      toast.success("Join request rejected successfully!");
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+      toast.error("Failed to reject request. Please try again.");
+    }
+  };
+
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -224,26 +324,20 @@ export default function AdminGroupsPage() {
         return;
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-      const response = await fetch(`${apiEndpoint}/group/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: groupForm.name,
-          description: groupForm.description,
-          maxMembers: parseInt(groupForm.maxMembers, 10),
-          category: groupForm.category.toUpperCase(),
-        }),
-      });
+      const payload = {
+        name: groupForm.name,
+        description: groupForm.description,
+        maxMembers: parseInt(groupForm.maxMembers, 10),
+        category: groupForm.category.toUpperCase(),
+        requiredApproval: groupForm.requiredApproval || false,
+      };
+      const response = await axiosAdmin.post("/group/create", payload);
 
-      if (!response.ok) {
+      if (response.status != 200) {
         throw new Error("Failed to create group");
       }
 
-      await response.json();
+      await response.data;
 
       await fetchGroups();
 
@@ -263,10 +357,14 @@ export default function AdminGroupsPage() {
       description: "",
       maxMembers: "50",
       category: "professional",
+      requiredApproval: false,
     });
   };
 
-  const handleInputChange = (field: keyof GroupFormData, value: string) => {
+  const handleInputChange = (
+    field: keyof GroupFormData,
+    value: string | boolean
+  ) => {
     setGroupForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -277,20 +375,9 @@ export default function AdminGroupsPage() {
     setGroups(updatedGroups);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
+      const response = await axiosAdmin.put(`/group/${groupId}/toggle-status`);
 
-      const response = await fetch(
-        `${apiEndpoint}/group/${groupId}/toggle-status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
+      if (response.status != 200) {
         throw new Error("Failed to toggle group status");
       }
 
@@ -325,21 +412,11 @@ export default function AdminGroupsPage() {
       );
       setGroups(updatedGroups);
 
-      // Backend API call to delete the group
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-
-      const response = await fetch(
-        `${apiEndpoint}/group/${deleteModal.groupId}/delete`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axiosAdmin.delete(
+        `/group/${deleteModal.groupId}/delete`
       );
 
-      if (!response.ok) {
+      if (response.status != 200) {
         throw new Error("Failed to delete the group");
       }
 
@@ -391,9 +468,12 @@ export default function AdminGroupsPage() {
     total: groups.length,
     active: groups.filter((g) => g.isActive).length,
     totalMembers: groups.reduce((sum, g) => sum + g.currentMembers, 0),
-    avgMembersPerGroup: Math.round(
-      groups.reduce((sum, g) => sum + g.currentMembers, 0) / groups.length
-    ),
+    avgMembersPerGroup:
+      groups.length === 0
+        ? 0
+        : Math.round(
+            groups.reduce((sum, g) => sum + g.currentMembers, 0) / groups.length
+          ),
   };
 
   const getCategoryColor = (category: Group["category"]) => {
@@ -472,10 +552,126 @@ export default function AdminGroupsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Group Overview</TabsTrigger>
+          <TabsTrigger value="pending" className="relative">
+            Pending Requests
+            {pendingRequests.length > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 w-5 text-xs">
+                {pendingRequests.length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="pending" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <UserPlus className="h-5 w-5" />
+                <span>Pending Join Requests</span>
+              </CardTitle>
+              <CardDescription>
+                Review and manage group join requests
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {requestsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <LoadingSpinner size="lg" />
+                  <span className="ml-2">Loading pending requests...</span>
+                </div>
+              ) : pendingRequests.length === 0 ? (
+                <div className="text-center py-8">
+                  <UserPlus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    No Pending Requests
+                  </h3>
+                  <p className="text-muted-foreground">
+                    All join requests have been processed.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingRequests.map((request) => (
+                    <div
+                      key={`${request.groupId}-${request.memberId}`}
+                      className="border rounded-lg p-4 hover:bg-accent transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage
+                              src={`https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1`}
+                            />
+                            <AvatarFallback>
+                              {request.memberName
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h4 className="font-medium">
+                              {request.memberName}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              {request.memberEmail}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-4">
+                          <div className="text-right">
+                            <p className="font-medium">{request.groupName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Requested{" "}
+                              {new Date(
+                                request.requestDate
+                              ).toLocaleDateString()}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleApproveRequest(
+                                  request.groupId,
+                                  request.memberId
+                                )
+                              }
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleRejectRequest(
+                                  request.groupId,
+                                  request.memberId
+                                )
+                              }
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="overview" className="space-y-6">
           {/* Create Group Form */}
@@ -551,6 +747,34 @@ export default function AdminGroupsPage() {
                       rows={3}
                       required
                     />
+                  </div>
+
+                  {/* Add the new checkbox here */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="requiresApproval"
+                        checked={groupForm.requiredApproval}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "requiredApproval",
+                            e.target.checked
+                          )
+                        }
+                        className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
+                      />
+                      <Label
+                        htmlFor="requiresApproval"
+                        className="text-sm font-medium"
+                      >
+                        Requires approval to join
+                      </Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground ml-6">
+                      When enabled, members will need admin approval before
+                      joining this group
+                    </p>
                   </div>
 
                   <div className="flex justify-end space-x-2 pt-4 border-t">
@@ -669,6 +893,24 @@ export default function AdminGroupsPage() {
                               Created{" "}
                               {new Date(group.createdAt).toLocaleDateString()}
                             </span>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            {group.requiredApproval ? (
+                              <>
+                                <AlertCircle className="h-4 w-4 text-orange-500" />
+                                <span className="text-orange-600">
+                                  Approval Required
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <span className="text-green-600">
+                                  Open Join
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
 
