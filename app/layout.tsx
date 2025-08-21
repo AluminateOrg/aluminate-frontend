@@ -19,10 +19,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* PayHere script loaded before interactive for better performance */}
-        <Script
-          src="https://www.payhere.lk/lib/payhere.js"
-          strategy="beforeInteractive"
-        />
+
       </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
