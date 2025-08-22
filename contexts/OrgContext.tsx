@@ -45,27 +45,25 @@ const OrgContext = createContext<OrgContextType | undefined>(undefined);
 export function OrgProvider({ children }: { children: React.ReactNode }) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user ,checking} = useAuth();
+  const { user, checking } = useAuth();
   const dispatch = useDispatch();
 
-  const adminId = useSelector((state: any) => state.user.admin?.id)
-  const isAuthenticated = useSelector((state: any) => state.user.isAuthenticated);
+  const adminId = useSelector((state: any) => state.user.admin?.id);
+  const isAuthenticated = useSelector(
+    (state: any) => state.user.isAuthenticated
+  );
   const organization = useSelector((state: any) => state.user.organization);
   console.log("admin id from redux: >>>", adminId);
 
-
   const fetchOrganization = async () => {
-
     try {
-      if(isAuthenticated) {
-          const response = await axiosAdmin.get(`/get-org/${adminId}`);
-          console.log("response from the backend: ", response.data);
-      if (response.data) {
-        dispatch(setOrganizationRedux(response.data as Organization));
+      if (isAuthenticated) {
+        const response = await axiosAdmin.get(`/get-org/${adminId}`);
+        console.log("response from the backend: ", response.data);
+        if (response.data) {
+          dispatch(setOrganizationRedux(response.data as Organization));
+        }
       }
-      }
-      
-
     } catch (error) {
       console.error("Failed to fetch organization:", error);
     } finally {
@@ -75,7 +73,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 
   const fetchGroups = async () => {
     try {
-      const { data } = await axiosCommon.get('/group/get/all');
+      const { data } = await axiosCommon.get("/group/get/all");
       console.log("Groups fetched from backend: ", data);
       if (data) {
         setGroups(data as Group[]);
@@ -87,8 +85,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       console.error("Failed to fetch groups:", error);
       toast.error("Failed to fetch groups.");
     }
-  }
-
+  };
 
   const updateSubscription = async (tier: SubscriptionTier) => {
     if (!organization) return;
@@ -108,12 +105,11 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if(!checking) {
+    if (!checking) {
       console.log("checking completed, fetching organization and groups");
       fetchOrganization();
-    fetchGroups();
+      fetchGroups();
     }
-    
   }, [checking]);
 
   useEffect(() => {
@@ -123,7 +119,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       }, 10000);
       return () => clearInterval(fetchData);
     }
-  })
+  });
 
   return (
     <OrgContext.Provider
