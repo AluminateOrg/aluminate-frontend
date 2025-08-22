@@ -30,9 +30,9 @@ import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 export default function MemberDashboard() {
   const { user } = useAuth();
   const { organization, groups, loading: orgLoading } = useOrg();
-  const { events, loading: eventsLoading } = useCalendar(user?.orgId || "");
+  const { events, loading: eventsLoading } = useCalendar(user?.id || "");
 
-  const loading = orgLoading || eventsLoading;
+  const loading = eventsLoading;
 
   if (loading) {
     return (
@@ -58,7 +58,10 @@ export default function MemberDashboard() {
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg p-6">
         <div className="flex items-center space-x-4">
           <Avatar className="h-16 w-16">
-            <AvatarImage src={user?.avatar} alt={user?.name} />
+            <AvatarImage
+              src={user?.avatar ?? undefined}
+              alt={user?.name ?? undefined}
+            />
             <AvatarFallback className="text-lg">
               {user?.name
                 ?.split(" ")
@@ -71,7 +74,7 @@ export default function MemberDashboard() {
               Welcome back, {user?.name || "User"}!
             </h1>
             <p className="text-muted-foreground">
-              {user?.designation} at {organization?.name}
+              {user?.designation} at {organization?.organizationName}
             </p>
             {user?.joinedAt && (
               <Badge variant="secondary" className="mt-1">
@@ -196,29 +199,30 @@ export default function MemberDashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {Array.isArray(recentGroups) && recentGroups.map((group) => (
-                  <div
-                    key={group.id}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-medium">
-                        {group.name.charAt(0)}
+                {Array.isArray(recentGroups) &&
+                  recentGroups.map((group) => (
+                    <div
+                      key={group.id}
+                      className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-medium">
+                          {group.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-foreground">
+                            {group.name}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            {group.currentMembers} members
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">
-                          {group.name}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">
-                          {group.currentMembers} members
-                        </p>
-                      </div>
+                      <Button variant="ghost" size="sm">
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      <MessageSquare className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </CardContent>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { set } from "date-fns";
+import axiosCommon from "@/axiosInstances/axiosCommon";
 
 export interface CalendarEvent {
   id: string;
@@ -31,9 +32,7 @@ export function useCalendar(orgId: string, groupId?: string) {
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/event/get/all`
-      );
+      const response = await axiosCommon.get(`/event/get/all`);
       console.log("Fetched events:", response.data);
 
       if (response.data && Array.isArray(response.data.data)) {

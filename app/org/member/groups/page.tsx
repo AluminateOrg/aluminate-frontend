@@ -17,6 +17,7 @@ import { Users, Search, Filter, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { GroupCard } from "./group-card";
 import { get } from "node:http";
+import axiosMember from "@/axiosInstances/axiosMember";
 
 interface GroupMembershipStatus {
   groupId: string;
@@ -39,10 +40,10 @@ export default function GroupsPage() {
     if (!user?.id || !groups.length) return;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/member/${user.id}/groups/membership-status`
+      const response = await axiosMember.get(
+        `/member/${user.id}/groups/membership-status`
       );
-      const data = await response.json();
+      const data = response.data;
 
       const statuses: GroupMembershipStatus[] = data.data.map((group: any) => ({
         groupId: group.groupId,
@@ -69,22 +70,13 @@ export default function GroupsPage() {
     setJoinLoading(groupId);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-
-      const response = await fetch(`${apiEndpoint}/group/join`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          memberId: parseInt(user.id),
-          groupId: parseInt(groupId),
-        }),
+      const response = await axiosMember.post("/group/join", {
+        memberId: parseInt(user.id),
+        groupId: parseInt(groupId),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      if (response.status !== 200) {
+        const errorData = response.data;
 
         // Handle specific error cases
         if (response.status === 400) {
@@ -103,7 +95,7 @@ export default function GroupsPage() {
         return;
       }
 
-      const responseData = await response.json();
+      const responseData = await response.data;
       const group = groups.find((g) => g.id === groupId);
 
       // Update membership status based on group approval requirements
@@ -132,16 +124,13 @@ export default function GroupsPage() {
     if (!user?.id) return;
 
     try {
-      // TODO: Implement leave group functionality
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const apiEndpoint = `${backendUrl}/${process.env.NEXT_PUBLIC_API_PREFIX}`;
-      const response = await fetch(
-        `${apiEndpoint}/group/${groupId}/leave/${user.id}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-        }
+      const response = await axiosMember.delete(
+        `/group/${groupId}/leave/${user.id}`
       );
+      if (response.status !== 200) {
+        toast.error("Failed to leave group. Please try again.");
+        return;
+      }
 
       setMembershipStatuses((prev) =>
         prev.map((status) =>
