@@ -32,6 +32,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { set } from "date-fns";
+import { useSelector } from "react-redux";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 export default function BulkCsvUpload() {
   const { groups } = useOrg();
@@ -51,6 +53,7 @@ export default function BulkCsvUpload() {
 
   const [finalizeProgress, setFinalizeProgress] = useState(0);
   const [finalizing, setFinalizing] = useState(false);
+  const orgId = useSelector((state: any) => state.user?.organization?.id)
 
   const handleGroupSelection = (groupId: string) => {
     setBulkUploadForm((prev) => ({
@@ -71,7 +74,10 @@ export default function BulkCsvUpload() {
     }
   };
 
+
+
   console.log("selected group data: ", bulkUploadForm.selectedGroups);
+  console.log("groups from redux: ", groups);
 
   const handleCSVUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +96,7 @@ export default function BulkCsvUpload() {
     const formData = new FormData();
     formData.append("file", csvFile);
     formData.append("groups", JSON.stringify(bulkUploadForm.selectedGroups));
+    formData.append("organizationId", orgId || "");
 
     console.log("formData::", formData.get("groups"));
 
@@ -159,21 +166,17 @@ export default function BulkCsvUpload() {
     const formData = new FormData();
     formData.append("rows", JSON.stringify(editableRows));
     formData.append("groups", JSON.stringify(bulkUploadForm.selectedGroups));
+    formData.append("organizationId", JSON.stringify(orgId));
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/admin/bulk-finalize`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            rows: editableRows,
-            groups: bulkUploadForm.selectedGroups,
-          }),
-        }
-      );
+      
+      const response = await axiosAdmin.post('/member/bulk-finalize', formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
 
-      const data = await response.json();
+      const data = await response.data;
       console.log("data from finalize:", data);
       setUploadResult(data);
 
