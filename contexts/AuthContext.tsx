@@ -109,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               joinedAt: data.user.createdAt || null,
             })
           );
+          setChecking(false);
 
           //setUser in context
           setUser({
@@ -229,7 +230,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, loading, getInfo, setUser, setLoading ,checking}}
+      value={{
+        user,
+        login,
+        logout,
+        loading,
+        getInfo,
+        setUser,
+        setLoading,
+        checking,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import axiosMember from "@/axiosInstances/axiosMember";
 import {
   Card,
   CardContent,
@@ -24,6 +25,7 @@ import {
   Gift,
   Award,
   ArrowLeft,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -44,6 +46,11 @@ interface Campaign {
     | "other";
   donorCount: number;
   isActive: boolean;
+  progressPercentage?: number;
+  isExpired?: boolean;
+  canAcceptDonations?: boolean;
+  daysRemaining?: number;
+  status?: string;
 }
 
 interface Donation {
@@ -53,6 +60,17 @@ interface Donation {
   amount: number;
   date: string;
   isAnonymous: boolean;
+  status: string;
+}
+
+interface Member {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  nic?: string;
+  regNo?: string;
+  batch?: number;
 }
 
 export default function DonationsPage() {
@@ -63,26 +81,26 @@ export default function DonationsPage() {
   );
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [memberProfile, setMemberProfile] = useState<Member | null>(null);
+  const [donationStats, setDonationStats] = useState<any>(null);
+  const [myDonations, setMyDonations] = useState<Donation[]>([]);
 
-  // Mock donations data - replace with actual API call
-  const myDonations: Donation[] = [
-    {
-      id: "1",
-      campaignId: "1",
-      campaignTitle: "Student Scholarship Fund",
-      amount: 100,
-      date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: false,
-    },
-    {
-      id: "2",
-      campaignId: "2",
-      campaignTitle: "Campus Infrastructure Upgrade",
-      amount: 50,
-      date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: true,
-    },
-  ];
+  // ===========================================
+  // UTILITY FUNCTIONS
+  // ===========================================
+
+  // Safe number conversion for BigDecimal strings
+  const safeParseNumber = (value: string | number | undefined): number => {
+    if (typeof value === "number") return value;
+    if (!value || value === "") return 0;
+
+    try {
+      const parsed = parseFloat(value.toString());
+      return isNaN(parsed) ? 0 : parsed;
+    } catch {
+      return 0;
+    }
+  };
 
   // Map backend enum to frontend category
   const mapCategoryFromBackend = (type: string): Campaign["category"] => {
@@ -97,59 +115,238 @@ export default function DonationsPage() {
     return mapping[type?.toUpperCase()] || "general";
   };
 
+  // ===========================================
+  // API FUNCTIONS
+  // ===========================================
+
+  const handleApiError = (error: any, defaultMessage: string) => {
+    console.error("API Error:", error);
+
+    if (error.response) {
+      const status = error.response.status;
+      const message = error.response.data?.message || error.response.statusText;
+
+      if (status === 401 || status === 403) {
+        toast.error("Authentication required. Please login again.");
+      } else if (status >= 400 && status < 500) {
+        toast.error(message || "Invalid request");
+      } else if (status >= 500) {
+        toast.error("Server error. Please try again later.");
+      } else {
+        toast.error(message || defaultMessage);
+      }
+    } else if (error.request) {
+      toast.error("Network error. Please check your connection.");
+    } else {
+      toast.error(error.message || defaultMessage);
+    }
+  };
+
+  // Fetch member profile
+  const fetchMemberProfile = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      // Use the user data from auth as member profile
+      const userAny = user as any;
+      const profile: Member = {
+        id: parseInt(user.id),
+        name: user.name || "",
+        email: user.email || "",
+        phone: userAny.phone || undefined,
+        nic: userAny.nic || undefined,
+        regNo: userAny.regNo || undefined,
+        batch: userAny.batch || undefined,
+      };
+
+      setMemberProfile(profile);
+    } catch (error) {
+      console.error("Error setting member profile:", error);
+      handleApiError(error, "Failed to load member profile");
+    }
+  }, [user]);
+
   // Fetch campaigns from backend
   const fetchCampaigns = useCallback(async () => {
     setLoading(true);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const response = await fetch(
-        `${backendUrl}/api/v1/portal/campaign/get/all`
-      );
+      console.log("Fetching campaigns...");
+      const response = await axiosMember.get("/campaign/active");
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch campaigns");
+      console.log("Campaign response:", response);
+
+      if (response.status === 200 && response.data) {
+        // Handle different response structures
+        let campaignsData = [];
+
+        if (response.data.data && Array.isArray(response.data.data)) {
+          campaignsData = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          campaignsData = response.data;
+        } else {
+          console.warn("Unexpected response format:", response.data);
+          campaignsData = [];
+        }
+
+        console.log("Raw campaigns data:", campaignsData);
+
+        const transformedCampaigns: Campaign[] = campaignsData
+          .map((campaign: any) => {
+            try {
+              return {
+                id: campaign.id.toString(),
+                title: campaign.title || "",
+                description: campaign.description || "",
+                goal: safeParseNumber(campaign.goal),
+                raised: safeParseNumber(campaign.raised),
+                endDate: campaign.endDate
+                  ? new Date(campaign.endDate).toISOString()
+                  : new Date().toISOString(),
+                category: mapCategoryFromBackend(campaign.type),
+                donorCount: campaign.donorCount || 0,
+                isActive: campaign.isActive || false,
+                progressPercentage: campaign.progressPercentage || 0,
+                isExpired: campaign.isExpired || false,
+                canAcceptDonations: campaign.canAcceptDonations !== false,
+                daysRemaining: campaign.daysRemaining || 0,
+                status: campaign.status || "ACTIVE",
+              };
+            } catch (error) {
+              console.error(
+                "Error transforming individual campaign:",
+                campaign,
+                error
+              );
+              return null;
+            }
+          })
+          .filter(Boolean); // Remove null values
+
+        console.log("Transformed campaigns:", transformedCampaigns);
+        setCampaigns(transformedCampaigns);
       }
-
-      const data = await response.json();
-
-      // Transform the backend response to match your Campaign interface
-      const transformedCampaigns: Campaign[] =
-        data.data?.map((campaign: any) => ({
-          id: campaign.id.toString(),
-          title: campaign.title,
-          description: campaign.description || "",
-          goal: campaign.goal || 0,
-          raised: campaign.raised || 0,
-          endDate: campaign.endDate
-            ? new Date(campaign.endDate).toISOString()
-            : new Date().toISOString(),
-          category: mapCategoryFromBackend(campaign.type),
-          donorCount: campaign.donorCount || 0,
-          isActive: campaign.isActive,
-        })) || [];
-
-      // Filter only active campaigns for donations
-      const activeCampaigns = transformedCampaigns.filter((c) => c.isActive);
-      setCampaigns(activeCampaigns);
     } catch (error) {
       console.error("Error fetching campaigns:", error);
-      toast.error("Failed to load campaigns. Please try again.");
+      setCampaigns([]); // Set empty array on error
+      handleApiError(error, "Failed to load campaigns. Please try again.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Fetch campaigns on component mount
-  useEffect(() => {
-    fetchCampaigns();
-  }, [fetchCampaigns]);
+  // Fetch member donations
+  const fetchMyDonations = useCallback(async () => {
+    if (!user?.id) return;
 
-  const totalDonated = myDonations.reduce(
-    (sum, donation) => sum + donation.amount,
-    0
-  );
+    try {
+      console.log("Fetching my donations...");
+      const response = await axiosMember.get(
+        `/donations/my-donations/${user.id}`
+      );
+
+      if (response.status === 200 && response.data) {
+        // Handle different response structures
+        let donationsData = [];
+
+        if (response.data.data && Array.isArray(response.data.data)) {
+          donationsData = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          donationsData = response.data;
+        } else {
+          console.warn("Unexpected donations response format:", response.data);
+          donationsData = [];
+        }
+
+        const transformedDonations: Donation[] = donationsData
+          .map((donation: any) => {
+            try {
+              return {
+                id: donation.id.toString(),
+                campaignId: donation.campaignId.toString(),
+                campaignTitle: donation.campaignTitle || "",
+                amount: safeParseNumber(donation.amount),
+                date: donation.date,
+                isAnonymous: donation.isAnonymous || false,
+                status: donation.status || "COMPLETED",
+              };
+            } catch (error) {
+              console.error(
+                "Error transforming individual donation:",
+                donation,
+                error
+              );
+              return null;
+            }
+          })
+          .filter(Boolean); // Remove null values
+
+        setMyDonations(transformedDonations);
+      }
+    } catch (error) {
+      console.error("Error fetching donations:", error);
+      handleApiError(error, "Failed to load donation history.");
+    }
+  }, [user?.id]);
+
+  // Fetch member donation statistics
+  const fetchDonationStats = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      console.log("Fetching donation stats...");
+      const response = await axiosMember.get(`/donations/stats/${user.id}`);
+
+      if (response.status === 200 && response.data) {
+        const statsData = response.data.data || response.data;
+
+        // Transform BigDecimal strings to numbers for frontend
+        const transformedStats = {
+          ...statsData,
+          totalDonated: safeParseNumber(statsData.totalDonated),
+          totalDonations: statsData.totalDonations || 0,
+          campaignsSupported: statsData.campaignsSupported || 0,
+          averageDonation: safeParseNumber(statsData.averageDonation),
+        };
+
+        setDonationStats(transformedStats);
+      }
+    } catch (error) {
+      console.error("Error fetching donation stats:", error);
+      // Don't show error toast for stats as it's not critical
+    }
+  }, [user?.id]);
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    if (user?.id) {
+      fetchMemberProfile();
+      fetchCampaigns();
+      fetchMyDonations();
+      fetchDonationStats();
+    }
+  }, [
+    user?.id,
+    fetchMemberProfile,
+    fetchCampaigns,
+    fetchMyDonations,
+    fetchDonationStats,
+  ]);
+
+  const totalDonated = donationStats?.totalDonated || 0;
+  const totalDonations = donationStats?.totalDonations || 0;
+  const campaignsSupported = donationStats?.campaignsSupported || 0;
 
   const handleDonateClick = (campaign: Campaign) => {
+    if (!memberProfile) {
+      toast.error("Member profile not loaded. Please refresh the page.");
+      return;
+    }
+
+    if (!campaign.canAcceptDonations) {
+      toast.error("This campaign is not currently accepting donations.");
+      return;
+    }
+
     setSelectedCampaign(campaign);
     setShowPaymentForm(true);
   };
@@ -158,8 +355,10 @@ export default function DonationsPage() {
     toast.success("Thank you for your donation!");
     setShowPaymentForm(false);
     setSelectedCampaign(null);
-    // Refresh campaigns to show updated amounts
+    // Refresh data to show updated amounts
     fetchCampaigns();
+    fetchMyDonations();
+    fetchDonationStats();
   };
 
   const handlePaymentCancel = () => {
@@ -204,8 +403,32 @@ export default function DonationsPage() {
     }
   };
 
+  const getStatusBadge = (campaign: Campaign) => {
+    if (!campaign.canAcceptDonations) {
+      return (
+        <Badge variant="destructive">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          Not Accepting Donations
+        </Badge>
+      );
+    }
+    if (
+      campaign.daysRemaining !== undefined &&
+      campaign.daysRemaining <= 7 &&
+      campaign.daysRemaining > 0
+    ) {
+      return (
+        <Badge variant="outline" className="border-orange-500 text-orange-700">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          {campaign.daysRemaining} days left
+        </Badge>
+      );
+    }
+    return null;
+  };
+
   // Show payment form
-  if (showPaymentForm && selectedCampaign && user) {
+  if (showPaymentForm && selectedCampaign && memberProfile) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <div className="flex items-center space-x-4 mb-6">
@@ -217,12 +440,7 @@ export default function DonationsPage() {
 
         <PaymentForm
           campaign={selectedCampaign}
-          member={{
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-          }}
+          member={memberProfile}
           onSuccess={handlePaymentSuccess}
           onCancel={handlePaymentCancel}
           onError={handlePaymentError}
@@ -244,7 +462,7 @@ export default function DonationsPage() {
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
           <Badge variant="outline">
             <DollarSign className="h-3 w-3 mr-1" />
-            LKR {totalDonated} Total Donated
+            LKR {totalDonated.toLocaleString()} Total Donated
           </Badge>
         </div>
       </div>
@@ -254,7 +472,7 @@ export default function DonationsPage() {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-primary">
-              LKR {totalDonated}
+              LKR {totalDonated.toLocaleString()}
             </div>
             <p className="text-sm text-muted-foreground">
               Your Total Donations
@@ -264,17 +482,19 @@ export default function DonationsPage() {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-primary">
-              {myDonations.length}
+              {totalDonations}
             </div>
-            <p className="text-sm text-muted-foreground">Campaigns Supported</p>
+            <p className="text-sm text-muted-foreground">
+              Total Donations Made
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-primary">
-              {campaigns.length}
+              {campaignsSupported}
             </div>
-            <p className="text-sm text-muted-foreground">Active Campaigns</p>
+            <p className="text-sm text-muted-foreground">Campaigns Supported</p>
           </CardContent>
         </Card>
       </div>
@@ -308,17 +528,8 @@ export default function DonationsPage() {
             /* Active Campaigns */
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {campaigns.map((campaign) => {
-                const progressPercentage =
-                  campaign.goal > 0
-                    ? (campaign.raised / campaign.goal) * 100
-                    : 0;
-                const daysLeft = Math.max(
-                  0,
-                  Math.ceil(
-                    (new Date(campaign.endDate).getTime() - Date.now()) /
-                      (1000 * 60 * 60 * 24)
-                  )
-                );
+                const progressPercentage = campaign.progressPercentage || 0;
+                const daysLeft = campaign.daysRemaining || 0;
 
                 return (
                   <Card key={campaign.id} className="card-hover">
@@ -332,12 +543,17 @@ export default function DonationsPage() {
                             {campaign.description}
                           </CardDescription>
                         </div>
-                        <Badge className={getCategoryColor(campaign.category)}>
-                          {getCategoryIcon(campaign.category)}
-                          <span className="ml-1 capitalize">
-                            {campaign.category}
-                          </span>
-                        </Badge>
+                        <div className="flex flex-col space-y-2">
+                          <Badge
+                            className={getCategoryColor(campaign.category)}
+                          >
+                            {getCategoryIcon(campaign.category)}
+                            <span className="ml-1 capitalize">
+                              {campaign.category}
+                            </span>
+                          </Badge>
+                          {getStatusBadge(campaign)}
+                        </div>
                       </div>
                     </CardHeader>
 
@@ -361,7 +577,9 @@ export default function DonationsPage() {
                           <span>
                             {daysLeft > 0
                               ? `${daysLeft} days left`
-                              : "Campaign ended"}
+                              : campaign.isExpired
+                              ? "Campaign ended"
+                              : "Active"}
                           </span>
                         </div>
                       </div>
@@ -382,10 +600,14 @@ export default function DonationsPage() {
                       <div className="pt-2 border-t">
                         <Button
                           onClick={() => handleDonateClick(campaign)}
-                          disabled={daysLeft === 0}
+                          disabled={
+                            !campaign.canAcceptDonations || campaign.isExpired
+                          }
                           className="w-full"
                         >
-                          {daysLeft === 0 ? (
+                          {!campaign.canAcceptDonations ? (
+                            "Not Accepting Donations"
+                          ) : campaign.isExpired ? (
                             "Campaign Ended"
                           ) : (
                             <>
@@ -424,14 +646,21 @@ export default function DonationsPage() {
                         <h4 className="font-medium">
                           {donation.campaignTitle}
                         </h4>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(donation.date), "MMM d, yyyy")}
-                          {donation.isAnonymous && " • Anonymous donation"}
-                        </p>
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                          <span>
+                            {format(new Date(donation.date), "MMM d, yyyy")}
+                          </span>
+                          {donation.isAnonymous && (
+                            <span>• Anonymous donation</span>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {donation.status}
+                          </Badge>
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-semibold text-primary">
-                          LKR {donation.amount}
+                          LKR {donation.amount.toLocaleString()}
                         </div>
                         <Badge variant="outline" className="text-xs">
                           <Heart className="h-3 w-3 mr-1" />
@@ -472,7 +701,7 @@ export default function DonationsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-primary">
-                      LKR {totalDonated}
+                      LKR {totalDonated.toLocaleString()}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Total Contributed
@@ -480,7 +709,7 @@ export default function DonationsPage() {
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-primary">
-                      {myDonations.length}
+                      {campaignsSupported}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Campaigns Supported
@@ -488,16 +717,14 @@ export default function DonationsPage() {
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-primary">
-                      {Math.round(
-                        (totalDonated /
-                          campaigns.reduce((sum, c) => sum + c.goal, 0)) *
-                          100 *
-                          100
-                      ) / 100}
-                      %
+                      {donationStats?.averageDonation
+                        ? `LKR ${Math.round(
+                            donationStats.averageDonation
+                          ).toLocaleString()}`
+                        : "LKR 0"}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Of Total Goals
+                      Average Donation
                     </p>
                   </div>
                 </div>
