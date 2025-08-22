@@ -193,7 +193,7 @@ export default function MemberDashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {orgLoading ? (
+            {loading ? (
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner size="md" />
               </div>
