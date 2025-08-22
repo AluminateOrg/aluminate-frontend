@@ -19,6 +19,7 @@ import { UserPlus, CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
 import { useSelector, UseSelector } from "react-redux";
+import axiosCommon from "@/axiosInstances/axiosCommon";
 
 interface Group {
   id: string;
@@ -50,7 +51,7 @@ export default function AddSingleMember({ members, setMembers }: any) {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const res = await axiosAdmin.get(`/group/get/all`);
+        const res = await axiosCommon.get(`/group/get/all`);
         const data = res.data;
         if (res.status === 200) {
           setGroups(data.data);
