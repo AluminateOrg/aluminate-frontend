@@ -45,22 +45,26 @@ const OrgContext = createContext<OrgContextType | undefined>(undefined);
 export function OrgProvider({ children }: { children: React.ReactNode }) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user ,checking} = useAuth();
   const dispatch = useDispatch();
 
   const adminId = useSelector((state: any) => state.user.admin?.id)
+  const isAuthenticated = useSelector((state: any) => state.user.isAuthenticated);
   const organization = useSelector((state: any) => state.user.organization);
   console.log("admin id from redux: >>>", adminId);
+
 
   const fetchOrganization = async () => {
 
     try {
-
-      const response = await axiosAdmin.get(`/get-org/${adminId}`);
-      console.log("response from the backend: ", response.data);
+      if(isAuthenticated) {
+          const response = await axiosAdmin.get(`/get-org/${adminId}`);
+          console.log("response from the backend: ", response.data);
       if (response.data) {
         dispatch(setOrganizationRedux(response.data as Organization));
       }
+      }
+      
 
     } catch (error) {
       console.error("Failed to fetch organization:", error);
@@ -104,9 +108,13 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    fetchOrganization();
+    if(!checking) {
+      console.log("checking completed, fetching organization and groups");
+      fetchOrganization();
     fetchGroups();
-  }, [user]);
+    }
+    
+  }, [checking]);
 
   useEffect(() => {
     if (organization) {

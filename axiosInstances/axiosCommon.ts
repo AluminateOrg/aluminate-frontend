@@ -39,7 +39,7 @@ function getCookie(name: string): string | null {
  */
 const apiUrl =
   (process.env.NEXT_PUBLIC_BACKEND_URL ?? "") + "/" +
-  (process.env.NEXT_PUBLIC_API_PREFIX ?? "");
+  (process.env.NEXT_PUBLIC_API_PREFIX ?? "") + "/common";
 
 /**
  * Pre-configured Axios instance for common API requests
