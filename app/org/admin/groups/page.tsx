@@ -37,6 +37,7 @@ import {
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
+import axiosCommon from "@/axiosInstances/axiosCommon";
 
 interface Group {
   id: string;
