@@ -58,7 +58,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const fetchOrganization = async () => {
     try {
       if (isAuthenticated) {
-        const response = await axiosAdmin.get(`/get-org/${adminId}`);
+        const response = await axiosCommon.get(`/get-org`);
         console.log("response from the backend: ", response.data);
         if (response.data) {
           dispatch(setOrganizationRedux(response.data as Organization));
