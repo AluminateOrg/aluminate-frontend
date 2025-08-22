@@ -12,6 +12,7 @@ import { useSelector } from "react-redux";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
 import axiosMember from "@/axiosInstances/axiosMember";
 import { set } from "date-fns";
+import axiosCommon from '@/axiosInstances/axiosCommon';
 
 export type UserRole = "admin" | "member";
 
@@ -41,7 +42,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(true);
   const router = useRouter();
   const dispatch = useDispatch();
@@ -134,6 +135,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
   };
+
+  //function to test axiosCommon
+  // const testAxiosCommon = async () => {
+  //   try {
+  //     const res = await axiosCommon.get('/admin/test');
+  //     console.log("Test Axios Common response: ", res);
+  //   } catch (error) {
+  //     console.error("Error testing Axios Common: ", error);
+  //   }
+  // };
+  // useEffect(() => {
+  //   testAxiosCommon();
+  // }, []);
 
   const login = async (email: string, password: string, role: UserRole) => {
     setLoading(true);
