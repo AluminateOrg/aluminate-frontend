@@ -1,76 +1,92 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Heart, ArrowLeft, Home } from "lucide-react";
-import Link from "next/link";
-import { toast } from "sonner";
+import { CheckCircle, Home, Receipt } from "lucide-react";
+import { PaymentService } from "@/lib/services/paymentService";
 
 export default function PaymentSuccessPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [orderId, setOrderId] = useState<string>("");
+  const router = useRouter();
+  const orderId = searchParams.get("orderId");
+  const [loading, setLoading] = useState(true);
+  const [paymentData, setPaymentData] = useState<any>(null);
 
   useEffect(() => {
-    // Get order ID from URL parameters
-    const orderIdParam = searchParams.get("order_id");
-    if (orderIdParam) {
-      setOrderId(orderIdParam);
-      toast.success("Payment completed successfully!");
-    }
-  }, [searchParams]);
+    const checkPaymentStatus = async () => {
+      if (!orderId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await PaymentService.checkPaymentStatus(orderId);
+        setPaymentData(data);
+      } catch (error) {
+        console.error("Error checking payment status:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkPaymentStatus();
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <p>Verifying payment...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 flex items-center justify-center p-4">
-      <Card className="max-w-md w-full text-center">
-        <CardHeader className="pb-2">
-          <div className="mx-auto mb-4 w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+    <div className="max-w-2xl mx-auto px-4 py-16">
+      <Card>
+        <CardHeader className="text-center">
+          <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <CardTitle className="text-2xl text-green-800 dark:text-green-400">
-            Payment Successful!
-          </CardTitle>
+          <CardTitle className="text-2xl">Payment Successful!</CardTitle>
+          <p className="text-muted-foreground">
+            Thank you for your generous donation
+          </p>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
+          {orderId && (
+            <div className="bg-muted/20 p-4 rounded-lg">
+              <h4 className="font-medium mb-2">Transaction Details</h4>
+              <p className="text-sm text-muted-foreground">
+                Order ID: {orderId}
+              </p>
+            </div>
+          )}
+
+          <div className="text-center space-y-4">
             <p className="text-muted-foreground">
-              Thank you for your generous donation! Your contribution will make
-              a real difference in our community.
+              Your donation has been processed successfully. You will receive a
+              confirmation email shortly.
             </p>
-            {orderId && (
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">Order ID</p>
-                <p className="font-mono font-medium">{orderId}</p>
-              </div>
-            )}
-          </div>
 
-          <div className="flex items-center justify-center space-x-2 text-primary">
-            <Heart className="w-5 h-5" />
-            <span className="text-sm">Your kindness is appreciated</span>
-            <Heart className="w-5 h-5" />
-          </div>
-
-          <div className="space-y-3">
-            <Button asChild className="w-full">
-              <Link href="/donations">
-                <ArrowLeft className="w-4 h-4 mr-2" />
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button
+                onClick={() => router.push("/org/member/donations")}
+                className="flex-1"
+              >
+                <Home className="mr-2 h-4 w-4" />
                 Back to Donations
-              </Link>
-            </Button>
-            <Button variant="outline" asChild className="w-full">
-              <Link href="/dashboard">
-                <Home className="w-4 h-4 mr-2" />
-                Go to Dashboard
-              </Link>
-            </Button>
-          </div>
-
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>You will receive a confirmation email shortly.</p>
-            <p>For any queries, please contact our support team.</p>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.print()}
+                className="flex-1"
+              >
+                <Receipt className="mr-2 h-4 w-4" />
+                Print Receipt
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

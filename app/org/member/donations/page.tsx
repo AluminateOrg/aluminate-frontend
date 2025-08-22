@@ -10,11 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PaymentForm } from "@/components/organisms/PaymentForm";
 import {
   Heart,
   DollarSign,
@@ -24,7 +23,7 @@ import {
   TrendingUp,
   Gift,
   Award,
-  RefreshCw,
+  ArrowLeft,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -58,11 +57,32 @@ interface Donation {
 
 export default function DonationsPage() {
   const { user } = useAuth();
-  const [donationAmount, setDonationAmount] = useState("");
-  const [selectedCampaign, setSelectedCampaign] = useState<string>("");
-  const [isAnonymous, setIsAnonymous] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
+    null
+  );
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Mock donations data - replace with actual API call
+  const myDonations: Donation[] = [
+    {
+      id: "1",
+      campaignId: "1",
+      campaignTitle: "Student Scholarship Fund",
+      amount: 100,
+      date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      isAnonymous: false,
+    },
+    {
+      id: "2",
+      campaignId: "2",
+      campaignTitle: "Campus Infrastructure Upgrade",
+      amount: 50,
+      date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+      isAnonymous: true,
+    },
+  ];
 
   // Map backend enum to frontend category
   const mapCategoryFromBackend = (type: string): Campaign["category"] => {
@@ -76,6 +96,7 @@ export default function DonationsPage() {
     };
     return mapping[type?.toUpperCase()] || "general";
   };
+
   // Fetch campaigns from backend
   const fetchCampaigns = useCallback(async () => {
     setLoading(true);
@@ -99,23 +120,20 @@ export default function DonationsPage() {
           description: campaign.description || "",
           goal: campaign.goal || 0,
           raised: campaign.raised || 0,
-          startDate: campaign.startDate
-            ? new Date(campaign.startDate).toISOString()
-            : new Date().toISOString(),
           endDate: campaign.endDate
             ? new Date(campaign.endDate).toISOString()
             : new Date().toISOString(),
           category: mapCategoryFromBackend(campaign.type),
           donorCount: campaign.donorCount || 0,
           isActive: campaign.isActive,
-          createdBy: "", // Set if you have this information
         })) || [];
 
-      console.log("Transformed campaigns:", transformedCampaigns);
-      setCampaigns(transformedCampaigns);
+      // Filter only active campaigns for donations
+      const activeCampaigns = transformedCampaigns.filter((c) => c.isActive);
+      setCampaigns(activeCampaigns);
     } catch (error) {
       console.error("Error fetching campaigns:", error);
-      // handleApiError(error, "Failed to load campaigns. Please try again.");
+      toast.error("Failed to load campaigns. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -126,43 +144,34 @@ export default function DonationsPage() {
     fetchCampaigns();
   }, [fetchCampaigns]);
 
-  const myDonations: Donation[] = [
-    {
-      id: "1",
-      campaignId: "1",
-      campaignTitle: "Student Scholarship Fund",
-      amount: 100,
-      date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: false,
-    },
-    {
-      id: "2",
-      campaignId: "2",
-      campaignTitle: "Campus Infrastructure Upgrade",
-      amount: 50,
-      date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: true,
-    },
-  ];
-
   const totalDonated = myDonations.reduce(
     (sum, donation) => sum + donation.amount,
     0
   );
 
-  const handleDonate = async (campaignId: string, amount: number) => {
-    setLoading(true);
-    try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success(`Thank you for your Rs.${amount} donation!`);
-      setDonationAmount("");
-      setSelectedCampaign("");
-    } catch (error) {
-      toast.error("Failed to process donation. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  const handleDonateClick = (campaign: Campaign) => {
+    setSelectedCampaign(campaign);
+    setShowPaymentForm(true);
+  };
+
+  const handlePaymentSuccess = (orderId: string) => {
+    toast.success("Thank you for your donation!");
+    setShowPaymentForm(false);
+    setSelectedCampaign(null);
+    // Refresh campaigns to show updated amounts
+    fetchCampaigns();
+  };
+
+  const handlePaymentCancel = () => {
+    toast.info("Payment was cancelled");
+    setShowPaymentForm(false);
+    setSelectedCampaign(null);
+  };
+
+  const handlePaymentError = (error: string) => {
+    toast.error(`Payment failed: ${error}`);
+    setShowPaymentForm(false);
+    setSelectedCampaign(null);
   };
 
   const getCategoryIcon = (category: Campaign["category"]) => {
@@ -186,20 +195,41 @@ export default function DonationsPage() {
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "emergency":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "fundraising":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
+      case "other":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
   };
 
-  const isValidCampaign = (campaign: Campaign) => {
-    const now = new Date();
-    const endDate = new Date(campaign.endDate);
-    const daysLeft = Math.ceil(
-      (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-    );
+  // Show payment form
+  if (showPaymentForm && selectedCampaign && user) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <div className="flex items-center space-x-4 mb-6">
+          <Button variant="outline" onClick={() => setShowPaymentForm(false)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Campaigns
+          </Button>
+        </div>
 
-    return daysLeft > 0 && campaign.raised < campaign.goal;
-  };
+        <PaymentForm
+          campaign={selectedCampaign}
+          member={{
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+          }}
+          onSuccess={handlePaymentSuccess}
+          onCancel={handlePaymentCancel}
+          onError={handlePaymentError}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -214,20 +244,8 @@ export default function DonationsPage() {
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
           <Badge variant="outline">
             <DollarSign className="h-3 w-3 mr-1" />
-            Rs.{totalDonated} Total Donated
+            LKR {totalDonated} Total Donated
           </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchActiveCampaignsOnly}
-            disabled={refreshing}
-            className="flex items-center space-x-1"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-            />
-            <span>Refresh</span>
-          </Button>
         </div>
       </div>
 
@@ -236,7 +254,7 @@ export default function DonationsPage() {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-primary">
-              Rs.{totalDonated}
+              LKR {totalDonated}
             </div>
             <p className="text-sm text-muted-foreground">
               Your Total Donations
@@ -263,127 +281,126 @@ export default function DonationsPage() {
 
       <Tabs defaultValue="campaigns" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="campaigns">
-            Active Campaigns ({activeCampaigns.length})
-          </TabsTrigger>
+          <TabsTrigger value="campaigns">Active Campaigns</TabsTrigger>
           <TabsTrigger value="history">My Donations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="campaigns" className="space-y-6">
-          {/* Active Campaigns */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {campaigns.map((campaign) => {
-              const progressPercentage =
-                (campaign.raised / campaign.goal) * 100;
-              const daysLeft = Math.ceil(
-                (new Date(campaign.endDate).getTime() - Date.now()) /
-                  (1000 * 60 * 60 * 24)
-              );
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Loading campaigns...</p>
+            </div>
+          ) : campaigns.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    No Active Campaigns
+                  </h3>
+                  <p className="text-muted-foreground">
+                    There are currently no active campaigns accepting donations.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            /* Active Campaigns */
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {campaigns.map((campaign) => {
+                const progressPercentage =
+                  campaign.goal > 0
+                    ? (campaign.raised / campaign.goal) * 100
+                    : 0;
+                const daysLeft = Math.max(
+                  0,
+                  Math.ceil(
+                    (new Date(campaign.endDate).getTime() - Date.now()) /
+                      (1000 * 60 * 60 * 24)
+                  )
+                );
 
-              return (
-                <Card key={campaign.id} className="card-hover">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <CardTitle className="text-lg">
-                          {campaign.title}
-                        </CardTitle>
-                        <CardDescription>
-                          {campaign.description}
-                        </CardDescription>
+                return (
+                  <Card key={campaign.id} className="card-hover">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <CardTitle className="text-lg">
+                            {campaign.title}
+                          </CardTitle>
+                          <CardDescription>
+                            {campaign.description}
+                          </CardDescription>
+                        </div>
+                        <Badge className={getCategoryColor(campaign.category)}>
+                          {getCategoryIcon(campaign.category)}
+                          <span className="ml-1 capitalize">
+                            {campaign.category}
+                          </span>
+                        </Badge>
                       </div>
-                      <Badge className={getCategoryColor(campaign.category)}>
-                        {getCategoryIcon(campaign.category)}
-                        <span className="ml-1 capitalize">
-                          {campaign.category}
-                        </span>
-                      </Badge>
-                    </div>
-                  </CardHeader>
+                    </CardHeader>
 
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">
-                          Rs&nbsp;{campaign.raised.toLocaleString()} / Rs&nbsp;
-                          {campaign.goal.toLocaleString()}
-                        </span>
-                      </div>
-                      <Progress value={progressPercentage} className="h-2" />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{Math.round(progressPercentage)}% funded</span>
-                        <span>{daysLeft} days left</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-1">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>{campaign.donorCount} donors</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          Ends {format(new Date(campaign.endDate), "MMM d")}
-                        </span>
-                      </div>
-                    </div>
-
-                      <div className="space-y-3 pt-2 border-t">
-                        <Input
-                          type="number"
-                          placeholder="Amount ($)"
-                          value={
-                            selectedCampaign === campaign.id
-                              ? donationAmount
-                              : ""
-                          }
-                          onChange={(e) => {
-                            setSelectedCampaign(campaign.id);
-                            setDonationAmount(e.target.value);
-                          }}
-                          className="flex-1"
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Progress
+                          </span>
+                          <span className="font-medium">
+                            LKR {campaign.raised.toLocaleString()} / LKR{" "}
+                            {campaign.goal.toLocaleString()}
+                          </span>
+                        </div>
+                        <Progress
+                          value={Math.min(progressPercentage, 100)}
+                          className="h-2"
                         />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{Math.round(progressPercentage)}% funded</span>
+                          <span>
+                            {daysLeft > 0
+                              ? `${daysLeft} days left`
+                              : "Campaign ended"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-1">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span>{campaign.donorCount} donors</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            Ends {format(new Date(campaign.endDate), "MMM d")}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t">
                         <Button
-                          onClick={() =>
-                            handleDonate(campaign.id, Number(donationAmount))
-                          }
-                          disabled={
-                            loading ||
-                            !donationAmount ||
-                            Number(donationAmount) <= 0
-                          }
-                          className="px-6"
+                          onClick={() => handleDonateClick(campaign)}
+                          disabled={daysLeft === 0}
+                          className="w-full"
                         >
-                          {loading && selectedCampaign === campaign.id
-                            ? "Processing..."
-                            : "Donate"}
+                          {daysLeft === 0 ? (
+                            "Campaign Ended"
+                          ) : (
+                            <>
+                              <Heart className="mr-2 h-4 w-4" />
+                              Donate Now
+                            </>
+                          )}
                         </Button>
                       </div>
-
-                      <div className="flex gap-2">
-                        {[25, 50, 100, 250].map((amount) => (
-                          <Button
-                            key={amount}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedCampaign(campaign.id);
-                              setDonationAmount(amount.toString());
-                            }}
-                            className="flex-1"
-                          >
-                            ${amount}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="history" className="space-y-6">
@@ -414,7 +431,7 @@ export default function DonationsPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-semibold text-primary">
-                          LKR {donation.amount.toLocaleString()}
+                          LKR {donation.amount}
                         </div>
                         <Badge variant="outline" className="text-xs">
                           <Heart className="h-3 w-3 mr-1" />
@@ -455,7 +472,7 @@ export default function DonationsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-primary">
-                      ${totalDonated}
+                      LKR {totalDonated}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Total Contributed
