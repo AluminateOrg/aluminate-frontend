@@ -618,22 +618,46 @@ export default function AdminEventsPage() {
 
   const exportAttendees = async (eventId: string) => {
     try {
-      // TODO: Replace with actual API call
-      const csvContent = `Name,Email,Status,Registration Date
-Shane Mario,shane.mario@example.com,Confirmed,2024-01-15
-Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
+      setLoading(true);
 
-      const blob = new Blob([csvContent], { type: "text/csv" });
+      const resp = await axiosAdmin.get(`/event/${eventId}/attendees/export`, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([resp.data], {
+        type: resp.headers["content-type"] || "text/csv",
+      });
+
+      // try to parse filename from Content-Disposition header
+      const contentDisposition =
+        resp.headers["content-disposition"] ||
+        resp.headers["Content-Disposition"] ||
+        "";
+      let filename = `event-${eventId}-attendees.csv`;
+      const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/.exec(
+        contentDisposition
+      );
+      if (match) {
+        filename = decodeURIComponent(
+          (match[1] || match[2] || filename).replace(/(^"|"$)/g, "")
+        );
+      }
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `event-${eventId}-attendees.csv`;
+      a.download = filename;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
       window.URL.revokeObjectURL(url);
 
       toast.success("Attendee list exported successfully!");
     } catch (error) {
+      console.error("Failed to export attendee list:", error);
       toast.error("Failed to export attendee list");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -761,12 +785,19 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Plus className="h-5 w-5" />
-                  <span>Create New Event</span>
+                  {editingEvent ? (
+                    <Edit className="h-5 w-5" />
+                  ) : (
+                    <Plus className="h-5 w-5" />
+                  )}
+                  <span>
+                    {editingEvent ? "Edit Event" : "Create New Event"}
+                  </span>
                 </CardTitle>
                 <CardDescription>
-                  Fill in the details to create a new event for your
-                  organization
+                  {editingEvent
+                    ? "Update the event details and click Update Event to save changes."
+                    : "Fill in the details to create a new event for your organization"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1030,7 +1061,12 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                       {loading ? (
                         <>
                           <LoadingSpinner size="sm" className="mr-2" />
-                          Creating...
+                          {editingEvent ? "Updating..." : "Creating..."}
+                        </>
+                      ) : editingEvent ? (
+                        <>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Update Event
                         </>
                       ) : (
                         <>
