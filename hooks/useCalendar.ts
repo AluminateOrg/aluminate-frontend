@@ -16,6 +16,7 @@ export interface CalendarEvent {
   rsvpStatus?: "yes" | "no" | "maybe";
   attendeeCount: number;
   maxAttendees?: number;
+  status: "cancelled" | "published";
   type:
     | "meeting"
     | "workshop"
@@ -54,6 +55,7 @@ export function useCalendar(orgId: string, groupId?: string) {
             attendeeCount: event.currentParticipants || 0,
             maxAttendees: event.maxParticipants,
             type: event.type.toLowerCase() as CalendarEvent["type"],
+            status: event.status.toLowerCase() as CalendarEvent["status"],
           })
         );
 
