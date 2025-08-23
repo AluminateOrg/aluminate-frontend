@@ -242,32 +242,103 @@ export default function AdminEventsPage() {
         requiresApproval: eventForm.requiresApproval,
       };
 
-      try {
-        const response = await axiosAdmin.post("/event/create", requestPayload);
+      if (editingEvent) {
+        // UPDATE existing event
+        try {
+          const response = await axiosAdmin.put(
+            `/event/${editingEvent.id}/edit`,
+            requestPayload
+          );
 
-        if (response.status != 200) {
-          throw new Error("Failed to create event");
+          if (response.status !== 200) {
+            throw new Error("Failed to update event");
+          }
+
+          const responseData = response.data;
+          const updated = responseData.data ?? responseData;
+
+          // update local state (map response or use edited form)
+          setEvents((prev) =>
+            prev.map((ev) =>
+              ev.id === editingEvent.id
+                ? {
+                    ...ev,
+                    id: updated.id?.toString() ?? ev.id,
+                    title: updated.title ?? eventForm.title,
+                    description: updated.description ?? eventForm.description,
+                    startDate:
+                      updated.startDate && updated.startTime
+                        ? new Date(
+                            `${updated.startDate}T${updated.startTime}`
+                          ).toISOString()
+                        : ev.startDate,
+                    endDate:
+                      updated.endDate && updated.endTime
+                        ? new Date(
+                            `${updated.endDate}T${updated.endTime}`
+                          ).toISOString()
+                        : ev.endDate,
+                    location: updated.location ?? eventForm.location,
+                    type: (
+                      updated.type ?? eventForm.type
+                    ).toLowerCase() as Event["type"],
+                    maxAttendees: updated.maxParticipants ?? ev.maxAttendees,
+                    currentAttendees:
+                      updated.currentParticipants ?? ev.currentAttendees,
+                    registrationDeadline: updated.registrationDeadline
+                      ? new Date(updated.registrationDeadline).toISOString()
+                      : ev.registrationDeadline,
+                    requiresApproval:
+                      updated.requiresApproval ?? ev.requiresApproval,
+                    status: (
+                      updated.status ?? ev.status
+                    ).toLowerCase() as Event["status"],
+                    price: updated.price ?? ev.price,
+                  }
+                : ev
+            )
+          );
+
+          toast.success("Event updated successfully");
+          setShowCreateForm(false);
+          resetForm();
+        } catch (err) {
+          console.error("Error updating event:", err);
+          toast.error("Failed to update event. Please try again.");
+        } finally {
+          setLoading(false);
         }
+      } else {
+        try {
+          const response = await axiosAdmin.post(
+            "/event/create",
+            requestPayload
+          );
 
-        await fetchEvents();
+          if (response.status != 200) {
+            throw new Error("Failed to create event");
+          }
 
-        if (response.status != 200) {
-          const errorData = await response.data.catch(() => ({}));
-          throw new Error("Failed to create event");
+          await fetchEvents();
+
+          if (response.status != 200) {
+            const errorData = await response.data.catch(() => ({}));
+            throw new Error("Failed to create event");
+          }
+
+          await response.data;
+
+          await fetchEvents();
+
+          setShowCreateForm(false);
+          resetForm();
+          toast.success("Event created successfully!");
+        } catch (error) {
+          console.error("Error creating event:", error);
+          toast.error("Failed to create event. Please try again.");
+        } finally {
+          setLoading(false);
         }
-
-        await response.data;
-
-        await fetchEvents();
-
-        setShowCreateForm(false);
-        resetForm();
-        toast.success("Event created successfully!");
-      } catch (error) {
-        console.error("Error creating event:", error);
-        toast.error("Failed to create event. Please try again.");
-      } finally {
-        setLoading(false);
       }
     } catch (error) {
       console.error("error: ", error);
@@ -1138,8 +1209,49 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                             >
                               <Copy className="h-4 w-4" />
                             </Button> */}
-
-                            <Button size="sm" variant="ghost">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingEvent(event);
+                                setShowCreateForm(true);
+                                setEventForm({
+                                  title: event.title,
+                                  description: event.description,
+                                  startDate: format(
+                                    new Date(event.startDate),
+                                    "yyyy-MM-dd"
+                                  ),
+                                  startTime: format(
+                                    new Date(event.startDate),
+                                    "HH:mm"
+                                  ),
+                                  endDate: format(
+                                    new Date(event.endDate),
+                                    "yyyy-MM-dd"
+                                  ),
+                                  endTime: format(
+                                    new Date(event.endDate),
+                                    "HH:mm"
+                                  ),
+                                  location: event.location,
+                                  type: event.type,
+                                  maxAttendees:
+                                    event.maxAttendees?.toString() ?? "",
+                                  registrationDeadline:
+                                    event.registrationDeadline
+                                      ? format(
+                                          new Date(event.registrationDeadline),
+                                          "yyyy-MM-dd"
+                                        )
+                                      : "",
+                                  isPublic: event.isPublic ?? true,
+                                  requiresApproval:
+                                    event.requiresApproval ?? false,
+                                  price: event.price?.toString() ?? "",
+                                });
+                              }}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
 
