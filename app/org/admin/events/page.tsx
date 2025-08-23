@@ -42,7 +42,7 @@ import {
 import { format, addDays, addHours } from "date-fns";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
-import { DeleteConfirmationModal } from "./delete-confirmation";
+import { ConfirmationModal } from "./confirmation-model";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface Event {
@@ -124,6 +124,12 @@ export default function AdminEventsPage() {
     eventId: "",
     eventTitle: "",
     isDeleting: false,
+  });
+  const [cancelModal, setCancelModal] = useState({
+    isOpen: false,
+    eventId: "",
+    eventTitle: "",
+    isCancelling: false,
   });
 
   const fetchEvents = async () => {
@@ -494,6 +500,27 @@ export default function AdminEventsPage() {
         eventId: "",
         eventTitle: "",
         isDeleting: false,
+      });
+    }
+  };
+
+  const confirmCancelEvent = async () => {
+    setCancelModal((prev) => ({ ...prev, isCancelling: true }));
+    await cancelEvent(cancelModal.eventId);
+    setCancelModal({
+      isOpen: false,
+      eventId: "",
+      eventTitle: "",
+      isCancelling: false,
+    });
+  };
+  const closeCancelModal = () => {
+    if (!cancelModal.isCancelling) {
+      setCancelModal({
+        isOpen: false,
+        eventId: "",
+        eventTitle: "",
+        isCancelling: false,
       });
     }
   };
@@ -1089,7 +1116,14 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => cancelEvent(event.id)}
+                                  onClick={() =>
+                                    setCancelModal({
+                                      isOpen: true,
+                                      eventId: event.id,
+                                      eventTitle: event.title,
+                                      isCancelling: false,
+                                    })
+                                  }
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
                                   Cancel
@@ -1201,12 +1235,27 @@ Satheera Nirmal,satheera.nirmal@example.com,Confirmed,2024-01-16`;
           </Card>
         </TabsContent>
       </Tabs>
-      <DeleteConfirmationModal
+      <ConfirmationModal
         isOpen={deleteModal.isOpen}
         onClose={closeDeleteModal}
         onConfirm={deleteEvent}
-        eventName={deleteModal.eventTitle} // Change prop name from groupName to eventName
-        isDeleting={deleteModal.isDeleting}
+        title="Delete Event"
+        message="Are you sure you want to delete this event? This action cannot be undone."
+        confirmText="Delete Event"
+        confirmVariant="destructive"
+        isLoading={deleteModal.isDeleting}
+        itemName={deleteModal.eventTitle}
+      />
+      <ConfirmationModal
+        isOpen={cancelModal.isOpen}
+        onClose={closeCancelModal}
+        onConfirm={confirmCancelEvent}
+        title="Cancel Event"
+        message="Are you sure you want to cancel this event? This action cannot be undone."
+        confirmText="Cancel Event"
+        confirmVariant="destructive"
+        isLoading={cancelModal.isCancelling}
+        itemName={cancelModal.eventTitle}
       />
     </div>
   );
