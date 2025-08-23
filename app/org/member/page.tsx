@@ -75,9 +75,7 @@ export default function MemberDashboard() {
             <h1 className="text-2xl font-bold text-foreground">
               Welcome back, {user?.name || "User"}!
             </h1>
-            <button onClick={() => payByPayhere("DONATION", 1000, "item1", "cus1", "cus2", "John", "Doe", "john@example.com", `${window.location.origin}/success`, `${window.location.origin}/cancel`)}>
-              Pay with Payhere
-            </button>
+
             <p className="text-muted-foreground">
               {user?.designation} at {organization?.organizationName}
             </p>
