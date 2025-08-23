@@ -19,6 +19,7 @@ import {
   UserPlus,
   MessageSquare,
 } from "lucide-react";
+import { ConfirmationModal } from "../../admin/groups/confirmation-modal";
 
 interface GroupMembershipStatus {
   groupId: string;
@@ -45,12 +46,19 @@ export function GroupCard({
   const [isJoined, setIsJoined] = useState(false); // TODO: Get from actual membership data
   const [loading, setLoading] = useState(false);
 
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const handleAction = async () => {
     if (membershipStatus === "approved" || membershipStatus === "pending") {
-      await onLeave(group.id);
+      setShowConfirm(true);
     } else {
       await onJoin(group.id);
     }
+  };
+
+  const handleConfirmLeave = async () => {
+    setShowConfirm(false);
+    await onLeave(group.id);
   };
 
   const isFull = group.currentMembers >= group.maxMembers;
@@ -198,6 +206,26 @@ export function GroupCard({
 
         <div className="flex gap-2 pt-2 border-t">{getActionButton()}</div>
       </CardContent>
+      <ConfirmationModal
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleConfirmLeave}
+        title={
+          membershipStatus === "approved"
+            ? "Leave Group?"
+            : "Cancel Join Request?"
+        }
+        message={
+          membershipStatus === "approved"
+            ? "Are you sure you want to leave this group? You will lose access to its content."
+            : "Are you sure you want to cancel your join request for this group?"
+        }
+        confirmText={
+          membershipStatus === "approved" ? "Leave Group" : "Cancel Request"
+        }
+        confirmVariant="destructive"
+        isLoading={isJoinLoading}
+      />
     </Card>
   );
 }
