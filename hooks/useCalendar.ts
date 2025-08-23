@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { set } from "date-fns";
+import axiosCommon from "@/axiosInstances/axiosCommon";
 
 export interface CalendarEvent {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   startDate: string;
   endDate: string;
   location?: string;
@@ -14,10 +16,16 @@ export interface CalendarEvent {
   rsvpStatus?: "yes" | "no" | "maybe";
   attendeeCount: number;
   maxAttendees?: number;
-  type: "meeting" | "workshop" | "social" | "fundraising" | "networking" | "webinar";
+  type:
+    | "meeting"
+    | "workshop"
+    | "social"
+    | "fundraising"
+    | "networking"
+    | "webinar";
 }
 
-export const useCalendar = (orgId: string) => {
+export function useCalendar(orgId: string, groupId?: string) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,44 +35,51 @@ export const useCalendar = (orgId: string) => {
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/event/get/all`
       );
+      console.log("Fetched events:", response.data);
 
       if (response.data && Array.isArray(response.data.data)) {
-        const transformedEvents: CalendarEvent[] = response.data.data.map((event: any) => ({
-          id: String(event.id),
-          title: event.title,
-          description: event.description,
-          startDate: new Date(`${event.startDate}T${event.startTime}`).toISOString(),
-          endDate: new Date(`${event.endDate}T${event.endTime}`).toISOString(),
-          location: event.location,
-          organizer: "Admin",
-          rsvpStatus: undefined,
-          attendeeCount: event.currentParticipants || 0,
-          maxAttendees: event.maxParticipants,
-          type: String(event.type).toLowerCase() as CalendarEvent["type"],
-        }));
+        const transformedEvents: CalendarEvent[] = response.data.data.map(
+          (event: any) => ({
+            id: event.id.toString(),
+            title: event.title,
+            description: event.description,
+            // Combine date and time for frontend
+            startDate: new Date(
+              `${event.startDate}T${event.startTime}`
+            ).toISOString(),
+            endDate: new Date(
+              `${event.endDate}T${event.endTime}`
+            ).toISOString(),
+            location: event.location,
+            organizer: "Admin", // Default since backend doesn't provide this
+            rsvpStatus: undefined, // Default - user hasn't RSVP'd yet
+            attendeeCount: event.currentParticipants || 0,
+            maxAttendees: event.maxParticipants,
+            type: event.type.toLowerCase() as CalendarEvent["type"],
+          })
+        );
 
+        console.log("Transformed events:", transformedEvents);
         setEvents(transformedEvents);
-      } else {
-        setEvents([]);
       }
+      return [];
     } catch (error) {
       console.error("Failed to fetch events:", error);
-      setEvents([]);
     } finally {
       setLoading(false);
     }
-  }, []); // <-- important
+  }, [orgId, groupId]);
 
-  useEffect(() => {
-    if (!orgId) return;
-    fetchEvents();
-  }, [orgId, fetchEvents]); // single effect is enough
-
-  const rsvpToEvent = async (eventId: string, status: "yes" | "no" | "maybe") => {
+  const rsvpToEvent = async (
+    eventId: string,
+    status: "yes" | "no" | "maybe"
+  ) => {
     try {
-      // TODO: replace with real API call
+      // TODO: Replace with actual API call
       setEvents((prev) =>
-        prev.map((event) => (event.id === eventId ? { ...event, rsvpStatus: status } : event))
+        prev.map((event) =>
+          event.id === eventId ? { ...event, rsvpStatus: status } : event
+        )
       );
     } catch (error) {
       console.error("Failed to RSVP:", error);
@@ -72,10 +87,14 @@ export const useCalendar = (orgId: string) => {
     }
   };
 
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
   return {
     events,
     loading,
     rsvpToEvent,
     refreshEvents: fetchEvents,
   };
-};
+}

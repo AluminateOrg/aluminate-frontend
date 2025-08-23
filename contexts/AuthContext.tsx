@@ -11,6 +11,7 @@ import { log } from "console";
 import { useSelector } from "react-redux";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
 import axiosMember from "@/axiosInstances/axiosMember";
+import { set } from "date-fns";
 
 export type UserRole = "admin" | "member";
 
@@ -33,6 +34,7 @@ interface AuthContextType {
   getInfo: (role: UserRole) => Promise<boolean>;
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
+  checking: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,6 +42,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const router = useRouter();
   const dispatch = useDispatch();
   const pathName = usePathname();
@@ -53,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await axiosAdmin.get("/info/getAdminInfo");
         if (res.status === 200) {
           const { data } = res.data;
+          console.log("data from admin info: ", data);
           //setAdminUser in redux
           dispatch(
             setAdminUser({
@@ -66,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               createdAt: data.user.createdAt || null,
             })
           );
-
+          setChecking(false);
           //setUser in context
           setUser({
             email: data.user.email,
@@ -105,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               joinedAt: data.user.createdAt || null,
             })
           );
+          setChecking(false);
 
           //setUser in context
           setUser({
@@ -225,7 +230,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, loading, getInfo, setUser, setLoading }}
+      value={{
+        user,
+        login,
+        logout,
+        loading,
+        getInfo,
+        setUser,
+        setLoading,
+        checking,
+      }}
     >
       {children}
     </AuthContext.Provider>
