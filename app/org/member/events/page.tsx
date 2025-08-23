@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Search, Filter, Clock, MapPin, Users } from "lucide-react";
 import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 import { toast } from "sonner";
+import axiosMember from "@/axiosInstances/axiosMember";
 
 export default function EventsPage() {
   const { user } = useAuth();
@@ -33,20 +34,12 @@ export default function EventsPage() {
   ) => {
     try {
       await rsvpToEvent(eventId, status);
-      toast.success(
-        `RSVP updated to "${
-          status === "yes"
-            ? "Going"
-            : status === "maybe"
-            ? "Maybe"
-            : "Not Going"
-        }"`
-      );
-    } catch (error) {
-      toast.error("Failed to update RSVP. Please try again.");
+      toast.success("Successfully RSVP'd to the event");
+    } catch (error: any) {
+      console.error("RSVP Error:", error);
+      toast.error("Failed to RSVP to the event");
     }
   };
-
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
       event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -170,14 +163,16 @@ export default function EventsPage() {
       {/* Events Grid */}
       {filteredEvents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEvents.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onRSVP={handleRSVP}
-              showRSVP={true}
-            />
-          ))}
+          {filteredEvents.map((event) =>
+            event.status === "draft" ? null : (
+              <EventCard
+                key={event.id}
+                event={event}
+                onRSVP={handleRSVP}
+                showRSVP={true}
+              />
+            )
+          )}
         </div>
       ) : (
         <Card>

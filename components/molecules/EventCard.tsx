@@ -86,14 +86,14 @@ export function EventCard({ event, onRSVP, showRSVP = true }: EventCardProps) {
             >
               Going
             </Button>
-            <Button
+            {/* <Button
               size="sm"
               variant={event.rsvpStatus === "maybe" ? "default" : "outline"}
               onClick={() => onRSVP(event.id, "maybe")}
               className="flex-1"
             >
               Maybe
-            </Button>
+            </Button> */}
             <Button
               size="sm"
               variant={event.rsvpStatus === "no" ? "default" : "outline"}
