@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
+import axiosMember from "@/axiosInstances/axiosMember";
 
 interface Mentor {
   id: string;
@@ -97,10 +98,13 @@ export default function MentorsPage() {
   
   // const mentors: Mentor[] = [];
 
+  // console.log("user from the context: ", user?.id);
+  const memberId = user?.id || "";
+
   const fetchMentors = async () => {
     try {
       
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/get-all-approved`);
+      const response = await axiosMember.get('/mentor/get-all-approved');
       console.log("response: ", response);
       if (response.status === 200) {
         setMentors(response.data);
@@ -217,12 +221,16 @@ export default function MentorsPage() {
     e.preventDefault();
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const memberId = user?.id;
+
+
 
     const payLoad = {
       ...applicationForm,
-      memberId,
+      memberId
     };
+
+    console.log("payLoad: ", payLoad);
+    console.log("memberID>>>", user.id);
 
     // Validation
     if (!applicationForm.motivation.trim()) {
@@ -248,16 +256,16 @@ export default function MentorsPage() {
     setApplicationLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/apply`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payLoad)
-      })
 
-      if (!response.ok) toast.error("Failed to submit application. Please try again.");
-      const data = await response.json();
+      const response = await axiosMember.post('/mentor/apply', payLoad);
+
+      console.log("response when submitting application: ", response);
+
+      const data = response.data;
+      if (!data) {
+        toast.error("Failed to submit application. Please try again.");
+        return;
+      }
 
       console.log("data: ", data);
 

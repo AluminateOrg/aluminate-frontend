@@ -52,6 +52,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import axios from "axios";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface MentorApplication {
   id: string;
@@ -131,9 +132,8 @@ export default function AdminMentorshipPage() {
     setLoading(true);
     console.log("fetch applications called");
     try {
-      const { data } = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/get-all-unapproved`
-      );
+      const {data} = await axiosAdmin.get('/mentor/get-all-unapproved')
+      console.log("data from the mentor>", data)
       setApplications(data);
       if (data.length === 0) {
         toast.info("No mentor applications found.");
@@ -149,9 +149,7 @@ export default function AdminMentorshipPage() {
 
   const fetchMentors = async () => {
     try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/get-all-approved`
-      );
+      const response = await axiosAdmin.get('/mentor/get-all-approved')
       const data = response.data;
       if (!data || data.length === 0) toast.error("No mentors found.");
       console.log("Mentors fetched successfully:", data);
