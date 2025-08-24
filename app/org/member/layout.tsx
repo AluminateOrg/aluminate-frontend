@@ -1,4 +1,3 @@
-'use client';
 
 import MemberLayout from '@/layouts/MemberLayout';
 import MemberAuthGuard from '@/components/MemberAuthGuard';

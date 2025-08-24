@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -79,7 +79,7 @@ interface EventFormData {
   endDate: string;
   endTime: string;
   location: string;
-  type: Event["type"];
+  type: Event['type'];
   maxAttendees: string;
   currentAttendees?: string;
   registrationDeadline: string;
@@ -91,28 +91,26 @@ interface EventFormData {
 export default function AdminEventsPage() {
   const { user } = useAuth();
   const { organization } = useOrg();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | Event["status"]>(
-    "all"
-  );
-  const [typeFilter, setTypeFilter] = useState<"all" | Event["type"]>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | Event['status']>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | Event['type']>('all');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   // Event form state
   const [eventForm, setEventForm] = useState<EventFormData>({
-    title: "",
-    description: "",
-    startDate: format(addDays(new Date(), 7), "yyyy-MM-dd"),
-    startTime: "10:00",
-    endDate: format(addDays(new Date(), 7), "yyyy-MM-dd"),
-    endTime: "12:00",
-    location: "",
-    type: "meeting",
-    maxAttendees: "",
-    registrationDeadline: format(addDays(new Date(), 5), "yyyy-MM-dd"),
+    title: '',
+    description: '',
+    startDate: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+    startTime: '10:00',
+    endDate: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+    endTime: '12:00',
+    location: '',
+    type: 'meeting',
+    maxAttendees: '',
+    registrationDeadline: format(addDays(new Date(), 5), 'yyyy-MM-dd'),
     isPublic: true,
     requiresApproval: false,
     price: "",
@@ -212,9 +210,7 @@ export default function AdminEventsPage() {
       }
 
       // Combine date and time
-      const startDateTime = new Date(
-        `${eventForm.startDate}T${eventForm.startTime}`
-      );
+      const startDateTime = new Date(`${eventForm.startDate}T${eventForm.startTime}`);
       const endDateTime = new Date(`${eventForm.endDate}T${eventForm.endTime}`);
 
       if (endDateTime <= startDateTime) {
@@ -345,11 +341,8 @@ export default function AdminEventsPage() {
     }
   };
 
-  const handleInputChange = (
-    field: keyof EventFormData,
-    value: string | boolean
-  ) => {
-    setEventForm((prev) => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: keyof EventFormData, value: string | boolean) => {
+    setEventForm(prev => ({ ...prev, [field]: value }));
   };
 
   const publishEvent = async (eventId: string) => {
@@ -644,15 +637,15 @@ export default function AdminEventsPage() {
       }
 
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-
-      toast.success("Attendee list exported successfully!");
+      
+      toast.success('Attendee list exported successfully!');
     } catch (error) {
       console.error("Failed to export attendee list:", error);
       toast.error("Failed to export attendee list");
@@ -661,16 +654,14 @@ export default function AdminEventsPage() {
     }
   };
 
-  const filteredEvents = events.filter((event) => {
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" || event.status === statusFilter;
-    const matchesType = typeFilter === "all" || event.type === typeFilter;
-
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         event.location.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || event.status === statusFilter;
+    const matchesType = typeFilter === 'all' || event.type === typeFilter;
+    
     return matchesSearch && matchesStatus && matchesType;
   });
 
@@ -681,35 +672,24 @@ export default function AdminEventsPage() {
     totalAttendees: events.reduce((sum, e) => sum + e.currentAttendees, 0),
   };
 
-  const getStatusColor = (status: Event["status"]) => {
+  const getStatusColor = (status: Event['status']) => {
     switch (status) {
-      case "published":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "draft":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "cancelled":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "completed":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      case 'published': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'draft': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'completed': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
 
-  const getTypeColor = (type: Event["type"]) => {
+  const getTypeColor = (type: Event['type']) => {
     switch (type) {
-      case "networking":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-      case "workshop":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "social":
-        return "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200";
-      case "fundraising":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "webinar":
-        return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      case 'networking': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      case 'workshop': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'social': return 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200';
+      case 'fundraising': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'webinar': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
 
@@ -718,12 +698,8 @@ export default function AdminEventsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Event Management
-          </h1>
-          <p className="text-muted-foreground">
-            Create and manage organization events
-          </p>
+          <h1 className="text-2xl font-bold text-foreground">Event Management</h1>
+          <p className="text-muted-foreground">Create and manage organization events</p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
           <Badge variant="outline">
@@ -741,33 +717,25 @@ export default function AdminEventsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary">
-              {eventStats.total}
-            </div>
+            <div className="text-2xl font-bold text-primary">{eventStats.total}</div>
             <p className="text-sm text-muted-foreground">Total Events</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {eventStats.published}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{eventStats.published}</div>
             <p className="text-sm text-muted-foreground">Published</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-yellow-600">
-              {eventStats.draft}
-            </div>
+            <div className="text-2xl font-bold text-yellow-600">{eventStats.draft}</div>
             <p className="text-sm text-muted-foreground">Drafts</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              {eventStats.totalAttendees}
-            </div>
+            <div className="text-2xl font-bold text-blue-600">{eventStats.totalAttendees}</div>
             <p className="text-sm text-muted-foreground">Total Attendees</p>
           </CardContent>
         </Card>
@@ -811,36 +779,30 @@ export default function AdminEventsPage() {
                         <Input
                           id="title"
                           value={eventForm.title}
-                          onChange={(e) =>
-                            handleInputChange("title", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange('title', e.target.value)}
                           placeholder="Annual Alumni Networking Event"
                           required
                         />
                       </div>
-
+                      
                       <div className="md:col-span-2 space-y-2">
                         <Label htmlFor="description">Description *</Label>
                         <Textarea
                           id="description"
                           value={eventForm.description}
-                          onChange={(e) =>
-                            handleInputChange("description", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange('description', e.target.value)}
                           placeholder="Describe your event..."
                           rows={4}
                           required
                         />
                       </div>
-
+                      
                       <div className="space-y-2">
                         <Label htmlFor="type">Event Type</Label>
                         <select
                           id="type"
                           value={eventForm.type}
-                          onChange={(e) =>
-                            handleInputChange("type", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange('type', e.target.value)}
                           className="w-full px-3 py-2 border border-input bg-background rounded-md"
                         >
                           <option value="meeting">Meeting</option>
@@ -851,15 +813,13 @@ export default function AdminEventsPage() {
                           <option value="webinar">Webinar</option>
                         </select>
                       </div>
-
+                      
                       <div className="space-y-2">
                         <Label htmlFor="location">Location *</Label>
                         <Input
                           id="location"
                           value={eventForm.location}
-                          onChange={(e) =>
-                            handleInputChange("location", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange('location', e.target.value)}
                           placeholder="Conference Center or Online"
                           required
                         />
@@ -877,48 +837,40 @@ export default function AdminEventsPage() {
                           id="startDate"
                           type="date"
                           value={eventForm.startDate}
-                          onChange={(e) =>
-                            handleInputChange("startDate", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange('startDate', e.target.value)}
                           required
                         />
                       </div>
-
+                      
                       <div className="space-y-2">
                         <Label htmlFor="startTime">Start Time</Label>
                         <Input
                           id="startTime"
                           type="time"
                           value={eventForm.startTime}
-                          onChange={(e) =>
-                            handleInputChange("startTime", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange('startTime', e.target.value)}
                           required
                         />
                       </div>
-
+                      
                       <div className="space-y-2">
                         <Label htmlFor="endDate">End Date</Label>
                         <Input
                           id="endDate"
                           type="date"
                           value={eventForm.endDate}
-                          onChange={(e) =>
-                            handleInputChange("endDate", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange('endDate', e.target.value)}
                           required
                         />
                       </div>
-
+                      
                       <div className="space-y-2">
                         <Label htmlFor="endTime">End Time</Label>
                         <Input
                           id="endTime"
                           type="time"
                           value={eventForm.endTime}
-                          onChange={(e) =>
-                            handleInputChange("endTime", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange('endTime', e.target.value)}
                           required
                         />
                       </div>
@@ -927,9 +879,7 @@ export default function AdminEventsPage() {
 
                   {/* Registration Settings */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium">
-                      Registration Settings
-                    </h3>
+                    <h3 className="text-lg font-medium">Registration Settings</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="maxAttendees">Max Attendees</Label>
@@ -937,30 +887,21 @@ export default function AdminEventsPage() {
                           id="maxAttendees"
                           type="number"
                           value={eventForm.maxAttendees}
-                          onChange={(e) =>
-                            handleInputChange("maxAttendees", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange('maxAttendees', e.target.value)}
                           placeholder="Leave empty for unlimited"
                         />
                       </div>
-
+                      
                       <div className="space-y-2">
-                        <Label htmlFor="registrationDeadline">
-                          Registration Deadline
-                        </Label>
+                        <Label htmlFor="registrationDeadline">Registration Deadline</Label>
                         <Input
                           id="registrationDeadline"
                           type="date"
                           value={eventForm.registrationDeadline}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "registrationDeadline",
-                              e.target.value
-                            )
-                          }
+                          onChange={(e) => handleInputChange('registrationDeadline', e.target.value)}
                         />
                       </div>
-
+                      
                       <div className="space-y-2">
                         <Label htmlFor="price">Price (Optional)</Label>
                         <div className="flex space-x-2">
@@ -969,17 +910,13 @@ export default function AdminEventsPage() {
                             type="number"
                             step="0.01"
                             value={eventForm.price}
-                            onChange={(e) =>
-                              handleInputChange("price", e.target.value)
-                            }
+                            onChange={(e) => handleInputChange('price', e.target.value)}
                             placeholder="0.00"
                             className="flex-1"
                           />
                           {/* <select
                             value={eventForm.currency}
-                            onChange={(e) =>
-                              handleInputChange("currency", e.target.value)
-                            }
+                            onChange={(e) => handleInputChange('currency', e.target.value)}
                             className="px-3 py-2 border border-input bg-background rounded-md"
                           >
                             <option value="USD">USD</option>
@@ -1000,9 +937,7 @@ export default function AdminEventsPage() {
                         <Input
                           id="tags"
                           value={eventForm.tags}
-                          onChange={(e) =>
-                            handleInputChange("tags", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange('tags', e.target.value)}
                           placeholder="networking, professional, annual"
                         />
                       </div> */}
@@ -1013,30 +948,21 @@ export default function AdminEventsPage() {
                             type="checkbox"
                             id="isPublic"
                             checked={eventForm.isPublic}
-                            onChange={(e) =>
-                              handleInputChange("isPublic", e.target.checked)
-                            }
+                            onChange={(e) => handleInputChange('isPublic', e.target.checked)}
                             className="rounded border-gray-300"
                           />
                           <Label htmlFor="isPublic">Public Event</Label>
                         </div>
-
+                        
                         <div className="flex items-center space-x-2">
                           <input
                             type="checkbox"
                             id="requiresApproval"
                             checked={eventForm.requiresApproval}
-                            onChange={(e) =>
-                              handleInputChange(
-                                "requiresApproval",
-                                e.target.checked
-                              )
-                            }
+                            onChange={(e) => handleInputChange('requiresApproval', e.target.checked)}
                             className="rounded border-gray-300"
                           />
-                          <Label htmlFor="requiresApproval">
-                            Requires Approval
-                          </Label>
+                          <Label htmlFor="requiresApproval">Requires Approval</Label>
                         </div>
                       </div>
                     </div>
@@ -1054,7 +980,11 @@ export default function AdminEventsPage() {
                     >
                       Cancel
                     </Button>
-                    <Button type="button" variant="outline" onClick={resetForm}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={resetForm}
+                    >
                       Clear Form
                     </Button>
                     <Button type="submit" disabled={loading}>
@@ -1136,20 +1066,13 @@ export default function AdminEventsPage() {
               {/* Events Grid */}
               <div className="space-y-4">
                 {filteredEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="border rounded-lg p-6 hover:bg-accent transition-colors"
-                  >
+                  <div key={event.id} className="border rounded-lg p-6 hover:bg-accent transition-colors">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 space-y-3">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="text-lg font-semibold">
-                              {event.title}
-                            </h3>
-                            <p className="text-muted-foreground text-sm mt-1">
-                              {event.description}
-                            </p>
+                            <h3 className="text-lg font-semibold">{event.title}</h3>
+                            <p className="text-muted-foreground text-sm mt-1">{event.description}</p>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Badge className={getStatusColor(event.status)}>
@@ -1164,15 +1087,13 @@ export default function AdminEventsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span>
-                              {format(new Date(event.startDate), "MMM d, yyyy")}
-                            </span>
+                            <span>{format(new Date(event.startDate), 'MMM d, yyyy')}</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Clock className="h-4 w-4 text-muted-foreground" />
                             <span>
-                              {format(new Date(event.startDate), "h:mm a")} -
-                              {format(new Date(event.endDate), "h:mm a")}
+                              {format(new Date(event.startDate), 'h:mm a')} - 
+                              {format(new Date(event.endDate), 'h:mm a')}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -1187,9 +1108,7 @@ export default function AdminEventsPage() {
                               <Users className="h-4 w-4 text-muted-foreground" />
                               <span>{event.currentAttendees} registered</span>
                               {event.maxAttendees && (
-                                <span className="text-muted-foreground">
-                                  / {event.maxAttendees} max
-                                </span>
+                                <span className="text-muted-foreground">/ {event.maxAttendees} max</span>
                               )}
                             </div>
                             {event.price && (
@@ -1200,7 +1119,7 @@ export default function AdminEventsPage() {
                           </div>
 
                           <div className="flex items-center space-x-2">
-                            {event.status === "draft" && (
+                            {event.status === 'draft' && (
                               <Button
                                 size="sm"
                                 onClick={() => publishEvent(event.id)}
@@ -1209,8 +1128,8 @@ export default function AdminEventsPage() {
                                 Publish
                               </Button>
                             )}
-
-                            {event.status === "published" && (
+                            
+                            {event.status === 'published' && (
                               <>
                                 <Button
                                   size="sm"
@@ -1290,7 +1209,7 @@ export default function AdminEventsPage() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-
+                            
                             <Button
                               size="sm"
                               variant="ghost"
@@ -1335,18 +1254,14 @@ export default function AdminEventsPage() {
               {filteredEvents.length === 0 && (
                 <div className="text-center py-8">
                   <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">
-                    No Events Found
-                  </h3>
+                  <h3 className="text-lg font-semibold mb-2">No Events Found</h3>
                   <p className="text-muted-foreground">
-                    {searchTerm ||
-                    statusFilter !== "all" ||
-                    typeFilter !== "all"
-                      ? "Try adjusting your search or filters."
-                      : "Create your first event to get started."}
+                    {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
+                      ? 'Try adjusting your search or filters.'
+                      : 'Create your first event to get started.'}
                   </p>
                   {!showCreateForm && (
-                    <Button
+                    <Button 
                       onClick={() => setShowCreateForm(true)}
                       className="mt-4"
                     >
@@ -1371,12 +1286,9 @@ export default function AdminEventsPage() {
             <CardContent>
               <div className="text-center py-8">
                 <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  Analytics Coming Soon
-                </h3>
+                <h3 className="text-lg font-semibold mb-2">Analytics Coming Soon</h3>
                 <p className="text-muted-foreground">
-                  Detailed event analytics and reporting features will be
-                  available soon.
+                  Detailed event analytics and reporting features will be available soon.
                 </p>
               </div>
             </CardContent>
