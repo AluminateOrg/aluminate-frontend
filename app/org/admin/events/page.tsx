@@ -42,7 +42,7 @@ import {
 import { format, addDays, addHours } from "date-fns";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
-import { DeleteConfirmationModal } from "./delete-confirmation";
+import { ConfirmationModal } from "./confirmation-model";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface Event {
@@ -122,6 +122,12 @@ export default function AdminEventsPage() {
     eventId: "",
     eventTitle: "",
     isDeleting: false,
+  });
+  const [cancelModal, setCancelModal] = useState({
+    isOpen: false,
+    eventId: "",
+    eventTitle: "",
+    isCancelling: false,
   });
 
   const fetchEvents = async () => {
@@ -232,32 +238,103 @@ export default function AdminEventsPage() {
         requiresApproval: eventForm.requiresApproval,
       };
 
-      try {
-        const response = await axiosAdmin.post("/event/create", requestPayload);
+      if (editingEvent) {
+        // UPDATE existing event
+        try {
+          const response = await axiosAdmin.put(
+            `/event/${editingEvent.id}/edit`,
+            requestPayload
+          );
 
-        if (response.status != 200) {
-          throw new Error("Failed to create event");
+          if (response.status !== 200) {
+            throw new Error("Failed to update event");
+          }
+
+          const responseData = response.data;
+          const updated = responseData.data ?? responseData;
+
+          // update local state (map response or use edited form)
+          setEvents((prev) =>
+            prev.map((ev) =>
+              ev.id === editingEvent.id
+                ? {
+                    ...ev,
+                    id: updated.id?.toString() ?? ev.id,
+                    title: updated.title ?? eventForm.title,
+                    description: updated.description ?? eventForm.description,
+                    startDate:
+                      updated.startDate && updated.startTime
+                        ? new Date(
+                            `${updated.startDate}T${updated.startTime}`
+                          ).toISOString()
+                        : ev.startDate,
+                    endDate:
+                      updated.endDate && updated.endTime
+                        ? new Date(
+                            `${updated.endDate}T${updated.endTime}`
+                          ).toISOString()
+                        : ev.endDate,
+                    location: updated.location ?? eventForm.location,
+                    type: (
+                      updated.type ?? eventForm.type
+                    ).toLowerCase() as Event["type"],
+                    maxAttendees: updated.maxParticipants ?? ev.maxAttendees,
+                    currentAttendees:
+                      updated.currentParticipants ?? ev.currentAttendees,
+                    registrationDeadline: updated.registrationDeadline
+                      ? new Date(updated.registrationDeadline).toISOString()
+                      : ev.registrationDeadline,
+                    requiresApproval:
+                      updated.requiresApproval ?? ev.requiresApproval,
+                    status: (
+                      updated.status ?? ev.status
+                    ).toLowerCase() as Event["status"],
+                    price: updated.price ?? ev.price,
+                  }
+                : ev
+            )
+          );
+
+          toast.success("Event updated successfully");
+          setShowCreateForm(false);
+          resetForm();
+        } catch (err) {
+          console.error("Error updating event:", err);
+          toast.error("Failed to update event. Please try again.");
+        } finally {
+          setLoading(false);
         }
+      } else {
+        try {
+          const response = await axiosAdmin.post(
+            "/event/create",
+            requestPayload
+          );
 
-        await fetchEvents();
+          if (response.status != 200) {
+            throw new Error("Failed to create event");
+          }
 
-        if (response.status != 200) {
-          const errorData = await response.data.catch(() => ({}));
-          throw new Error("Failed to create event");
+          await fetchEvents();
+
+          if (response.status != 200) {
+            const errorData = await response.data.catch(() => ({}));
+            throw new Error("Failed to create event");
+          }
+
+          await response.data;
+
+          await fetchEvents();
+
+          setShowCreateForm(false);
+          resetForm();
+          toast.success("Event created successfully!");
+        } catch (error) {
+          console.error("Error creating event:", error);
+          toast.error("Failed to create event. Please try again.");
+        } finally {
+          setLoading(false);
         }
-
-        await response.data;
-
-        await fetchEvents();
-
-        setShowCreateForm(false);
-        resetForm();
-        toast.success("Event created successfully!");
-      } catch (error) {
-        console.error("Error creating event:", error);
-        toast.error("Failed to create event. Please try again.");
-      } finally {
-        setLoading(false);
       }
     } catch (error) {
       console.error("error: ", error);
@@ -491,6 +568,27 @@ export default function AdminEventsPage() {
     }
   };
 
+  const confirmCancelEvent = async () => {
+    setCancelModal((prev) => ({ ...prev, isCancelling: true }));
+    await cancelEvent(cancelModal.eventId);
+    setCancelModal({
+      isOpen: false,
+      eventId: "",
+      eventTitle: "",
+      isCancelling: false,
+    });
+  };
+  const closeCancelModal = () => {
+    if (!cancelModal.isCancelling) {
+      setCancelModal({
+        isOpen: false,
+        eventId: "",
+        eventTitle: "",
+        isCancelling: false,
+      });
+    }
+  };
+
   // const duplicateEvent = async (event: Event) => {
   //   try {
   //     const duplicatedEvent: Event = {
@@ -513,22 +611,46 @@ export default function AdminEventsPage() {
 
   const exportAttendees = async (eventId: string) => {
     try {
-      // TODO: Replace with actual API call
-      const csvContent = `Name,Email,Status,Registration Date
-John Doe,john@example.com,Confirmed,2024-01-15
-Jane Smith,jane@example.com,Confirmed,2024-01-16`;
-      
-      const blob = new Blob([csvContent], { type: 'text/csv' });
+      setLoading(true);
+
+      const resp = await axiosAdmin.get(`/event/${eventId}/attendees/export`, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([resp.data], {
+        type: resp.headers["content-type"] || "text/csv",
+      });
+
+      // try to parse filename from Content-Disposition header
+      const contentDisposition =
+        resp.headers["content-disposition"] ||
+        resp.headers["Content-Disposition"] ||
+        "";
+      let filename = `event-${eventId}-attendees.csv`;
+      const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/.exec(
+        contentDisposition
+      );
+      if (match) {
+        filename = decodeURIComponent(
+          (match[1] || match[2] || filename).replace(/(^"|"$)/g, "")
+        );
+      }
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `event-${eventId}-attendees.csv`;
+      a.download = filename;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
       window.URL.revokeObjectURL(url);
       
       toast.success('Attendee list exported successfully!');
     } catch (error) {
-      toast.error('Failed to export attendee list');
+      console.error("Failed to export attendee list:", error);
+      toast.error("Failed to export attendee list");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -631,11 +753,19 @@ Jane Smith,jane@example.com,Confirmed,2024-01-16`;
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Plus className="h-5 w-5" />
-                  <span>Create New Event</span>
+                  {editingEvent ? (
+                    <Edit className="h-5 w-5" />
+                  ) : (
+                    <Plus className="h-5 w-5" />
+                  )}
+                  <span>
+                    {editingEvent ? "Edit Event" : "Create New Event"}
+                  </span>
                 </CardTitle>
                 <CardDescription>
-                  Fill in the details to create a new event for your organization
+                  {editingEvent
+                    ? "Update the event details and click Update Event to save changes."
+                    : "Fill in the details to create a new event for your organization"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -861,7 +991,12 @@ Jane Smith,jane@example.com,Confirmed,2024-01-16`;
                       {loading ? (
                         <>
                           <LoadingSpinner size="sm" className="mr-2" />
-                          Creating...
+                          {editingEvent ? "Updating..." : "Creating..."}
+                        </>
+                      ) : editingEvent ? (
+                        <>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Update Event
                         </>
                       ) : (
                         <>
@@ -1007,7 +1142,14 @@ Jane Smith,jane@example.com,Confirmed,2024-01-16`;
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => cancelEvent(event.id)}
+                                  onClick={() =>
+                                    setCancelModal({
+                                      isOpen: true,
+                                      eventId: event.id,
+                                      eventTitle: event.title,
+                                      isCancelling: false,
+                                    })
+                                  }
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
                                   Cancel
@@ -1022,8 +1164,49 @@ Jane Smith,jane@example.com,Confirmed,2024-01-16`;
                             >
                               <Copy className="h-4 w-4" />
                             </Button> */}
-
-                            <Button size="sm" variant="ghost">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingEvent(event);
+                                setShowCreateForm(true);
+                                setEventForm({
+                                  title: event.title,
+                                  description: event.description,
+                                  startDate: format(
+                                    new Date(event.startDate),
+                                    "yyyy-MM-dd"
+                                  ),
+                                  startTime: format(
+                                    new Date(event.startDate),
+                                    "HH:mm"
+                                  ),
+                                  endDate: format(
+                                    new Date(event.endDate),
+                                    "yyyy-MM-dd"
+                                  ),
+                                  endTime: format(
+                                    new Date(event.endDate),
+                                    "HH:mm"
+                                  ),
+                                  location: event.location,
+                                  type: event.type,
+                                  maxAttendees:
+                                    event.maxAttendees?.toString() ?? "",
+                                  registrationDeadline:
+                                    event.registrationDeadline
+                                      ? format(
+                                          new Date(event.registrationDeadline),
+                                          "yyyy-MM-dd"
+                                        )
+                                      : "",
+                                  isPublic: event.isPublic ?? true,
+                                  requiresApproval:
+                                    event.requiresApproval ?? false,
+                                  price: event.price?.toString() ?? "",
+                                });
+                              }}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             
@@ -1112,12 +1295,27 @@ Jane Smith,jane@example.com,Confirmed,2024-01-16`;
           </Card>
         </TabsContent>
       </Tabs>
-      <DeleteConfirmationModal
+      <ConfirmationModal
         isOpen={deleteModal.isOpen}
         onClose={closeDeleteModal}
         onConfirm={deleteEvent}
-        eventName={deleteModal.eventTitle} // Change prop name from groupName to eventName
-        isDeleting={deleteModal.isDeleting}
+        title="Delete Event"
+        message="Are you sure you want to delete this event? This action cannot be undone."
+        confirmText="Delete Event"
+        confirmVariant="destructive"
+        isLoading={deleteModal.isDeleting}
+        itemName={deleteModal.eventTitle}
+      />
+      <ConfirmationModal
+        isOpen={cancelModal.isOpen}
+        onClose={closeCancelModal}
+        onConfirm={confirmCancelEvent}
+        title="Cancel Event"
+        message="Are you sure you want to cancel this event? This action cannot be undone."
+        confirmText="Cancel Event"
+        confirmVariant="destructive"
+        isLoading={cancelModal.isCancelling}
+        itemName={cancelModal.eventTitle}
       />
     </div>
   );

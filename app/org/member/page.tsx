@@ -26,9 +26,11 @@ import {
 import Link from "next/link";
 import { format } from "date-fns";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import { usePaymentContext } from "@/contexts/paymentContext";
 
 export default function MemberDashboard() {
   const { user } = useAuth();
+  const { payByPayhere } = usePaymentContext();
   const { organization, groups, loading: orgLoading } = useOrg();
   const { events, loading: eventsLoading } = useCalendar(user?.id || "");
 
@@ -73,6 +75,7 @@ export default function MemberDashboard() {
             <h1 className="text-2xl font-bold text-foreground">
               Welcome back, {user?.name || "User"}!
             </h1>
+
             <p className="text-muted-foreground">
               {user?.designation} at {organization?.organizationName}
             </p>
