@@ -55,12 +55,12 @@ interface Campaign {
   raised: number;
   endDate: string;
   category:
-    | "scholarship"
-    | "infrastructure"
-    | "emergency"
-    | "general"
-    | "fundraising"
-    | "other";
+  | "scholarship"
+  | "infrastructure"
+  | "emergency"
+  | "general"
+  | "fundraising"
+  | "other";
   donorCount: number;
   isActive: boolean;
   progressPercentage?: number;
@@ -141,7 +141,6 @@ export default function DonationsPage() {
       const now = new Date();
       const endDate = new Date(campaign.endDate);
 
-      // Campaign must be active AND end date must be in the future
       return (
         campaign.isActive &&
         endDate > now &&
@@ -177,7 +176,7 @@ export default function DonationsPage() {
         endDate: endDate,
         category: mapCategoryFromBackend(backendCampaign.type),
         donorCount: backendCampaign.donorCount || 0,
-        isActive: Boolean(backendCampaign.isActive),
+        isActive: Boolean(backendCampaign.active),
         progressPercentage: goal > 0 ? (raised / goal) * 100 : 0,
         daysRemaining: daysRemaining,
         status: backendCampaign.status || "ACTIVE",
@@ -191,8 +190,8 @@ export default function DonationsPage() {
     setLoading(true);
 
     try {
-      console.log("Fetching campaigns using axiosAdmin...");
-      const response = await axiosAdmin.get("/campaign/get/active");
+      console.log("Fetching campaigns using axiosMember...");
+      const response = await axiosMember.get("/campaign/get/active");
       console.log("Response data:", response.data);
 
       const campaignsData = response.data.data || response.data || [];
@@ -307,33 +306,16 @@ export default function DonationsPage() {
         console.log("🔄 Trying member endpoint first...");
         let response;
 
-        try {
-          // Try member endpoint: /member/donations/my-donations
-          response = await axiosMember.get(`/donations/my-donations`, {
-            params: {
-              page: page.toString(),
-              size: "10",
-              sort: "createdAt,desc",
-            },
-          });
-          console.log("✅ Member endpoint successful:", response.data);
-        } catch (memberError: any) {
-          console.log(
-            "❌ Member endpoint failed:",
-            memberError.response?.status
-          );
 
-          // Fallback to common endpoint with user ID
-          console.log("🔄 Trying common endpoint as fallback...");
-          response = await axiosCommon.get(`/donations/user/${user?.id}`, {
+          // Try member endpoint: /member/donations/my-donations
+          response = await axiosMember.get(`/donations/my-donations/${user?.id}`, {
             params: {
               page: page.toString(),
               size: "10",
               sort: "createdAt,desc",
             },
-          });
-          console.log("✅ Common endpoint successful:", response.data);
-        }
+          });    
+
 
         console.log("SUCCESS! Donations response:", response.data);
         const donationsData = response.data.data || response.data;
@@ -407,23 +389,18 @@ export default function DonationsPage() {
 
       try {
         // Try member endpoint: /member/donations/stats
-        response = await axiosMember.get(`/donations/stats`);
+        response = await axiosMember.get(`/donations/stats/${user?.id}`);
         console.log("✅ Member stats endpoint successful:", response.data);
+        setDonationStats(response.data.data || response.data);
       } catch (memberError: any) {
         console.log(
           "❌ Member stats endpoint failed:",
           memberError.response?.status
         );
 
-        // Fallback to common endpoint with user ID
-        console.log("🔄 Trying common endpoint for stats as fallback...");
-        response = await axiosCommon.get(`/donations/stats/${user?.id}`);
-        console.log("✅ Common stats endpoint successful:", response.data);
       }
 
-      console.log("SUCCESS! Stats response:", response.data);
-      setDonationStats(response.data.data || response.data);
-      console.log("Stats loaded successfully!");
+      
     } catch (error: any) {
       console.error(
         "Error fetching donation stats from both axios instances:",
@@ -735,7 +712,7 @@ export default function DonationsPage() {
                     </span>
                     <span>
                       {(selectedCampaignDetails.daysRemaining || 0) > 0 &&
-                      isCampaignAcceptingDonations(selectedCampaignDetails)
+                        isCampaignAcceptingDonations(selectedCampaignDetails)
                         ? `${selectedCampaignDetails.daysRemaining} days remaining`
                         : "Campaign ended"}
                     </span>
@@ -851,8 +828,7 @@ export default function DonationsPage() {
                 console.log("Session ID:", sessionId);
 
                 toast.info(
-                  `Auth Status - CSRF: ${csrfToken ? "Yes" : "No"}, Session: ${
-                    sessionId ? "Yes" : "No"
+                  `Auth Status - CSRF: ${csrfToken ? "Yes" : "No"}, Session: ${sessionId ? "Yes" : "No"
                   }, User: ${user?.id || "None"}`
                 );
               }}
@@ -1353,7 +1329,7 @@ export default function DonationsPage() {
                           {Math.round(
                             (donationStats.completedDonations /
                               donationStats.totalDonations) *
-                              100
+                            100
                           )}
                           %
                         </div>
