@@ -1,3 +1,4 @@
+// lib/services/paymentService.ts
 import {
   PayHerePaymentRequest,
   PayHerePaymentResponse,
@@ -47,3 +48,5 @@ export class PaymentService {
     return response.json();
   }
 }
+
+export default PaymentService;

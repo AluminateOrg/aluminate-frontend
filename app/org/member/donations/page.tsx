@@ -13,6 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PaymentForm } from "@/components/organisms/PaymentForm";
 import {
   Heart,
@@ -56,8 +64,13 @@ interface Donation {
 }
 
 export default function DonationsPage() {
-  const { user } = useAuth();
+  const { user, getInfo } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [donationStats, setDonationStats] = useState<DonationStats | null>(
+    null
+  );
+  const [authRetries, setAuthRetries] = useState(0);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
     null
   );
@@ -174,6 +187,33 @@ export default function DonationsPage() {
     setSelectedCampaign(null);
   };
 
+  // Filter functions
+  const getFilteredCampaigns = () => {
+    return campaigns.filter((campaign) => {
+      const matchesSearch =
+        campaign.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        campaign.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+      return matchesSearch;
+    });
+  };
+
+  const getFilteredDonations = () => {
+    return donations.filter((donation) => {
+      const matchesStatus =
+        statusFilter === "all" ||
+        donation.status.toLowerCase() === statusFilter.toLowerCase();
+      const matchesCampaign =
+        !campaignFilter ||
+        donation.campaignTitle
+          .toLowerCase()
+          .includes(campaignFilter.toLowerCase());
+
+      return matchesStatus && matchesCampaign;
+    });
+  };
+
+  // Utility functions
   const getCategoryIcon = (category: Campaign["category"]) => {
     switch (category) {
       case "scholarship":
@@ -231,6 +271,9 @@ export default function DonationsPage() {
     );
   }
 
+  const filteredCampaigns = getFilteredCampaigns();
+  const filteredDonations = getFilteredDonations();
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
@@ -279,11 +322,11 @@ export default function DonationsPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="campaigns" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="campaigns">Active Campaigns</TabsTrigger>
-          <TabsTrigger value="history">My Donations</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="campaigns" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="campaigns">Active Campaigns</TabsTrigger>
+            <TabsTrigger value="history">My Donations</TabsTrigger>
+          </TabsList>
 
         <TabsContent value="campaigns" className="space-y-6">
           {loading ? (
@@ -366,18 +409,18 @@ export default function DonationsPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center space-x-1">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span>{campaign.donorCount} donors</span>
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center space-x-1">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span>{campaign.donorCount} donors</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span>
+                              Ends {format(new Date(campaign.endDate), "MMM d")}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>
-                            Ends {format(new Date(campaign.endDate), "MMM d")}
-                          </span>
-                        </div>
-                      </div>
 
                       <div className="pt-2 border-t">
                         <Button

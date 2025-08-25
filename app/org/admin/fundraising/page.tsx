@@ -307,12 +307,14 @@ export default function AdminFundraisingPage() {
     }
   };
 
+  // FIXED TOGGLE FUNCTION
   const handleToggleCampaign = async (campaignId: string) => {
     try {
       setActionLoading(campaignId);
       const currentCampaign = campaigns.find((c) => c.id === campaignId);
       if (!currentCampaign) {
-        throw new Error("Campaign not found");
+        toast.error("Campaign not found");
+        return;
       }
 
       const newStatus = !currentCampaign.isActive;
