@@ -13,6 +13,7 @@ import { PaymentService } from "@/lib/services/paymentService";
 import { PayHerePaymentRequest, PayHereConfig } from "@/lib/types/payment";
 import { toast } from "sonner";
 import { CreditCard, Lock, AlertCircle } from "lucide-react";
+import { usePaymentContext } from "@/contexts/paymentContext";
 
 interface Campaign {
   id: string;
@@ -63,6 +64,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { payByPayhere } = usePaymentContext();
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -120,84 +122,9 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
       return;
     }
 
-    setLoading(true);
 
-    try {
-      // Initialize payment with backend
-      const paymentRequest: PayHerePaymentRequest = {
-        campaignId: parseInt(campaign.id),
-        memberId: member.id,
-        amount: parseFloat(formData.amount),
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        country: formData.country.trim(),
-        isAnonymous: formData.isAnonymous,
-        message: formData.message.trim(),
-      };
-
-      console.log("Sending payment request:", paymentRequest);
-
-      const paymentResponse = await PaymentService.initializePayment(
-        paymentRequest
-      );
-
-      console.log("Received payment response:", paymentResponse);
-
-      // Configure PayHere
-      const payHereConfig: PayHereConfig = {
-        sandbox: paymentResponse.sandbox,
-        merchant_id: paymentResponse.merchantId,
-        return_url: `${window.location.origin}/org/member/donations/success?orderId=${paymentResponse.orderId}`,
-        cancel_url: `${window.location.origin}/org/member/donations/cancel?orderId=${paymentResponse.orderId}`,
-        notify_url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/portal/user/payment/payhere/notify`,
-        order_id: paymentResponse.orderId,
-        items: paymentResponse.itemDescription,
-        amount: paymentResponse.amount,
-        currency: paymentResponse.currency,
-        hash: paymentResponse.hash,
-        first_name: formData.firstName.trim(),
-        last_name: formData.lastName.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        country: formData.country.trim(),
-      };
-
-      console.log("Starting PayHere payment with config:", payHereConfig);
-
-      // Start PayHere payment
-      startPayment(
-        payHereConfig,
-        (orderId) => {
-          console.log("Payment completed successfully:", orderId);
-          toast.success("Payment completed successfully!");
-          onSuccess?.(orderId);
-        },
-        () => {
-          console.log("Payment was cancelled");
-          toast.info("Payment was cancelled");
-          onCancel?.();
-        },
-        (error) => {
-          console.error("Payment failed:", error);
-          toast.error(`Payment failed: ${error}`);
-          onError?.(error);
-        }
-      );
-    } catch (error) {
-      console.error("Payment initialization error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to initialize payment";
-      toast.error(errorMessage);
-      onError?.(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+    payByPayhere("DONATION",parseFloat(formData.amount),"donation","",formData.email,formData.firstName,formData.lastName,formData.email,`${window.origin}/success`,`${window.origin}/cancel`);
+    
   };
 
   const suggestedAmounts = [500, 1000, 2500, 5000, 10000];
