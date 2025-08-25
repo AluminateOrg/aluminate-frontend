@@ -14,7 +14,7 @@ export default function PaymentSuccessPage() {
   const [loading, setLoading] = useState(true);
   const [paymentData, setPaymentData] = useState<any>(null);
 
-  useEffect(() => {
+  useEffect(() => {        
     const checkPaymentStatus = async () => {
       if (!orderId) {
         setLoading(false);

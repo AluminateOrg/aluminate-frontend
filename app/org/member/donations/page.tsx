@@ -44,12 +44,12 @@ interface Campaign {
   raised: number;
   endDate: string;
   category:
-    | "scholarship"
-    | "infrastructure"
-    | "emergency"
-    | "general"
-    | "fundraising"
-    | "other";
+  | "scholarship"
+  | "infrastructure"
+  | "emergency"
+  | "general"
+  | "fundraising"
+  | "other";
   donorCount: number;
   isActive: boolean;
 }
