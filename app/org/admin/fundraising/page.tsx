@@ -92,6 +92,7 @@ interface Campaign {
     | "other";
   donorCount: number;
   isActive: boolean;
+  isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
   progressPercentage?: number;
@@ -220,16 +221,17 @@ export default function AdminFundraisingPage() {
           backendCampaign.endDate || new Date().toISOString().split("T")[0],
         category: mapCategoryFromBackend(backendCampaign.type),
         donorCount: backendCampaign.donorCount || 0,
-        isActive: backendCampaign.isActive || false,
+        isActive: Boolean(backendCampaign.isActive), // Explicit boolean conversion
+        isDeleted: Boolean(backendCampaign.isDeleted),
         createdAt: backendCampaign.createdAt,
         updatedAt: backendCampaign.updatedAt,
         progressPercentage: backendCampaign.progressPercentage || 0,
-        isExpired: backendCampaign.isExpired || false,
-        canAcceptDonations: backendCampaign.canAcceptDonations || false,
+        isExpired: Boolean(backendCampaign.isExpired),
+        canAcceptDonations: Boolean(backendCampaign.canAcceptDonations),
         daysRemaining: backendCampaign.daysRemaining || 0,
         status: backendCampaign.status || "INACTIVE",
         remainingAmount: safeParseNumber(backendCampaign.remainingAmount),
-        isGoalAchieved: backendCampaign.isGoalAchieved || false,
+        isGoalAchieved: Boolean(backendCampaign.isGoalAchieved),
       };
     } catch (error) {
       console.error("Error transforming campaign:", error);
@@ -270,10 +272,7 @@ export default function AdminFundraisingPage() {
       console.log("Fetching campaigns...");
       const response = await axiosAdmin.get("/campaign/get/all");
 
-      console.log("Campaign response:", response);
-
       if (response.status === 200 && response.data) {
-        // Handle different response structures
         let campaignsData = [];
 
         if (response.data.data && Array.isArray(response.data.data)) {
@@ -284,8 +283,6 @@ export default function AdminFundraisingPage() {
           console.warn("Unexpected response format:", response.data);
           campaignsData = [];
         }
-
-        console.log("Raw campaigns data:", campaignsData);
 
         const transformedCampaigns = campaignsData
           .map((campaign: any) => {
@@ -300,14 +297,13 @@ export default function AdminFundraisingPage() {
               return null;
             }
           })
-          .filter(Boolean); // Remove null values
+          .filter(Boolean);
 
-        console.log("Transformed campaigns:", transformedCampaigns);
         setCampaigns(transformedCampaigns);
       }
     } catch (error) {
       console.error("Error fetching campaigns:", error);
-      setCampaigns([]); // Set empty array on error
+      setCampaigns([]);
       handleApiError(error, "Failed to load campaigns. Please try again.");
     } finally {
       setLoading(false);
@@ -316,13 +312,11 @@ export default function AdminFundraisingPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      console.log("Fetching campaign stats...");
       const response = await axiosAdmin.get("/campaign/stats");
 
       if (response.status === 200 && response.data) {
         const statsData = response.data.data || response.data;
 
-        // Transform BigDecimal strings to numbers for frontend
         const transformedStats = {
           ...statsData,
           totalGoal: safeParseNumber(statsData.totalGoal),
@@ -337,7 +331,6 @@ export default function AdminFundraisingPage() {
       }
     } catch (error) {
       console.error("Error fetching stats:", error);
-      // Don't show error toast for stats as it's not critical
     }
   }, []);
 
@@ -388,12 +381,10 @@ export default function AdminFundraisingPage() {
         title: formData.title.trim(),
         description: formData.description.trim(),
         type: mapCategoryToBackend(formData.category),
-        goal: goalValue, // Send as number, backend will convert to BigDecimal
+        goal: goalValue,
         endDate: formData.endDate,
         isActive: formData.isActive,
       };
-
-      console.log("Creating campaign with payload:", requestPayload);
 
       const response = await axiosAdmin.post(
         "/campaign/create",
@@ -401,8 +392,6 @@ export default function AdminFundraisingPage() {
       );
 
       if (response.status === 201 || response.status === 200) {
-        console.log("Campaign created successfully:", response.data);
-
         await fetchCampaigns();
         await fetchStats();
 
@@ -425,42 +414,134 @@ export default function AdminFundraisingPage() {
     }
   };
 
+  // FIXED TOGGLE FUNCTION
   const handleToggleCampaign = async (campaignId: string) => {
     try {
       setActionLoading(campaignId);
 
       const currentCampaign = campaigns.find((c) => c.id === campaignId);
       if (!currentCampaign) {
-        throw new Error("Campaign not found");
+        toast.error("Campaign not found");
+        return;
       }
 
       const newStatus = !currentCampaign.isActive;
 
-      console.log(`Toggling campaign ${campaignId} status to:`, newStatus);
-
-      const response = await axiosAdmin.put(
-        `/campaign/${campaignId}/toggle-status?isActive=${newStatus}`
+      console.log("=== FRONTEND TOGGLE DEBUG START ===");
+      console.log(`Campaign ID: ${campaignId}`);
+      console.log(`Campaign Title: "${currentCampaign.title}"`);
+      console.log(
+        `Current Status: ${currentCampaign.isActive} (${
+          currentCampaign.isActive ? "ACTIVE" : "INACTIVE"
+        })`
+      );
+      console.log(
+        `Requested New Status: ${newStatus} (${
+          newStatus ? "ACTIVE" : "INACTIVE"
+        })`
+      );
+      console.log(
+        `Action: ${currentCampaign.isActive ? "ACTIVE" : "INACTIVE"} -> ${
+          newStatus ? "ACTIVE" : "INACTIVE"
+        }`
       );
 
-      if (response.status === 200) {
-        console.log("Campaign status updated:", response.data);
+      // Use the dedicated toggle endpoint with query parameter
+      console.log(
+        `Making API call: PUT /campaign/${campaignId}/toggle-status?isActive=${newStatus}`
+      );
 
-        setCampaigns((prev) =>
-          prev.map((campaign) =>
-            campaign.id === campaignId
-              ? { ...campaign, isActive: newStatus }
-              : campaign
-          )
+      const response = await axiosAdmin.put(
+        `/campaign/${campaignId}/toggle-status`,
+        null, // No body needed
+        {
+          params: {
+            isActive: newStatus,
+          },
+        }
+      );
+
+      console.log(`API Response Status: ${response.status}`);
+      console.log("Full API Response:", response.data);
+
+      if (response.status === 200 && response.data) {
+        console.log("Toggle API Response:", response.data);
+
+        // Extract the updated campaign data
+        const updatedCampaignData = response.data.data || response.data;
+        console.log("Extracted campaign data:", updatedCampaignData);
+
+        if (updatedCampaignData && typeof updatedCampaignData === "object") {
+          const transformedCampaign =
+            transformBackendCampaign(updatedCampaignData);
+
+          console.log("Transformed campaign:", {
+            id: transformedCampaign.id,
+            title: transformedCampaign.title,
+            isActive: transformedCampaign.isActive,
+            status: transformedCampaign.isActive ? "ACTIVE" : "INACTIVE",
+          });
+
+          // Update the campaigns array
+          setCampaigns((prevCampaigns) => {
+            const updatedCampaigns = prevCampaigns.map((campaign) =>
+              campaign.id === campaignId ? transformedCampaign : campaign
+            );
+
+            // Verify the update in the array
+            const updatedCampaign = updatedCampaigns.find(
+              (c) => c.id === campaignId
+            );
+            console.log("Campaign in updated array:", {
+              id: updatedCampaign?.id,
+              title: updatedCampaign?.title,
+              isActive: updatedCampaign?.isActive,
+              status: updatedCampaign?.isActive ? "ACTIVE" : "INACTIVE",
+            });
+
+            return updatedCampaigns;
+          });
+
+          // Show success message
+          const successMessage = transformedCampaign.isActive
+            ? "Campaign activated successfully!"
+            : "Campaign deactivated successfully!";
+          toast.success(successMessage);
+          console.log("SUCCESS: Toggle completed successfully");
+        } else {
+          console.warn("Invalid response data, refetching all campaigns");
+          await fetchCampaigns();
+          toast.success("Campaign status updated!");
+        }
+
+        // Update stats
+        await fetchStats();
+      } else {
+        console.error(
+          `FAILURE: Unexpected response status: ${response.status}`
         );
-
-        const statusMessage = newStatus
-          ? "Campaign activated successfully!"
-          : "Campaign deactivated successfully!";
-        toast.success(statusMessage);
+        throw new Error(`Unexpected response status: ${response.status}`);
       }
+
+      console.log("=== FRONTEND TOGGLE DEBUG END ===");
     } catch (error) {
-      console.error("Error updating campaign status:", error);
-      handleApiError(error, "Failed to update campaign status");
+      console.error("=== FRONTEND TOGGLE ERROR ===");
+      console.error("Toggle campaign error:", error);
+
+      if (error.response?.status === 400) {
+        const errorMessage =
+          error.response.data?.message || "Cannot update campaign status";
+        toast.error(errorMessage);
+      } else if (error.response?.status === 404) {
+        toast.error("Campaign not found");
+      } else if (error.response?.status === 500) {
+        toast.error("Server error. Please try again.");
+      } else {
+        toast.error("Failed to update campaign status. Please try again.");
+      }
+
+      // Refetch campaigns to ensure UI is in sync
+      await fetchCampaigns();
     } finally {
       setActionLoading(null);
     }
@@ -477,20 +558,15 @@ export default function AdminFundraisingPage() {
     try {
       setLoading(true);
 
-      console.log(`Deleting campaign ${campaignToDelete.id}...`);
-
       const response = await axiosAdmin.delete(
         `/campaign/${campaignToDelete.id}/delete`
       );
 
       if (response.status === 200 || response.status === 204) {
-        console.log("Campaign deleted successfully:", response.data);
-
         setCampaigns((prev) =>
           prev.filter((campaign) => campaign.id !== campaignToDelete.id)
         );
         await fetchStats();
-
         toast.success("Campaign deleted successfully!");
       }
     } catch (error) {
@@ -544,10 +620,10 @@ export default function AdminFundraisingPage() {
     if (filterType !== "all") {
       switch (filterType) {
         case "active":
-          filtered = filtered.filter((c) => c.isActive);
+          filtered = filtered.filter((c) => c.isActive && !c.isExpired);
           break;
         case "inactive":
-          filtered = filtered.filter((c) => !c.isActive);
+          filtered = filtered.filter((c) => !c.isActive && !c.isExpired);
           break;
         case "expired":
           filtered = filtered.filter((c) => c.isExpired);
@@ -590,21 +666,73 @@ export default function AdminFundraisingPage() {
     return names[category];
   };
 
+  // FIXED STATUS FUNCTIONS with proper priority
   const getStatusColor = (campaign: Campaign) => {
-    if (campaign.isGoalAchieved)
-      return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-    if (campaign.isExpired)
-      return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-    if (!campaign.isActive)
+    if (campaign.isDeleted) {
       return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+    if (campaign.isExpired) {
+      return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+    }
+    if (campaign.isGoalAchieved) {
+      return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+    }
+    if (!campaign.isActive) {
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+    }
     return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
   };
 
   const getStatusDisplayName = (campaign: Campaign) => {
-    if (campaign.isGoalAchieved) return "Completed";
+    if (campaign.isDeleted) return "Deleted";
     if (campaign.isExpired) return "Expired";
+    if (campaign.isGoalAchieved) return "Completed";
     if (!campaign.isActive) return "Inactive";
     return "Active";
+  };
+
+  // FIXED TOGGLE BUTTON RENDERING
+  const renderToggleButton = (campaign: Campaign) => {
+    const isLoading = actionLoading === campaign.id;
+    const canToggle =
+      !campaign.isDeleted && !campaign.isExpired && !campaign.isGoalAchieved;
+
+    if (!canToggle) {
+      return (
+        <Button variant="outline" size="sm" disabled>
+          <Eye className="h-4 w-4 mr-1" />
+          View Only
+        </Button>
+      );
+    }
+
+    const isActive = Boolean(campaign.isActive);
+    const buttonText = isLoading
+      ? "Updating..."
+      : isActive
+      ? "Deactivate"
+      : "Activate";
+
+    return (
+      <Button
+        variant={isActive ? "destructive" : "default"}
+        size="sm"
+        onClick={() => handleToggleCampaign(campaign.id)}
+        disabled={isLoading}
+        className={
+          !isActive ? "bg-green-600 hover:bg-green-700 text-white" : ""
+        }
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+        ) : isActive ? (
+          <PowerOff className="h-4 w-4 mr-1" />
+        ) : (
+          <Power className="h-4 w-4 mr-1" />
+        )}
+        <span className="ml-1">{buttonText}</span>
+      </Button>
+    );
   };
 
   // Check authentication
@@ -784,20 +912,22 @@ export default function AdminFundraisingPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateCampaign} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Campaign Title *</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) =>
-                          handleInputChange("title", e.target.value)
-                        }
-                        placeholder="Enter campaign title"
-                        required
-                      />
-                    </div>
+                  {/* Title field - should be first */}
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Campaign Title *</Label>
+                    <Input
+                      id="title"
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) =>
+                        handleInputChange("title", e.target.value)
+                      }
+                      placeholder="Enter campaign title"
+                      required
+                    />
+                  </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="goal">Fundraising Goal (LKR) *</Label>
                       <Input
@@ -1039,32 +1169,7 @@ export default function AdminFundraisingPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2 pt-2 border-t">
-                      <Button
-                        variant={campaign.isActive ? "destructive" : "default"}
-                        size="sm"
-                        onClick={() => handleToggleCampaign(campaign.id)}
-                        disabled={actionLoading === campaign.id}
-                        className={
-                          !campaign.isActive
-                            ? "bg-green-600 hover:bg-green-700 text-white"
-                            : ""
-                        }
-                      >
-                        {actionLoading === campaign.id ? (
-                          <LoadingComponent />
-                        ) : campaign.isActive ? (
-                          <PowerOff className="h-4 w-4 mr-1" />
-                        ) : (
-                          <Power className="h-4 w-4 mr-1" />
-                        )}
-                        <span className="ml-1">
-                          {actionLoading === campaign.id
-                            ? "Updating..."
-                            : campaign.isActive
-                            ? "Deactivate"
-                            : "Activate"}
-                        </span>
-                      </Button>
+                      {renderToggleButton(campaign)}
                       <Button variant="outline" size="sm">
                         <Eye className="h-4 w-4 mr-1" />
                         View Details
