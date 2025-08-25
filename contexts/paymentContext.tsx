@@ -67,6 +67,7 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
             }
 
             console.log("notify Url:", `${apiUrl}/public/payment/notify/${mode}`);
+            console.log("return Url:", returnUrl);
             // 2. Construct payment object
             const payment = {
                 sandbox: true, // Use false in production
