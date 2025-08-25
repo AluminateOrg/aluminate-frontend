@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useOrg } from "@/hooks/useOrg";
 import {
   Card,
@@ -33,9 +33,9 @@ import {
 import Link from "next/link";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import { toast } from "sonner";
-import axios from "axios";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
+/** Types **/
 interface AnnouncementForm {
   title: string;
   message: string;
@@ -46,12 +46,30 @@ interface AnnouncementForm {
   sendPush: boolean;
 }
 
+interface OrgGroup {
+  id: string;
+  name: string;
+  currentMembers: number;
+}
+
+interface UpcomingEventDTO {
+  id: string;
+  title: string;
+  startTime: string; // ISO
+  endTime?: string; // ISO
+  status?: "DRAFT" | "PUBLISHED" | "CANCELLED";
+  isPublished?: boolean;
+  isCanceled?: boolean;
+}
+
 export default function AdminDashboard() {
   const { organization, groups, loading } = useOrg();
+
+  /** Local UI state **/
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
 
-  // Announcement form state
+  /** Announcement form state **/
   const [announcementForm, setAnnouncementForm] = useState<AnnouncementForm>({
     title: "",
     message: "",
@@ -62,11 +80,196 @@ export default function AdminDashboard() {
     sendPush: false,
   });
 
-  console.log("organization: ", organization);
+  // ===== Member count (backend) with admin/member route fallback =====
+  const [memberCount, setMemberCount] = useState<number | null>(null);
+  const [memberLoading, setMemberLoading] = useState(false);
 
-  console.log("announcement form: ", announcementForm);
-  console.log("groups: ", groups);
+  // Backend-connected counts
+  const [groupCount, setGroupCount] = useState<number | null>(null);
+  const [activeGroupCount, setActiveGroupCount] = useState<number | null>(null);
+  const [groupsLoading, setGroupsLoading] = useState(false);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      setGroupsLoading(true);
+      try {
+        // 1) Total event count (matches your /event/count endpoint returning ApiResponse{ data: number })
+        try {
+          const countRes = await axiosAdmin.get("/group/count");
+          const count = Number(countRes?.data?.data ?? countRes?.data ?? 0);
+          if (!Number.isNaN(count)) setGroupCount(count);
+        } catch (e) {
+          console.warn("Failed to load group count", e);
+        }
+      } catch (err) {
+        console.error("Failed to load groups data", err);
+        toast.error("Couldn't load group stats.");
+      } finally {
+        setGroupsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+
+  /** Derived stats **/
+  const memberUsagePercent = useMemo(() => {
+    const current = Number(memberCount ?? organization?.currentMemberCount ?? 0);
+    const max = Number(organization?.maxMemberCount ?? 1);
+    if (max <= 0) return 0;
+    return (current / max) * 100;
+  }, [organization, memberCount]);
+  const isNearLimit = memberUsagePercent > 80;
+
+
+  // Fallback computed active groups (in case backend active-count is unavailable)
+  const activeGroupsCountFallback = useMemo(() => {
+    if (!Array.isArray(groups)) return 0;
+    return (groups as OrgGroup[]).filter((g) => (g?.currentMembers ?? 0) > 0).length;
+  }, [groups]);
+
+
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setMemberLoading(true);
+      try {
+        try {
+          const countRes = await axiosAdmin.get("/member/get/count");
+          const count = Number(countRes?.data?.data ?? countRes?.data ?? 0);
+          if (!Number.isNaN(count)) setMemberCount(count);
+        } catch (e) {
+          console.warn("Failed to load member count", e);
+        }
+      } catch (err) {
+        console.error("Failed to load members data", err);
+        toast.error("Couldn't load member stats.");
+      } finally {
+        setMemberLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+
+  /** Upcoming events (dynamic) **/
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEventDTO[]>([]);
+  const [eventCount, setEventCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setEventsLoading(true);
+      try {
+        // 1) Total event count (matches your /event/count endpoint returning ApiResponse{ data: number })
+        try {
+          const countRes = await axiosAdmin.get("/event/count");
+          const count = Number(countRes?.data?.data ?? countRes?.data ?? 0);
+          if (!Number.isNaN(count)) setEventCount(count);
+        } catch (e) {
+          console.warn("Failed to load event count", e);
+        }
+      } catch (err) {
+        console.error("Failed to load events data", err);
+        toast.error("Couldn't load event stats.");
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const nextEventText = useMemo(() => {
+    if (!upcomingEvents?.length) return "No scheduled events";
+    const first = upcomingEvents[0];
+    const dt = new Date(first.startTime);
+    const dateStr = dt.toLocaleDateString(undefined, {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    return `${first.title} • ${dateStr}`;
+  }, [upcomingEvents]);
+
+  const handleAnnouncementInputChange = (
+    field: keyof AnnouncementForm,
+    value: any
+  ) => {
+    setAnnouncementForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleGroupSelection = (groupId: string) => {
+    setAnnouncementForm((prev) => ({
+      ...prev,
+      selectedGroups: prev.selectedGroups.includes(groupId)
+        ? prev.selectedGroups.filter((id) => id !== groupId)
+        : [...prev.selectedGroups, groupId],
+    }));
+  };
+
+  const handleSendAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!announcementForm.title.trim() || !announcementForm.message.trim()) {
+      toast.error("Please fill in both title and message");
+      return;
+    }
+
+    if (
+      announcementForm.recipients === "groups" &&
+      announcementForm.selectedGroups.length === 0
+    ) {
+      toast.error("Please select at least one group");
+      return;
+    }
+
+    try {
+      setSendingAnnouncement(true);
+      const res = await axiosAdmin.post(
+        "/announcement/multicast-for-all-emails",
+        announcementForm
+      );
+
+      if (res.status !== 200) {
+        toast.error("Failed to send announcement. Please try again.");
+        return;
+      }
+
+      const sendCount = res?.data?.sendCount ?? 0;
+      toast.success(`Announcement sent successfully to ${sendCount} member(s)!`);
+
+      setAnnouncementForm({
+        title: "",
+        message: "",
+        recipients: "all",
+        selectedGroups: [],
+        priority: "normal",
+        sendEmail: true,
+        sendPush: false,
+      });
+      setShowAnnouncementModal(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to send announcement. Please try again.");
+    } finally {
+      setSendingAnnouncement(false);
+    }
+  };
+
+  const resetAnnouncementForm = () => {
+    setAnnouncementForm({
+      title: "",
+      message: "",
+      recipients: "all",
+      selectedGroups: [],
+      priority: "normal",
+      sendEmail: true,
+      sendPush: false,
+    });
+  };
+
+  /** Render **/
   if (loading) {
     return (
       <div className="p-6">
@@ -86,114 +289,11 @@ export default function AdminDashboard() {
         <div className="text-center py-12">
           <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold">No Organization Found</h3>
-          <p className="text-muted-foreground">
-            Please contact support for assistance.
-          </p>
+          <p className="text-muted-foreground">Please contact support for assistance.</p>
         </div>
       </div>
     );
   }
-
-  const memberUsagePercent =
-    (organization.currentMemberCount / organization.maxMemberCount) * 100;
-  const isNearLimit = memberUsagePercent > 80;
-
-  const handleAnnouncementInputChange = (
-    field: keyof AnnouncementForm,
-    value: any
-  ) => {
-    setAnnouncementForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleGroupSelection = (groupId: string) => {
-    setAnnouncementForm((prev) => ({
-      ...prev,
-      selectedGroups: prev.selectedGroups.includes(groupId)
-        ? prev.selectedGroups.filter((id) => id !== groupId)
-        : [...prev.selectedGroups, groupId],
-    }));
-  };
-
-  // useEffect(() => {
-  //   const fetchGroups = async () => {
-  //     try {
-  //       const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/group/get/all`)
-  //       console.log("response from the backend: ", response.data);
-  //       if (response.data){
-
-  //       }
-  //     } catch (error) {
-
-  //     }
-  //   }
-  // })
-
-  const handleSendAnnouncement = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!announcementForm.title.trim() || !announcementForm.message.trim()) {
-      toast.error("Please fill in both title and message");
-      return;
-    }
-
-    if (
-      announcementForm.recipients === "groups" &&
-      announcementForm.selectedGroups.length === 0
-    ) {
-      toast.error("Please select at least one group");
-      return;
-    }
-
-    setSendingAnnouncement(true);
-
-    try {
-      const response = await axiosAdmin.post(
-        `/announcement/multicast-for-all-emails`,
-        announcementForm
-      );
-
-      console.log("response from API:", response);
-
-      if (response.status !== 200) {
-        toast.error("Failed to send announcement. Please try again.");
-      }
-
-      const data = response.data;
-      toast.success(
-        `Announcement sent successfully to ${data.sendCount} members!`
-      );
-
-      // Reset form and close modal
-      setAnnouncementForm({
-        title: "",
-        message: "",
-        recipients: "all",
-        selectedGroups: [],
-        priority: "normal",
-        sendEmail: true,
-        sendPush: false,
-      });
-      setShowAnnouncementModal(false);
-    } catch (error) {
-      toast.error("Failed to send announcement. Please try again.");
-    } finally {
-      setSendingAnnouncement(false);
-    }
-  };
-
-  const resetAnnouncementForm = () => {
-    setAnnouncementForm({
-      title: "",
-      message: "",
-      recipients: "all",
-      selectedGroups: [],
-      priority: "normal",
-      sendEmail: true,
-      sendPush: false,
-    });
-  };
-
-  // console.log("groups", groups
 
   return (
     <div className="p-6 space-y-6">
@@ -201,16 +301,10 @@ export default function AdminDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Welcome back! Here's what's happening with your organization.
-          </p>
+          <p className="text-muted-foreground">Welcome back! Here's what's happening with your organization.</p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
-          <Badge
-            variant={
-              organization.membershipFree === true ? "default" : "secondary"
-            }
-          >
+          <Badge variant={organization.membershipFree === true ? "default" : "secondary"}>
             {organization.membershipFree ? "Free Plan" : "Paid Plan"}
           </Badge>
         </div>
@@ -223,18 +317,12 @@ export default function AdminDashboard() {
             <div className="flex items-center space-x-3">
               <AlertTriangle className="h-5 w-5 text-orange-600" />
               <div>
-                <p className="font-medium text-orange-800 dark:text-orange-200">
-                  Approaching Member Limit
-                </p>
+                <p className="font-medium text-orange-800 dark:text-orange-200">Approaching Member Limit</p>
                 <p className="text-sm text-orange-700 dark:text-orange-300">
-                  You're using {organization.currentMemberCount} of{" "}
-                  {organization.maxMemberCount} members. Consider upgrading your
-                  plan to add more members.
+                  You're using {organization.currentMemberCount} of {organization.maxMemberCount} members. Consider upgrading your plan to add more members.
                 </p>
               </div>
-              <Button size="sm" className="ml-auto">
-                Upgrade Plan
-              </Button>
+              <Button size="sm" className="ml-auto">Upgrade Plan</Button>
             </div>
           </CardContent>
         </Card>
@@ -248,18 +336,25 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {organization.currentMemberCount}
-            </div>
-            <div className="space-y-2 mt-2">
-              <Progress value={memberUsagePercent} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                {organization.currentMemberCount} of{" "}
-                {organization.maxMemberCount} used
-              </p>
-            </div>
+            {memberLoading ? (
+              <div className="flex items-center space-x-2">
+                <LoadingSpinner size="sm" />
+                <span className="text-sm text-muted-foreground">Loading…</span>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{Number(memberCount ?? organization.currentMemberCount ?? 0)}</div>
+                <div className="space-y-2 mt-2">
+                  <Progress value={memberUsagePercent} className="h-2" />
+                  <p className="text-xs text-muted-foreground">
+                    {Number(memberCount ?? organization.currentMemberCount ?? 0)} of {organization.maxMemberCount ?? 0} used
+                  </p>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
+
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -267,44 +362,49 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {Array.isArray(groups)
-                ? groups.filter((g) => g.currentMembers > 0).length
-                : 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {groups.length} total groups
-            </p>
+            {groupsLoading ? (
+              <div className="flex items-center space-x-2">
+                <LoadingSpinner size="sm" />
+                <span className="text-xs text-muted-foreground">Loading…</span>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{(groupCount ?? (Array.isArray(groups) ? groups.length : 0))}</div>
+      
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Upcoming Events
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">
-              Next event: Tomorrow
-            </p>
+            {eventsLoading ? (
+              <div className="flex items-center space-x-2">
+                <LoadingSpinner size="sm" />
+                <span className="text-sm text-muted-foreground">Loading…</span>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{(eventCount ?? undefined) !== undefined ? eventCount : upcomingEvents.length}</div>
+                <p className="text-xs text-muted-foreground">{nextEventText}</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Monthly Revenue
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
+            {/* TODO: Replace with real data from billing endpoint */}
             <div className="text-2xl font-bold">RS. 2,400</div>
-            <p className="text-xs text-muted-foreground">
-              +15% from last month
-            </p>
+            <p className="text-xs text-muted-foreground">+15% from last month</p>
           </CardContent>
         </Card>
       </div>
@@ -314,44 +414,23 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Member Activity</CardTitle>
-            <CardDescription>
-              Latest member interactions and engagements
-            </CardDescription>
+            <CardDescription>Latest member interactions and engagements</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {[
-                {
-                  name: "Sheane Mario",
-                  action: "joined Software Engineers group",
-                  time: "2 hours ago",
-                },
-                {
-                  name: "Pulasthi Abishek ",
-                  action: "RSVP'd to Alumni Networking Event",
-                  time: "4 hours ago",
-                },
-                {
-                  name: "Hashir Ahamad",
-                  action: "donated LKR 50 to Scholarship Fund",
-                  time: "6 hours ago",
-                },
-                {
-                  name: "Satheera Jayawardhana ",
-                  action: "booked mentorship session",
-                  time: "1 day ago",
-                },
+                { name: "Sheane Mario", action: "joined Software Engineers group", time: "2 hours ago" },
+                { name: "Pulasthi Abishek ", action: "RSVP'd to Alumni Networking Event", time: "4 hours ago" },
+                { name: "Hashir Ahamad", action: "donated LKR 50 to Scholarship Fund", time: "6 hours ago" },
+                { name: "Satheera Jayawardhana ", action: "booked mentorship session", time: "1 day ago" },
               ].map((activity, index) => (
                 <div key={index} className="flex items-center space-x-3">
                   <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground">
-                      <span className="font-medium">{activity.name}</span>{" "}
-                      {activity.action}
+                      <span className="font-medium">{activity.name}</span> {activity.action}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {activity.time}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{activity.time}</p>
                   </div>
                 </div>
               ))}
@@ -412,10 +491,7 @@ export default function AdminDashboard() {
                     <Send className="h-5 w-5" />
                     <span>Send Announcement</span>
                   </CardTitle>
-                  <CardDescription>
-                    Send important updates and notifications to your
-                    organization members
-                  </CardDescription>
+                  <CardDescription>Send important updates and notifications to your organization members</CardDescription>
                 </div>
                 <Button
                   variant="ghost"
@@ -438,9 +514,7 @@ export default function AdminDashboard() {
                     <Input
                       id="title"
                       value={announcementForm.title}
-                      onChange={(e) =>
-                        handleAnnouncementInputChange("title", e.target.value)
-                      }
+                      onChange={(e) => handleAnnouncementInputChange("title", e.target.value)}
                       placeholder="Important Update: New Features Available"
                       required
                     />
@@ -451,9 +525,7 @@ export default function AdminDashboard() {
                     <Textarea
                       id="message"
                       value={announcementForm.message}
-                      onChange={(e) =>
-                        handleAnnouncementInputChange("message", e.target.value)
-                      }
+                      onChange={(e) => handleAnnouncementInputChange("message", e.target.value)}
                       placeholder="Write your announcement message here..."
                       rows={4}
                       required
@@ -472,17 +544,10 @@ export default function AdminDashboard() {
                         name="recipients"
                         value="all"
                         checked={announcementForm.recipients === "all"}
-                        onChange={(e) =>
-                          handleAnnouncementInputChange(
-                            "recipients",
-                            e.target.value
-                          )
-                        }
+                        onChange={(e) => handleAnnouncementInputChange("recipients", e.target.value)}
                         className="rounded"
                       />
-                      <Label htmlFor="all-members">
-                        All Members ({organization.currentMemberCount} members)
-                      </Label>
+                      <Label htmlFor="all-members">All Members ({organization.currentMemberCount} members)</Label>
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -492,44 +557,28 @@ export default function AdminDashboard() {
                         name="recipients"
                         value="groups"
                         checked={announcementForm.recipients === "groups"}
-                        onChange={(e) =>
-                          handleAnnouncementInputChange(
-                            "recipients",
-                            e.target.value
-                          )
-                        }
+                        onChange={(e) => handleAnnouncementInputChange("recipients", e.target.value)}
                         className="rounded"
                       />
                       <Label htmlFor="specific-groups">Specific Groups</Label>
                     </div>
                   </div>
 
-                  {/* Group Selection */}
                   {announcementForm.recipients === "groups" && (
                     <div className="space-y-3 ml-6">
-                      <p className="text-sm text-muted-foreground">
-                        Select which groups to send the announcement to:
-                      </p>
+                      <p className="text-sm text-muted-foreground">Select which groups to send the announcement to:</p>
                       <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
                         {Array.isArray(groups) &&
                           groups.map((group: any) => (
-                            <div
-                              key={group.id}
-                              className="flex items-center space-x-2"
-                            >
+                            <div key={group.id} className="flex items-center space-x-2">
                               <input
                                 type="checkbox"
                                 id={`group-${group.id}`}
-                                checked={announcementForm.selectedGroups.includes(
-                                  group.id
-                                )}
+                                checked={announcementForm.selectedGroups.includes(group.id)}
                                 onChange={() => handleGroupSelection(group.id)}
                                 className="rounded"
                               />
-                              <Label
-                                htmlFor={`group-${group.id}`}
-                                className="text-sm"
-                              >
+                              <Label htmlFor={`group-${group.id}`} className="text-sm">
                                 {group.name} ({group.currentMembers} members)
                               </Label>
                             </div>
@@ -538,18 +587,10 @@ export default function AdminDashboard() {
 
                       {announcementForm.selectedGroups.length > 0 && (
                         <p className="text-sm text-muted-foreground">
-                          Selected: {announcementForm.selectedGroups.length}{" "}
-                          group(s),{" "}
-                          {announcementForm.selectedGroups.reduce(
-                            (sum, groupId) => {
-                              const group = groups.find(
-                                (g) => g.id === groupId
-                              );
-                              return sum + (group?.currentMembers || 0);
-                            },
-                            0
-                          )}{" "}
-                          total members
+                          Selected: {announcementForm.selectedGroups.length} group(s), {announcementForm.selectedGroups.reduce((sum, groupId) => {
+                            const group = (groups as OrgGroup[]).find((g) => g.id === groupId);
+                            return sum + (group?.currentMembers || 0);
+                          }, 0)} total members
                         </p>
                       )}
                     </div>
@@ -563,12 +604,7 @@ export default function AdminDashboard() {
                     <select
                       id="priority"
                       value={announcementForm.priority}
-                      onChange={(e) =>
-                        handleAnnouncementInputChange(
-                          "priority",
-                          e.target.value
-                        )
-                      }
+                      onChange={(e) => handleAnnouncementInputChange("priority", e.target.value)}
                       className="w-full px-3 py-2 border border-input bg-background rounded-md"
                     >
                       <option value="low">Low</option>
@@ -585,12 +621,7 @@ export default function AdminDashboard() {
                           type="checkbox"
                           id="send-email"
                           checked={announcementForm.sendEmail}
-                          onChange={(e) =>
-                            handleAnnouncementInputChange(
-                              "sendEmail",
-                              e.target.checked
-                            )
-                          }
+                          onChange={(e) => handleAnnouncementInputChange("sendEmail", e.target.checked)}
                           className="rounded"
                         />
                         <Label htmlFor="send-email" className="text-sm">
@@ -604,12 +635,7 @@ export default function AdminDashboard() {
                           type="checkbox"
                           id="send-push"
                           checked={announcementForm.sendPush}
-                          onChange={(e) =>
-                            handleAnnouncementInputChange(
-                              "sendPush",
-                              e.target.checked
-                            )
-                          }
+                          onChange={(e) => handleAnnouncementInputChange("sendPush", e.target.checked)}
                           className="rounded"
                         />
                         <Label htmlFor="send-push" className="text-sm">
@@ -633,11 +659,7 @@ export default function AdminDashboard() {
                   >
                     Cancel
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={resetAnnouncementForm}
-                  >
+                  <Button type="button" variant="outline" onClick={resetAnnouncementForm}>
                     Clear Form
                   </Button>
                   <Button type="submit" disabled={sendingAnnouncement}>
