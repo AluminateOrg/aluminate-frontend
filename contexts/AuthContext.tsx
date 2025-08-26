@@ -12,6 +12,7 @@ import { useSelector } from "react-redux";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
 import axiosMember from "@/axiosInstances/axiosMember";
 import { set } from "date-fns";
+import axiosCommon from '@/axiosInstances/axiosCommon';
 
 export type UserRole = "admin" | "member";
 
@@ -24,6 +25,7 @@ export interface User {
   designation?: string | null;
   phone?: string | null;
   joinedAt: string | null;
+  isMentor?: boolean | null;
 }
 
 interface AuthContextType {
@@ -41,7 +43,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(true);
   const router = useRouter();
   const dispatch = useDispatch();
@@ -97,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await axiosMember.get("/info/getMemberInfo");
         if (res.status === 200) {
           const { data } = res.data;
+          const response = await axiosCommon.get(`/mentor/is-mentor/${data.user.id}`)
           //setMemberUser in redux
           dispatch(
             setMemberUser({
@@ -107,8 +110,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               avatar: data.user.photoUrl || null,
               designation: data.user.position || null,
               joinedAt: data.user.createdAt || null,
+              isMentor: response.data.data,
             })
           );
+          setChecking(false);
 
           //setUser in context
           setUser({
@@ -120,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             designation: data.user.position || null,
             phone: data.user.phone || null,
             joinedAt: data.user.createdAt || null,
+            isMentor: response.data.data,
           });
           return true;
         } else {
@@ -133,6 +139,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
   };
+
+  //function to test axiosCommon
+  // const testAxiosCommon = async () => {
+  //   try {
+  //     const res = await axiosCommon.get('/admin/test');
+  //     console.log("Test Axios Common response: ", res);
+  //   } catch (error) {
+  //     console.error("Error testing Axios Common: ", error);
+  //   }
+  // };
+  // useEffect(() => {
+  //   testAxiosCommon();
+  // }, []);
 
   const login = async (email: string, password: string, role: UserRole) => {
     setLoading(true);
@@ -155,8 +174,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Login failed");
       }
 
+
+
       const { data } = res.data;
       console.log("Login response data: ", data.user);
+
+      const response = await axiosCommon.get(`/mentor/is-mentor/${data.user.id}`)
+
+      console.log("response of mentor: ", response);
+      const isMentor = response.data.data;
+      console.log("isMentor: ", isMentor);
 
       if (role === "admin") {
         dispatch(
@@ -181,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             avatar: data.user.photoUrl || null,
             designation: data.user.position || null,
             joinedAt: data.user.createdAt || null,
+            isMentor: isMentor,
           })
         );
       }
@@ -194,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         designation: data.user.position || null,
         phone: data.user.phone || null,
         joinedAt: data.user.createdAt || null,
+        isMentor: isMentor,
       };
 
       // @ts-ignore
@@ -229,7 +258,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, loading, getInfo, setUser, setLoading ,checking}}
+      value={{
+        user,
+        login,
+        logout,
+        loading,
+        getInfo,
+        setUser,
+        setLoading,
+        checking,
+      }}
     >
       {children}
     </AuthContext.Provider>

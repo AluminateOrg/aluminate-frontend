@@ -208,13 +208,11 @@ export default function AdminMentorshipPage() {
   ) => {
     setLoading(true);
     try {
-      const { data } = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/approve`,
-        {
-          applicationId,
-          action,
-        }
-      );
+
+      const {data} = await axiosAdmin.post('/mentor/approve', {
+        applicationId,
+        action,
+      })
 
       console.log("Application action response:", data);
 
@@ -272,13 +270,11 @@ export default function AdminMentorshipPage() {
     newStatus: Mentor["status"]
   ) => {
     try {
-      const { data } = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/dis-approve`,
-        {
-          mentorId,
-          newStatus,
-        }
-      );
+
+      const {data} = await axiosAdmin.post('/mentor/dis-approve', {
+        mentorId,
+        newStatus,
+      })
       console.log("Mentor status change response:", data);
       if (data.success) {
         toast.success(`Mentor status updated to ${newStatus}`);

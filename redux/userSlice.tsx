@@ -8,6 +8,7 @@ interface Member {
   avatar: string | null;
   designation: string | null;
   joinedAt: string | null;
+  isMentor?: boolean | null;
 }
 
 interface Admin {

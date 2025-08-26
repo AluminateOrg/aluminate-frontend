@@ -26,11 +26,79 @@ import {
 import Link from "next/link";
 import { format } from "date-fns";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import { usePaymentContext } from "@/contexts/paymentContext";
+import React, { useEffect, useState } from "react";
+import axiosMember from "@/axiosInstances/axiosMember";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Toast } from "@/components/ui/toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export default function MemberDashboard() {
   const { user } = useAuth();
+  const { payByPayhere } = usePaymentContext();
   const { organization, groups, loading: orgLoading } = useOrg();
   const { events, loading: eventsLoading } = useCalendar(user?.id || "");
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [acceptModalOpen, setAcceptModalOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [form, setForm] = useState({ programUrl: "", date: "", time: "" });
+  const [acceptLoading, setAcceptLoading] = useState(false);
+
+  const handleAcceptClick = (sessions: any) => {
+    setSelectedSession(sessions);
+    setAcceptModalOpen(true);
+    setForm({ programUrl: "", date: "", time: "" });
+  }
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
+  console.log("form data", form);
+  console.log("selected session", selectedSession);
+
+  const handleAcceptSubmit = async () => {
+    setAcceptLoading(true);
+    try {
+      const { data } = await axiosMember.post(`/mentor/accept-session/${selectedSession.id}`, {
+        programUrl: form.programUrl,
+        date: form.date,
+        time: form.time
+      })
+      console.log("response after accepting session", data);
+      toast.success("Session accepted successfully");
+      setAcceptModalOpen(false);
+      fetchSessions();
+    } catch (error) {
+      toast.error("Error accepting session. Please try again.");
+    } finally {
+      setAcceptLoading(false);
+    }
+  }
+
+  const fetchSessions = async () => {
+    try {
+      if (user?.isMentor) {
+        const { data } = await axiosMember.get(`/mentor/get-all-sessions/${user?.id}`);
+        console.log("from mentor side")
+        console.log("data of sessions: ", data);
+        setSessions(data);
+      } else {
+        const { data } = await axiosMember.get(`/member/mentor/get-all-sessions-by-user/${user?.id}`);
+        console.log("data of sessions: ", data);
+        console.log("from member side")
+        setSessions(data);
+      }
+    } catch (error) {
+      console.error("Error fetching sessions: ", error);
+    }
+  }
+
+  useEffect(() => {
+    fetchSessions();
+  }, [])
 
   const loading = eventsLoading;
 
@@ -73,12 +141,18 @@ export default function MemberDashboard() {
             <h1 className="text-2xl font-bold text-foreground">
               Welcome back, {user?.name || "User"}!
             </h1>
+
             <p className="text-muted-foreground">
               {user?.designation} at {organization?.organizationName}
             </p>
             {user?.joinedAt && (
               <Badge variant="secondary" className="mt-1">
                 Member since {format(new Date(user.joinedAt), "MMM yyyy")}
+              </Badge>
+            )}
+            {user?.isMentor && (
+              <Badge variant="outline" className="mt-1 ml-2 text-green-700 border-green-700">
+                Mentor
               </Badge>
             )}
           </div>
@@ -193,7 +267,7 @@ export default function MemberDashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {orgLoading ? (
+            {loading ? (
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner size="md" />
               </div>
@@ -228,6 +302,107 @@ export default function MemberDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Mentor Sessions Section */}
+      {user?.isMentor && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Mentor Sessions</CardTitle>
+            <CardDescription>Review and accept your session requests</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {sessions.length === 0 ? (
+              <p className="text-muted-foreground">No sessions found.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sessions.map((session) => (
+                  <div key={session.id} className="border rounded-lg p-4 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-semibold">{session.menteeName}</h4>
+                        <p className="text-sm text-muted-foreground">{session.menteeEmail}</p>
+                      </div>
+                      <Badge variant={session.status === "PENDING" ? "outline" : "secondary"}>
+                        {session.status}
+                      </Badge>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Duration:</span> {session.sessionDuration}
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Requested:</span> {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
+                    </div>
+                    {session.programUrl && (
+                      <div className="text-sm">
+                        <span className="font-medium">Program URL:</span> <a href={session.programUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">{session.programUrl}</a>
+                      </div>
+                    )}
+                    <div className="flex gap-2 mt-2">
+                      {session.status === "PENDING" && (
+                        <Button size="sm" onClick={() => handleAcceptClick(session)}>
+                          Accept & Set Details
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Accept Session Modal */}
+      <Dialog open={acceptModalOpen} onOpenChange={setAcceptModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Accept Session</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="programUrl">Program URL</Label>
+              <Input
+                id="programUrl"
+                name="programUrl"
+                placeholder="Google Meet/Zoom link"
+                value={form.programUrl}
+                onChange={handleFormChange}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                value={form.date}
+                onChange={handleFormChange}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="time">Time</Label>
+              <Input
+                id="time"
+                name="time"
+                type="time"
+                value={form.time}
+                onChange={handleFormChange}
+                required
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAcceptModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAcceptSubmit} disabled={acceptLoading}>
+              {acceptLoading ? "Accepting..." : "Accept Session"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Quick Actions */}
       <Card>
@@ -265,5 +440,7 @@ export default function MemberDashboard() {
         </CardContent>
       </Card>
     </div>
+
   );
+
 }

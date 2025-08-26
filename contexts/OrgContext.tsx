@@ -66,8 +66,6 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Failed to fetch organization:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -110,10 +108,12 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!checking) {
-      console.log("checking completed, fetching organization and groups");
-      fetchOrganization();
-      fetchGroups();
-      setLoading(false);
+      const fetchAll = async () => {
+        setLoading(true);
+        await Promise.all([fetchOrganization(), fetchGroups()]);
+        setLoading(false);
+      };
+      fetchAll();
     }
   }, [checking]);
 
@@ -121,7 +121,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     if (organization) {
       const fetchData = setInterval(() => {
         fetchGroups();
-      }, 10000);
+      }, 100000);
       return () => clearInterval(fetchData);
     }
   });
