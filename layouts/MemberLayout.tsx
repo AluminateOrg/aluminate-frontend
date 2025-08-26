@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -28,6 +28,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation";
 
 interface MemberLayoutProps {
   children: React.ReactNode;
@@ -51,7 +52,7 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { recentNotifications, unreadCount, markAsRead } = useNotifications();
-  const pathname = usePathname();
+
 
   if (!user || user.role !== "member") {
     return null;
@@ -59,6 +60,8 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const openMobileMenu = () => setMobileMenuOpen(true);
+  const pathname = usePathname();
+  const router = useRouter();
 
   const handleNotificationClick = async (
     notificationId: string,
@@ -84,7 +87,13 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
         return <Bell className="h-4 w-4 text-gray-600" />;
     }
   };
+  const checkRouter = async () => {
+      navigation.forEach(item => {
+        router.prefetch(item.href);
+      });
+    }
 
+  checkRouter();
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
@@ -170,6 +179,7 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
                           ? "border-primary text-foreground"
                           : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
                       )}
+                      prefetch
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {item.name}

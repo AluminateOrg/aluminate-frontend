@@ -230,6 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setLoading(false);
       router.push(role === "admin" ? "/org/admin" : "/org/member");
+      router.refresh();
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
