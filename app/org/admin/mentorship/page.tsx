@@ -92,13 +92,7 @@ interface Mentor {
   maxMentees: number;
   yearsExperience: number;
   joinedAt: string;
-  applicantName?: string;
   status: "active" | "inactive" | "suspended";
-  approved?: boolean;
-  currentPosition?: string;
-  applicantEmail?: string;
-  skills?: string[];
-  applicantId?: string;
 }
 
 interface MentorshipSession {

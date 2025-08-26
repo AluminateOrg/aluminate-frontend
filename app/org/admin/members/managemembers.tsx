@@ -1,4 +1,3 @@
-// File: components/members/ManageMembers.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -25,23 +24,21 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import axios from "axios";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface Member {
-  id: string;
+  id: number;
   name: string;
   email: string;
   phone?: string;
-  designation?: string;
-  company?: string;
-  graduationYear?: string;
-  degree?: string;
-  location?: string;
-  avatar?: string;
-  status: "active" | "pending" | "inactive";
-  joinedAt: string;
-  groupIds: string[];
+  nic?: string;
+  regNo?: string;
+  address?: string;
+  batch?: number;
+  isActive: boolean;
+  groupIds: number[];
 }
 
 export default function ManageMembers({
@@ -200,7 +197,9 @@ export default function ManageMembers({
           assignments
         </CardDescription>
       </CardHeader>
+
       <CardContent>
+        {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -213,7 +212,7 @@ export default function ManageMembers({
           </div>
           <div className="flex items-center space-x-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            {["all", "active", "pending", "inactive"].map((status) => (
+            {["all", "active", "inactive"].map((status) => (
               <Button
                 key={status}
                 variant={statusFilter === status ? "default" : "outline"}
@@ -226,6 +225,7 @@ export default function ManageMembers({
           </div>
         </div>
 
+        {/* Member List */}
         <div className="space-y-4">
           {filteredMembers.map((member) => {
             if (!member || !member.id) return null; // Skip invalid members
@@ -268,12 +268,6 @@ export default function ManageMembers({
                         <div className="flex items-center space-x-1">
                           <Phone className="h-3 w-3" />
                           <span>{member.phone}</span>
-                        </div>
-                      )}
-                      {member.company && (
-                        <div className="flex items-center space-x-1">
-                          <Briefcase className="h-3 w-3" />
-                          <span>{member.company}</span>
                         </div>
                       )}
                     </div>
