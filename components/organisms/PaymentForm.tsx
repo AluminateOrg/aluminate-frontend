@@ -309,31 +309,8 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
           </div>
         </div>
 
-        {/* Message */}
-        <div className="space-y-2">
-          <Label htmlFor="message">Message (Optional)</Label>
-          <Textarea
-            id="message"
-            value={formData.message}
-            onChange={(e) => handleInputChange("message", e.target.value)}
-            placeholder="Add a personal message with your donation..."
-            rows={3}
-          />
-        </div>
 
-        {/* Anonymous Option */}
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="anonymous"
-            checked={formData.isAnonymous}
-            onCheckedChange={(checked) =>
-              handleInputChange("isAnonymous", checked)
-            }
-          />
-          <Label htmlFor="anonymous" className="text-sm">
-            Make this donation anonymous
-          </Label>
-        </div>
+        
 
         {/* Security Notice */}
         <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg border border-green-200 dark:border-green-800">
