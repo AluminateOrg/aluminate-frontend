@@ -25,6 +25,7 @@ export interface User {
   designation?: string | null;
   phone?: string | null;
   joinedAt: string | null;
+  isMentor?: boolean | null;
 }
 
 interface AuthContextType {
@@ -98,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await axiosMember.get("/info/getMemberInfo");
         if (res.status === 200) {
           const { data } = res.data;
+          const response = await axiosCommon.get(`/mentor/is-mentor/${data.user.id}`)
           //setMemberUser in redux
           dispatch(
             setMemberUser({
@@ -108,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               avatar: data.user.photoUrl || null,
               designation: data.user.position || null,
               joinedAt: data.user.createdAt || null,
+              isMentor: response.data.data,
             })
           );
           setChecking(false);
@@ -122,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             designation: data.user.position || null,
             phone: data.user.phone || null,
             joinedAt: data.user.createdAt || null,
+            isMentor: response.data.data,
           });
           return true;
         } else {
@@ -170,8 +174,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Login failed");
       }
 
+
+
       const { data } = res.data;
       console.log("Login response data: ", data.user);
+
+      const response = await axiosCommon.get(`/mentor/is-mentor/${data.user.id}`)
+
+      console.log("response of mentor: ", response);
+      const isMentor = response.data.data;
+      console.log("isMentor: ", isMentor);
 
       if (role === "admin") {
         dispatch(
@@ -196,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             avatar: data.user.photoUrl || null,
             designation: data.user.position || null,
             joinedAt: data.user.createdAt || null,
+            isMentor: isMentor,
           })
         );
       }
@@ -209,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         designation: data.user.position || null,
         phone: data.user.phone || null,
         joinedAt: data.user.createdAt || null,
+        isMentor: isMentor,
       };
 
       // @ts-ignore

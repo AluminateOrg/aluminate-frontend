@@ -72,7 +72,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const fetchGroups = async () => {
     try {
       const { data } = await axiosCommon.get("/group/get/all");
-      console.log("Groups fetched from backend: ", data);
+      console.log("Groups fetched from backend: ", data.data);
       if (data) {
         setGroups(data.data as Group[]);
       } else {
@@ -82,6 +82,8 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Failed to fetch groups:", error);
       toast.error("Failed to fetch groups.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -101,6 +103,8 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       throw error;
     }
   };
+
+
 
   useEffect(() => {
     if (!checking) {
