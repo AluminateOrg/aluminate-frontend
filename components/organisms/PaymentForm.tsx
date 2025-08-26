@@ -68,45 +68,59 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
   };
 
   const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      toast.error("Please enter a valid donation amount");
-      return false;
+      newErrors.amount = "Please enter a valid donation amount";
+    } else if (parseFloat(formData.amount) < 100) {
+      newErrors.amount = "Minimum donation amount is LKR 100";
+    } else if (parseFloat(formData.amount) > parseFloat(campaign.goal.toString())) {
+      newErrors.amount = `Maximum donation amount is LKR ${campaign.goal.toLocaleString()}`;
     }
 
     if (!formData.firstName.trim()) {
-      toast.error("First name is required");
-      return false;
+      newErrors.firstName = "First name is required";
     }
 
     if (!formData.lastName.trim()) {
-      toast.error("Last name is required");
-      return false;
+      newErrors.lastName = "Last name is required";
     }
 
     if (!formData.email.trim()) {
-      toast.error("Email is required");
-      return false;
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
     }
 
     if (!formData.phone.trim()) {
-      toast.error("Phone number is required");
-      return false;
+      newErrors.phone = "Phone number is required";
+    } else if (
+      !/^(\+94|0)?[0-9]{9,10}$/.test(formData.phone.replace(/\s/g, ""))
+    ) {
+      newErrors.phone = "Please enter a valid Sri Lankan phone number";
     }
 
-    return true;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleDonate = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      toast.error("Please fix the errors below");
+      return;
+    }
 
     if (!isLoaded) {
       toast.error("Payment system is not ready. Please try again.");
       return;
     }
 
-    setLoading(true);
+    //cus 1 campaign id
+    const campaignId = campaign.id;  
 
-    
+
+    payByPayhere("DONATION", parseFloat(formData.amount), "donation", `${campaignId}`, formData.email, formData.firstName, formData.lastName, formData.email, `${window.origin}/success`, `${window.origin}/cancel`);
+
   };
 
   const suggestedAmounts = [500, 1000, 2500, 5000, 10000];
