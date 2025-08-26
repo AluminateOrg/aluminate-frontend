@@ -228,7 +228,7 @@ export default function DonationsPage() {
       setCampaignDetailsLoading(true);
       try {
         console.log("Fetching campaign details for ID:", campaignId);
-        const response = await axiosAdmin.get(`/campaign/${campaignId}`);
+        const response = await axiosMember.get(`/campaign/${campaignId}`);
         console.log("Campaign details response:", response.data);
 
         const campaignData = response.data.data || response.data;
@@ -415,49 +415,7 @@ export default function DonationsPage() {
     }
   }, [user, ensureAuthenticated]);
 
-  // Authentication initialization effect with better retry logic
-  useEffect(() => {
-    const initializeAuth = async () => {
-      console.log("🔄 Initializing member authentication...");
 
-      // If no user and haven't exceeded retries
-      if (!user && authRetries < 3) {
-        console.log(
-          `Attempting to get member info (attempt ${authRetries + 1}/3)...`
-        );
-
-        // Small delay to ensure cookies are available
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        try {
-          const success = await getInfo("member");
-          if (success) {
-            console.log("✅ Member authentication successful");
-            setAuthRetries(0);
-          } else {
-            console.warn("❌ Failed to get member info, will retry");
-            setTimeout(() => setAuthRetries((prev) => prev + 1), 2000);
-          }
-        } catch (error) {
-          console.error("❌ Member authentication error:", error);
-          setTimeout(() => setAuthRetries((prev) => prev + 1), 2000);
-        }
-      } else if (user) {
-        console.log("✅ User already authenticated:", {
-          id: user.id,
-          role: user.role,
-        });
-        setAuthRetries(0);
-      } else if (authRetries >= 3) {
-        console.error("❌ Max authentication retries reached");
-        toast.error(
-          "Unable to authenticate. Please refresh the page or log in again."
-        );
-      }
-    };
-
-    initializeAuth();
-  }, [user, getInfo, authRetries]);
 
   useEffect(() => {
     if (user) {

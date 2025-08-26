@@ -106,72 +106,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
 
     setLoading(true);
 
-    try {
-      // Initialize payment with backend
-      const paymentRequest: PayHerePaymentRequest = {
-        campaignId: parseInt(campaign.id),
-        memberId: member.id,
-        amount: parseFloat(formData.amount),
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        country: formData.country.trim(),
-        isAnonymous: formData.isAnonymous,
-        message: formData.message.trim(),
-      };
-
-      const paymentResponse = await PaymentService.initializePayment(
-        paymentRequest
-      );
-
-      // Configure PayHere
-      const payHereConfig: PayHereConfig = {
-        sandbox: paymentResponse.sandbox,
-        merchant_id: paymentResponse.merchantId,
-        return_url: `${window.location.origin}/org/member/donations/success?orderId=${paymentResponse.orderId}`,
-        cancel_url: `${window.location.origin}/org/member/donations/cancel?orderId=${paymentResponse.orderId}`,
-        notify_url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/portal/payment/payhere/notify`,
-        order_id: paymentResponse.orderId,
-        items: paymentResponse.itemDescription,
-        amount: paymentResponse.amount,
-        currency: paymentResponse.currency,
-        hash: paymentResponse.hash,
-        first_name: formData.firstName.trim(),
-        last_name: formData.lastName.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        country: formData.country.trim(),
-      };
-
-      // Start PayHere payment
-      startPayment(
-        payHereConfig,
-        (orderId) => {
-          toast.success("Payment completed successfully!");
-          onSuccess?.(orderId);
-        },
-        () => {
-          toast.info("Payment was cancelled");
-          onCancel?.();
-        },
-        (error) => {
-          toast.error(`Payment failed: ${error}`);
-          onError?.(error);
-        }
-      );
-    } catch (error) {
-      console.error("Payment initialization error:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to initialize payment"
-      );
-    } finally {
-      setLoading(false);
-    }
+    
   };
 
   const suggestedAmounts = [500, 1000, 2500, 5000, 10000];
