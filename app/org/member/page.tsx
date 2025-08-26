@@ -78,6 +78,8 @@ export default function MemberDashboard() {
     }
   }
 
+  
+
   const fetchSessions = async () => {
     try {
       if (user?.isMentor) {
@@ -344,6 +346,74 @@ export default function MemberDashboard() {
                         </Button>
                       )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {!user?.isMentor && (
+        <Card>
+          <CardHeader>
+            <CardTitle>My Booked Sessions</CardTitle>
+            <CardDescription>Sessions you have requested with mentors</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {sessions.length === 0 ? (
+              <p className="text-muted-foreground">No sessions found.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sessions.map((session) => (
+                  <div key={session.id} className="border rounded-lg p-4 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-semibold">{session.mentorName}</h4>
+                        <p className="text-sm text-muted-foreground">{session.sessionDuration}</p>
+                      </div>
+                      <Badge variant={session.status === "PENDING" ? "outline" : "secondary"}>
+                        {session.status}
+                      </Badge>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Requested:</span> {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Date:</span> {session.date ? format(new Date(session.date), "MMM d, yyyy") : "-"}
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Time:</span> {session.time || "-"}
+                    </div>
+                    {/* Show programUrl only if scheduled and paid */}
+                    {session.status === "SCHEDULED" && (
+                      <div className="mt-2">
+                        {!session.isPaid ? (
+                          <div className="text-sm text-muted-foreground">
+                            <span className="font-medium">Program URL:</span> <span className="italic">Pay mentor fee to reveal</span>
+                            <Button
+                              className="ml-2"
+                              size="sm"
+                              onClick={() => payByPayhere(session)}
+                            >
+                              Pay Now
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-sm">
+                            <span className="font-medium">Program URL:</span>{" "}
+                            <a
+                              href={session.programUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary underline"
+                            >
+                              {session.programUrl}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
