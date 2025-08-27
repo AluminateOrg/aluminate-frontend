@@ -141,6 +141,9 @@ export default function DonationsPage() {
       const now = new Date();
       const endDate = new Date(campaign.endDate);
 
+      console.log("now", now);
+      console.log("endDate", endDate);
+      console.log("campaign.status", campaign.status);
       // Campaign must be active AND end date must be in the future
       return (
         campaign.isActive &&
@@ -177,7 +180,7 @@ export default function DonationsPage() {
         endDate: endDate,
         category: mapCategoryFromBackend(backendCampaign.type),
         donorCount: backendCampaign.donorCount || 0,
-        isActive: Boolean(backendCampaign.isActive),
+        isActive: Boolean(backendCampaign.active),
         progressPercentage: goal > 0 ? (raised / goal) * 100 : 0,
         daysRemaining: daysRemaining,
         status: backendCampaign.status || "ACTIVE",
@@ -191,8 +194,8 @@ export default function DonationsPage() {
     setLoading(true);
 
     try {
-      console.log("Fetching campaigns using axiosAdmin...");
-      const response = await axiosAdmin.get("/campaign/get/active");
+      console.log("Fetching campaigns using axiosMember...");
+      const response = await axiosMember.get("/campaign/get/active");
       console.log("Response data:", response.data);
 
       const campaignsData = response.data.data || response.data || [];
