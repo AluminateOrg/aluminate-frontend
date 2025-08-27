@@ -28,6 +28,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation";
 
 interface MemberLayoutProps {
   children: React.ReactNode;
@@ -52,6 +53,7 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const { recentNotifications, unreadCount, markAsRead } = useNotifications();
   const pathname = usePathname();
+  const router = useRouter();
 
   if (!user || user.role !== "member") {
     return null;
@@ -59,6 +61,14 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const openMobileMenu = () => setMobileMenuOpen(true);
+
+  const checkRouter = async () => {
+      navigation.forEach(item => {
+        router.prefetch(item.href);
+      });
+    }
+
+  checkRouter();
 
   const handleNotificationClick = async (
     notificationId: string,
@@ -170,6 +180,7 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
                           ? "border-primary text-foreground"
                           : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
                       )}
+                      prefetch
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {item.name}

@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 interface OrgAdminLayoutProps {
@@ -45,9 +45,19 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
 
+  const router = useRouter();
+
   if (!user || user.role !== "admin") {
     return null;
   }
+
+  const checkRouter = async () => {
+    navigation.forEach(item => {
+      router.prefetch(item.href);
+    });
+  }
+
+  checkRouter();
 
   const closeSidebar = () => setSidebarOpen(false);
   const openSidebar = () => setSidebarOpen(true);
@@ -162,9 +172,9 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
                   <AvatarFallback className="bg-gradient-to-br from-primary/10 to-primary/20 text-primary font-medium">
                     {user?.name
                       ? user.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
                       : ""}
                   </AvatarFallback>
                 </Avatar>
@@ -282,9 +292,9 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30 text-primary font-semibold text-sm">
                   {user?.name
                     ? user.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
                     : ""}
                 </AvatarFallback>
               </Avatar>
