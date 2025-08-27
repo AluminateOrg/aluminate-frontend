@@ -12,7 +12,8 @@ import { usePayHere } from "@/hooks/usePayHere";
 import { PaymentService } from "@/lib/services/paymentService";
 import { PayHerePaymentRequest, PayHereConfig } from "@/lib/types/payment";
 import { toast } from "sonner";
-import { CreditCard, Lock } from "lucide-react";
+import { CreditCard, Lock, AlertCircle } from "lucide-react";
+import { usePaymentContext } from "@/contexts/paymentContext";
 
 interface Campaign {
   id: string;
@@ -62,9 +63,15 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
     message: "",
   });
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { payByPayhere } = usePaymentContext();
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error for this field when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
   };
 
   const validateForm = (): boolean => {
@@ -154,21 +161,32 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
         <div className="space-y-4">
           <Label htmlFor="amount">Donation Amount (LKR) *</Label>
           <div className="space-y-3">
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="1"
-              value={formData.amount}
-              onChange={(e) => handleInputChange("amount", e.target.value)}
-              placeholder="Enter custom amount"
-            />
+            <div className="space-y-2">
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="10"
+                max="1000000"
+                value={formData.amount}
+                onChange={(e) => handleInputChange("amount", e.target.value)}
+                placeholder="Enter custom amount"
+                className={errors.amount ? "border-red-500" : ""}
+              />
+              {errors.amount && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.amount}
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-5 gap-2">
               {suggestedAmounts.map((amount) => (
                 <Button
                   key={amount}
                   variant="outline"
                   size="sm"
+                  type="button"
                   onClick={() => handleInputChange("amount", amount.toString())}
                   className={
                     formData.amount === amount.toString()
@@ -194,8 +212,15 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
                 value={formData.firstName}
                 onChange={(e) => handleInputChange("firstName", e.target.value)}
                 placeholder="John"
+                className={errors.firstName ? "border-red-500" : ""}
                 required
               />
+              {errors.firstName && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.firstName}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name *</Label>
@@ -204,8 +229,15 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
                 value={formData.lastName}
                 onChange={(e) => handleInputChange("lastName", e.target.value)}
                 placeholder="Doe"
+                className={errors.lastName ? "border-red-500" : ""}
                 required
               />
+              {errors.lastName && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.lastName}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email *</Label>
@@ -215,8 +247,15 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
                 value={formData.email}
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 placeholder="john@example.com"
+                className={errors.email ? "border-red-500" : ""}
                 required
               />
+              {errors.email && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.email}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone *</Label>
@@ -225,8 +264,15 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
                 value={formData.phone}
                 onChange={(e) => handleInputChange("phone", e.target.value)}
                 placeholder="+94771234567"
+                className={errors.phone ? "border-red-500" : ""}
                 required
               />
+              {errors.phone && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.phone}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="city">City</Label>
@@ -297,6 +343,14 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
           <p className="text-center text-sm text-muted-foreground">
             Loading payment system...
           </p>
+        )}
+
+        {Object.keys(errors).length > 0 && (
+          <div className="bg-red-50 dark:bg-red-950 p-3 rounded-lg border border-red-200 dark:border-red-800">
+            <p className="text-sm text-red-800 dark:text-red-200 font-medium">
+              Please fix the errors above before proceeding.
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>
