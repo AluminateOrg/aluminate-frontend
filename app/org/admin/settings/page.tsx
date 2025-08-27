@@ -42,7 +42,7 @@ export default function AdminSettingsPage() {
 
   // Organization settings state
   const [orgSettings, setOrgSettings] = useState({
-    name: organization?.name || "Tech Alumni Network",
+    name: organization?.organizationName || "Tech Alumni Network",
     description:
       organization?.description ||
       "Connecting technology professionals and fostering innovation",
@@ -556,8 +556,8 @@ export default function AdminSettingsPage() {
                       Plan
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {organization?.memberCount} / {organization?.memberLimit}{" "}
-                      members used
+                      {organization?.currentMemberCount} /{" "}
+                      {organization?.maxMemberCount} members used
                     </p>
                   </div>
                   <div className="text-right">
@@ -577,7 +577,7 @@ export default function AdminSettingsPage() {
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="h-4 w-4 text-green-500" />
                       <span className="text-sm">
-                        Up to {organization?.memberLimit} members
+                        Up to {organization?.maxMemberCount} members
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
