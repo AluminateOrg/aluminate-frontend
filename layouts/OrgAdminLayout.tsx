@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 interface OrgAdminLayoutProps {
@@ -44,13 +44,20 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
+  const router = useRouter();
 
-  if (!user || user.role !== "admin") {
-    return null;
-  }
 
   const closeSidebar = () => setSidebarOpen(false);
   const openSidebar = () => setSidebarOpen(true);
+
+  const checkRouter = async () => {
+      (navigation.map(item => {
+        console.log("prefetching route", item.href);
+        return router.prefetch(item.href);
+      }));
+    }
+
+  checkRouter();
 
   return (
     <div className="h-screen flex overflow-hidden bg-background">
@@ -170,10 +177,10 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
                 </Avatar>
                 <div className="hidden lg:block">
                   <p className="text-sm font-medium text-foreground">
-                    {user.name}
+                    {user?.name}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {user.designation}
+                    {user?.designation}
                   </p>
                 </div>
               </div>
@@ -236,6 +243,7 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
                       ? "bg-primary text-primary-foreground shadow-md border-primary/20"
                       : "text-muted-foreground hover:text-foreground"
                   )}
+                  prefetch
                 >
                   {/* Icon with enhanced styling */}
                   <div
@@ -265,6 +273,7 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
                       "absolute inset-0 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 opacity-0 transition-opacity duration-200",
                       "group-hover:opacity-100"
                     )}
+                  
                   />
                 </Link>
               );

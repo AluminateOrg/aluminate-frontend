@@ -77,7 +77,7 @@ export default function BulkCsvUpload() {
 
 
   console.log("selected group data: ", bulkUploadForm.selectedGroups);
-  console.log("groups from redux: ", groups);
+  console.log("groups from redux in bulk upload page : ", groups);
 
   const handleCSVUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,47 +101,38 @@ export default function BulkCsvUpload() {
     console.log("formData::", formData.get("groups"));
 
     try {
-      const xhr = new XMLHttpRequest();
-      xhr.open(
-        "POST",
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/admin/bulk-upload`
-      );
+      // const xhr = new XMLHttpRequest();
+      // xhr.open(
+      //   "POST",
+      //   '/member/bulk-upload'
+      // );
 
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round(
-            (event.loaded / event.total) * 100
-          );
-          setUploadProgress(percentComplete);
-        }
-      };
-
-      xhr.onload = async () => {
-        setLoading(false);
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const data = JSON.parse(xhr.responseText);
-          console.log("data from upload:", data);
-          setUploadResult(data);
-
-          if (data.invalidRows && data.invalidRows.length > 0) {
-            setEditableRows(data.invalidRows);
-            setShowInvalidPopup(true);
+      const res = await axiosAdmin.post('/member/bulk-upload', formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentComplete = Math.round(
+              (progressEvent.loaded / progressEvent.total) * 100
+            );
+            setUploadProgress(percentComplete);
           }
-          setCsvFile(null);
+        },
+      })
 
-          toast.success("Upload completed");
-        } else {
-          const errorData = JSON.parse(xhr.responseText);
-          toast.error(`Upload failed: ${errorData.message || "Unknown error"}`);
-        }
-      };
+      const data = await res.data;
+      console.log("data from upload:", data);
+      setUploadResult(data);
+      if (data.invalidRows && data.invalidRows.length > 0) {
+        setEditableRows(data.invalidRows);
+        setShowInvalidPopup(true);
+      } else {
+        toast.success(`${data.success} members uploaded successfully!`);
+      }
+      setCsvFile(null);
+      setLoading(false);
 
-      xhr.onerror = () => {
-        setLoading(false);
-        toast.error("Upload failed due to network error.");
-      };
-
-      xhr.send(formData);
     } catch (error: any) {
       setLoading(false);
       console.error("Bulk upload error:", error);
