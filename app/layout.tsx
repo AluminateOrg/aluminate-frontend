@@ -17,10 +17,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* PayHere script loaded before interactive for better performance */}
-
-      </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
       </body>

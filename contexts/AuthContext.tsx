@@ -13,6 +13,7 @@ import axiosAdmin from "@/axiosInstances/axiosAdmin";
 import axiosMember from "@/axiosInstances/axiosMember";
 import { set } from "date-fns";
 import axiosCommon from '@/axiosInstances/axiosCommon';
+import { toast } from "sonner";
 
 export type UserRole = "admin" | "member";
 
@@ -52,13 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const localUser = userFromRedux.user;
 
   const getInfo = async (role: UserRole) => {
-    console.log("hii");
+    console.log("executing getInfo for role:", role);
     if (role === "admin") {
       try {
         const res = await axiosAdmin.get("/info/getAdminInfo");
         if (res.status === 200) {
           const { data } = res.data;
-          console.log("data from admin info: ", data);
           //setAdminUser in redux
           dispatch(
             setAdminUser({
@@ -140,18 +140,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  //function to test axiosCommon
-  // const testAxiosCommon = async () => {
-  //   try {
-  //     const res = await axiosCommon.get('/admin/test');
-  //     console.log("Test Axios Common response: ", res);
-  //   } catch (error) {
-  //     console.error("Error testing Axios Common: ", error);
-  //   }
-  // };
-  // useEffect(() => {
-  //   testAxiosCommon();
-  // }, []);
 
   const login = async (email: string, password: string, role: UserRole) => {
     setLoading(true);
@@ -162,9 +150,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       //encrypt object
       const pem = process.env.NEXT_PUBLIC_ORG_PUBLIC_KEY!;
-      const publicKey = await importPublicKey(pem);
+      const publicKey = importPublicKey(pem);
 
-      const payload = await encryptObject({ email, password }, publicKey);
+      const payload = encryptObject({ email, password }, publicKey);
 
       const res = await axiosGlobal.post("/auth/login", {
         payload,
@@ -177,28 +165,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
       const { data } = res.data;
-      console.log("Login response data: ", data.user);
+      console.log("data from login response:", data);
 
       const response = await axiosCommon.get(`/mentor/is-mentor/${data.user.id}`)
-
-      console.log("response of mentor: ", response);
       const isMentor = response.data.data;
-      console.log("isMentor: ", isMentor);
 
-      if (role === "admin") {
+      if (role === "admin" && role===data.user.role.toLowerCase()) {
         dispatch(
           setAdminUser({
             id: data.user.id,
             name: data.user.name,
             email: data.user.email,
             nic: data.user.nic || null,
-            role: role,
+            role: data.user.role || null,
             phone: data.user.phone || null,
             emailVerified: data.user.emailVerified || null,
             createdAt: data.user.createdAt || null,
           })
         );
-      } else {
+      } else if(role === "member" && role===data.user.role.toLowerCase()){
         dispatch(
           setMemberUser({
             id: data.user.id,
@@ -211,12 +196,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isMentor: isMentor,
           })
         );
+      }else{
+        toast.error("Invalid login entry: Check Role!");
+        throw new Error("Invalid login entry: Check Role!");
       }
 
       const user: User = {
         email: data.user.email,
         name: data.user.name,
-        role: role,
+        role: data.user.role.toLowerCase(),
         id: data.user.id,
         avatar: data.user.photoUrl || null,
         designation: data.user.position || null,
@@ -227,9 +215,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // @ts-ignore
       setUser(user); // Save real user
-
       setLoading(false);
-      router.push(role === "admin" ? "/org/admin" : "/org/member");
+
+      router.push(data.user.role.toLowerCase() === "admin" ? "/org/admin" : "/org/member");
       router.refresh();
     } catch (error) {
       console.error("Login failed:", error);

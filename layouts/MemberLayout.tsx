@@ -54,9 +54,6 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
   const { recentNotifications, unreadCount, markAsRead } = useNotifications();
 
 
-  if (!user || user.role !== "member") {
-    return null;
-  }
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const openMobileMenu = () => setMobileMenuOpen(true);
