@@ -1,28 +1,34 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useOrg } from '@/hooks/useOrg';
-import { useChat } from '@/hooks/useChat';
-import { ChatMessage } from '@/components/molecules/ChatMessage';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  Send, 
-  Users, 
-  MessageSquare, 
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useOrg } from "@/hooks/useOrg";
+import { useChat } from "@/hooks/useChat";
+import { ChatMessage } from "@/components/molecules/ChatMessage";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Send,
+  Users,
+  MessageSquare,
   ArrowLeft,
   Search,
-  Hash
-} from 'lucide-react';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
-import { cn } from '@/lib/utils';
+  Hash,
+} from "lucide-react";
+import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import { cn } from "@/lib/utils";
 
-type ChatType = 'organization' | 'group';
+type ChatType = "organization" | "group";
 
 interface ChatRoom {
   id: string;
@@ -38,44 +44,39 @@ export default function MemberChatPage() {
   const { user } = useAuth();
   const { groups } = useOrg();
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
-  const [newMessage, setNewMessage] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [newMessage, setNewMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Chat hooks based on selected room
-  const { 
-    messages, 
-    loading, 
-    sending, 
-    sendMessage 
-  } = useChat(
-    user?.orgId || '', 
-    selectedRoom?.type === 'group' ? selectedRoom.id : undefined
+  const { messages, loading, sending, sendMessage } = useChat(
+    user?.id || "",
+    selectedRoom?.type === "group" ? selectedRoom.id : undefined
   );
 
   // Create chat rooms list
   const organizationRoom: ChatRoom = {
-    id: 'organization',
-    name: 'Organization Chat',
-    type: 'organization',
+    id: "organization",
+    name: "Organization Chat",
+    type: "organization",
     memberCount: 245,
-    lastMessage: 'Welcome to the organization chat!',
-    lastMessageTime: '2 hours ago',
-    unreadCount: 3
+    lastMessage: "Welcome to the organization chat!",
+    lastMessageTime: "2 hours ago",
+    unreadCount: 3,
   };
 
-  const groupRooms: ChatRoom[] = groups.map(group => ({
+  const groupRooms: ChatRoom[] = groups.map((group) => ({
     id: group.id,
     name: group.name,
-    type: 'group' as ChatType,
+    type: "group" as ChatType,
     memberCount: group.currentMembers,
-    lastMessage: 'Latest group discussion...',
-    lastMessageTime: '1 hour ago',
-    unreadCount: Math.floor(Math.random() * 5)
+    lastMessage: "Latest group discussion...",
+    lastMessageTime: "1 hour ago",
+    unreadCount: Math.floor(Math.random() * 5),
   }));
 
   const allRooms = [organizationRoom, ...groupRooms];
 
-  const filteredRooms = allRooms.filter(room =>
+  const filteredRooms = allRooms.filter((room) =>
     room.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -85,9 +86,9 @@ export default function MemberChatPage() {
 
     try {
       await sendMessage(newMessage);
-      setNewMessage('');
+      setNewMessage("");
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error("Failed to send message:", error);
     }
   };
 
@@ -103,15 +104,19 @@ export default function MemberChatPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">Chat</h1>
-        <p className="text-muted-foreground">Connect with your organization and groups</p>
+        <p className="text-muted-foreground">
+          Connect with your organization and groups
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         {/* Room Selection Sidebar */}
-        <div className={cn(
-          "lg:col-span-1",
-          selectedRoom ? "hidden lg:block" : "block"
-        )}>
+        <div
+          className={cn(
+            "lg:col-span-1",
+            selectedRoom ? "hidden lg:block" : "block"
+          )}
+        >
           <Card className="h-full flex flex-col">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center space-x-2">
@@ -122,7 +127,7 @@ export default function MemberChatPage() {
                 Select a chat room to start messaging
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="flex-1 flex flex-col p-0">
               {/* Search */}
               <div className="px-6 pb-4">
@@ -150,7 +155,7 @@ export default function MemberChatPage() {
                       )}
                     >
                       <div className="relative">
-                        {room.type === 'organization' ? (
+                        {room.type === "organization" ? (
                           <div className="w-10 h-10 bg-primary text-primary-foreground rounded-lg flex items-center justify-center">
                             <Users className="h-5 w-5" />
                           </div>
@@ -160,18 +165,20 @@ export default function MemberChatPage() {
                           </div>
                         )}
                         {room.unreadCount && room.unreadCount > 0 && (
-                          <Badge 
-                            variant="destructive" 
+                          <Badge
+                            variant="destructive"
                             className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
                           >
                             {room.unreadCount}
                           </Badge>
                         )}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-sm truncate">{room.name}</h4>
+                          <h4 className="font-medium text-sm truncate">
+                            {room.name}
+                          </h4>
                           <span className="text-xs text-muted-foreground">
                             {room.lastMessageTime}
                           </span>
@@ -195,10 +202,12 @@ export default function MemberChatPage() {
         </div>
 
         {/* Chat Area */}
-        <div className={cn(
-          "lg:col-span-2",
-          !selectedRoom ? "hidden lg:block" : "block"
-        )}>
+        <div
+          className={cn(
+            "lg:col-span-2",
+            !selectedRoom ? "hidden lg:block" : "block"
+          )}
+        >
           {selectedRoom ? (
             <Card className="h-full flex flex-col">
               <CardHeader className="pb-3 border-b">
@@ -211,9 +220,9 @@ export default function MemberChatPage() {
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
-                  
+
                   <div className="flex items-center space-x-3">
-                    {selectedRoom.type === 'organization' ? (
+                    {selectedRoom.type === "organization" ? (
                       <div className="w-10 h-10 bg-primary text-primary-foreground rounded-lg flex items-center justify-center">
                         <Users className="h-5 w-5" />
                       </div>
@@ -222,12 +231,16 @@ export default function MemberChatPage() {
                         <Hash className="h-5 w-5" />
                       </div>
                     )}
-                    
+
                     <div>
-                      <CardTitle className="text-lg">{selectedRoom.name}</CardTitle>
+                      <CardTitle className="text-lg">
+                        {selectedRoom.name}
+                      </CardTitle>
                       <CardDescription>
                         {selectedRoom.memberCount} members
-                        {selectedRoom.type === 'organization' ? ' • Organization-wide chat' : ' • Group chat'}
+                        {selectedRoom.type === "organization"
+                          ? " • Organization-wide chat"
+                          : " • Group chat"}
                       </CardDescription>
                     </div>
                   </div>
@@ -236,10 +249,10 @@ export default function MemberChatPage() {
 
               <CardContent className="flex-1 flex flex-col p-0">
                 {/* Messages */}
-                <ChatContent 
+                <ChatContent
                   messages={messages}
                   loading={loading}
-                  currentUserId={user?.id || ''}
+                  currentUserId={user?.id || ""}
                 />
 
                 {/* Message Input */}
@@ -252,8 +265,8 @@ export default function MemberChatPage() {
                       disabled={sending}
                       className="flex-1"
                     />
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={sending || !newMessage.trim()}
                       size="sm"
                     >
@@ -271,7 +284,9 @@ export default function MemberChatPage() {
             <Card className="h-full flex items-center justify-center">
               <CardContent className="text-center">
                 <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Select a Conversation</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  Select a Conversation
+                </h3>
                 <p className="text-muted-foreground">
                   Choose a chat room from the sidebar to start messaging
                 </p>
@@ -308,7 +323,9 @@ function ChatContent({ messages, loading, currentUserId }: ChatContentProps) {
         <div className="text-center space-y-2">
           <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto" />
           <p className="text-sm text-muted-foreground">No messages yet</p>
-          <p className="text-xs text-muted-foreground">Be the first to start the conversation!</p>
+          <p className="text-xs text-muted-foreground">
+            Be the first to start the conversation!
+          </p>
         </div>
       </div>
     );
