@@ -13,6 +13,7 @@ import { PaymentService } from "@/lib/services/paymentService";
 import { PayHerePaymentRequest, PayHereConfig } from "@/lib/types/payment";
 import { toast } from "sonner";
 import { CreditCard, Lock, AlertCircle } from "lucide-react";
+import { usePaymentContext } from "@/contexts/paymentContext";
 
 interface Campaign {
   id: string;
@@ -63,6 +64,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { payByPayhere } = usePaymentContext();
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -77,10 +79,12 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
 
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
       newErrors.amount = "Please enter a valid donation amount";
-    } else if (parseFloat(formData.amount) < 10) {
-      newErrors.amount = "Minimum donation amount is LKR 10";
-    } else if (parseFloat(formData.amount) > 1000000) {
-      newErrors.amount = "Maximum donation amount is LKR 1,000,000";
+    } else if (parseFloat(formData.amount) < 100) {
+      newErrors.amount = "Minimum donation amount is LKR 100";
+    } else if (
+      parseFloat(formData.amount) > parseFloat(campaign.goal.toString())
+    ) {
+      newErrors.amount = `Maximum donation amount is LKR ${campaign.goal.toLocaleString()}`;
     }
 
     if (!formData.firstName.trim()) {
@@ -120,84 +124,21 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
       return;
     }
 
-    setLoading(true);
+    //cus 1 campaign id
+    const campaignId = campaign.id;
 
-    try {
-      // Initialize payment with backend
-      const paymentRequest: PayHerePaymentRequest = {
-        campaignId: parseInt(campaign.id),
-        memberId: member.id,
-        amount: parseFloat(formData.amount),
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        country: formData.country.trim(),
-        isAnonymous: formData.isAnonymous,
-        message: formData.message.trim(),
-      };
-
-      console.log("Sending payment request:", paymentRequest);
-
-      const paymentResponse = await PaymentService.initializePayment(
-        paymentRequest
-      );
-
-      console.log("Received payment response:", paymentResponse);
-
-      // Configure PayHere
-      const payHereConfig: PayHereConfig = {
-        sandbox: paymentResponse.sandbox,
-        merchant_id: paymentResponse.merchantId,
-        return_url: `${window.location.origin}/org/member/donations/success?orderId=${paymentResponse.orderId}`,
-        cancel_url: `${window.location.origin}/org/member/donations/cancel?orderId=${paymentResponse.orderId}`,
-        notify_url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/portal/user/payment/payhere/notify`,
-        order_id: paymentResponse.orderId,
-        items: paymentResponse.itemDescription,
-        amount: paymentResponse.amount,
-        currency: paymentResponse.currency,
-        hash: paymentResponse.hash,
-        first_name: formData.firstName.trim(),
-        last_name: formData.lastName.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        country: formData.country.trim(),
-      };
-
-      console.log("Starting PayHere payment with config:", payHereConfig);
-
-      // Start PayHere payment
-      startPayment(
-        payHereConfig,
-        (orderId) => {
-          console.log("Payment completed successfully:", orderId);
-          toast.success("Payment completed successfully!");
-          onSuccess?.(orderId);
-        },
-        () => {
-          console.log("Payment was cancelled");
-          toast.info("Payment was cancelled");
-          onCancel?.();
-        },
-        (error) => {
-          console.error("Payment failed:", error);
-          toast.error(`Payment failed: ${error}`);
-          onError?.(error);
-        }
-      );
-    } catch (error) {
-      console.error("Payment initialization error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to initialize payment";
-      toast.error(errorMessage);
-      onError?.(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+    payByPayhere(
+      "DONATION",
+      parseFloat(formData.amount),
+      "donation",
+      `${campaignId}`,
+      formData.email,
+      formData.firstName,
+      formData.lastName,
+      formData.email,
+      `${window.origin}/success`,
+      `${window.origin}/cancel`
+    );
   };
 
   const suggestedAmounts = [500, 1000, 2500, 5000, 10000];
@@ -372,32 +313,6 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
               placeholder="Street address"
             />
           </div>
-        </div>
-
-        {/* Message */}
-        <div className="space-y-2">
-          <Label htmlFor="message">Message (Optional)</Label>
-          <Textarea
-            id="message"
-            value={formData.message}
-            onChange={(e) => handleInputChange("message", e.target.value)}
-            placeholder="Add a personal message with your donation..."
-            rows={3}
-          />
-        </div>
-
-        {/* Anonymous Option */}
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="anonymous"
-            checked={formData.isAnonymous}
-            onCheckedChange={(checked) =>
-              handleInputChange("isAnonymous", checked)
-            }
-          />
-          <Label htmlFor="anonymous" className="text-sm">
-            Make this donation anonymous
-          </Label>
         </div>
 
         {/* Security Notice */}

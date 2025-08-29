@@ -141,10 +141,6 @@ export default function DonationsPage() {
       const now = new Date();
       const endDate = new Date(campaign.endDate);
 
-      console.log("now", now);
-      console.log("endDate", endDate);
-      console.log("campaign.status", campaign.status);
-      // Campaign must be active AND end date must be in the future
       return (
         campaign.isActive &&
         endDate > now &&
@@ -232,7 +228,7 @@ export default function DonationsPage() {
       setCampaignDetailsLoading(true);
       try {
         console.log("Fetching campaign details for ID:", campaignId);
-        const response = await axiosAdmin.get(`/campaign/${campaignId}`);
+        const response = await axiosMember.get(`/campaign/${campaignId}`);
         console.log("Campaign details response:", response.data);
 
         const campaignData = response.data.data || response.data;
@@ -310,33 +306,17 @@ export default function DonationsPage() {
         console.log("🔄 Trying member endpoint first...");
         let response;
 
-        try {
-          // Try member endpoint: /member/donations/my-donations
-          response = await axiosMember.get(`/donations/my-donations`, {
+        // Try member endpoint: /member/donations/my-donations
+        response = await axiosMember.get(
+          `/donations/my-donations/${user?.id}`,
+          {
             params: {
               page: page.toString(),
               size: "10",
               sort: "createdAt,desc",
             },
-          });
-          console.log("✅ Member endpoint successful:", response.data);
-        } catch (memberError: any) {
-          console.log(
-            "❌ Member endpoint failed:",
-            memberError.response?.status
-          );
-
-          // Fallback to common endpoint with user ID
-          console.log("🔄 Trying common endpoint as fallback...");
-          response = await axiosCommon.get(`/donations/user/${user?.id}`, {
-            params: {
-              page: page.toString(),
-              size: "10",
-              sort: "createdAt,desc",
-            },
-          });
-          console.log("✅ Common endpoint successful:", response.data);
-        }
+          }
+        );
 
         console.log("SUCCESS! Donations response:", response.data);
         const donationsData = response.data.data || response.data;
@@ -410,23 +390,15 @@ export default function DonationsPage() {
 
       try {
         // Try member endpoint: /member/donations/stats
-        response = await axiosMember.get(`/donations/stats`);
+        response = await axiosMember.get(`/donations/stats/${user?.id}`);
         console.log("✅ Member stats endpoint successful:", response.data);
+        setDonationStats(response.data.data || response.data);
       } catch (memberError: any) {
         console.log(
           "❌ Member stats endpoint failed:",
           memberError.response?.status
         );
-
-        // Fallback to common endpoint with user ID
-        console.log("🔄 Trying common endpoint for stats as fallback...");
-        response = await axiosCommon.get(`/donations/stats/${user?.id}`);
-        console.log("✅ Common stats endpoint successful:", response.data);
       }
-
-      console.log("SUCCESS! Stats response:", response.data);
-      setDonationStats(response.data.data || response.data);
-      console.log("Stats loaded successfully!");
     } catch (error: any) {
       console.error(
         "Error fetching donation stats from both axios instances:",
@@ -440,50 +412,6 @@ export default function DonationsPage() {
       setStatsLoading(false);
     }
   }, [user, ensureAuthenticated]);
-
-  // Authentication initialization effect with better retry logic
-  useEffect(() => {
-    const initializeAuth = async () => {
-      console.log("🔄 Initializing member authentication...");
-
-      // If no user and haven't exceeded retries
-      if (!user && authRetries < 3) {
-        console.log(
-          `Attempting to get member info (attempt ${authRetries + 1}/3)...`
-        );
-
-        // Small delay to ensure cookies are available
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        try {
-          const success = await getInfo("member");
-          if (success) {
-            console.log("✅ Member authentication successful");
-            setAuthRetries(0);
-          } else {
-            console.warn("❌ Failed to get member info, will retry");
-            setTimeout(() => setAuthRetries((prev) => prev + 1), 2000);
-          }
-        } catch (error) {
-          console.error("❌ Member authentication error:", error);
-          setTimeout(() => setAuthRetries((prev) => prev + 1), 2000);
-        }
-      } else if (user) {
-        console.log("✅ User already authenticated:", {
-          id: user.id,
-          role: user.role,
-        });
-        setAuthRetries(0);
-      } else if (authRetries >= 3) {
-        console.error("❌ Max authentication retries reached");
-        toast.error(
-          "Unable to authenticate. Please refresh the page or log in again."
-        );
-      }
-    };
-
-    initializeAuth();
-  }, [user, getInfo, authRetries]);
 
   useEffect(() => {
     if (user) {
@@ -813,150 +741,6 @@ export default function DonationsPage() {
             <p className="text-muted-foreground mt-1">
               Support causes that matter to our community
             </p>
-          </div>
-          <div className="mt-4 sm:mt-0 flex items-center space-x-2">
-            {/* Debug button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchCampaigns}
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <Target className="h-4 w-4 mr-1" />
-              )}
-              Refresh Campaigns
-            </Button>
-            {/* Debug auth button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                console.log("=== Authentication Debug ===");
-                console.log(
-                  "axiosAdmin baseURL:",
-                  (axiosAdmin.defaults as any).baseURL
-                );
-                console.log(
-                  "axiosMember baseURL:",
-                  (axiosMember.defaults as any).baseURL
-                );
-                console.log("User:", user);
-                console.log("All cookies:", document.cookie);
-
-                const csrfToken =
-                  document.cookie.match(/csrf-token=([^;]+)/)?.[1];
-                const sessionId =
-                  document.cookie.match(/sessionId=([^;]+)/)?.[1];
-                console.log("CSRF Token:", csrfToken);
-                console.log("Session ID:", sessionId);
-
-                toast.info(
-                  `Auth Status - CSRF: ${csrfToken ? "Yes" : "No"}, Session: ${
-                    sessionId ? "Yes" : "No"
-                  }, User: ${user?.id || "None"}`
-                );
-              }}
-            >
-              Debug Auth
-            </Button>
-            {/* Test member endpoints */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                console.log("=== Testing Member Endpoints After Fix ===");
-                try {
-                  await fetchMyDonations(0);
-                  await fetchDonationStats();
-                  toast.success("Member endpoints working! ✅");
-                } catch (error: any) {
-                  console.error("Test failed:", error);
-                  toast.error("Still having issues - check console");
-                }
-              }}
-            >
-              Test Fix
-            </Button>
-            {/* Test direct endpoint access */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                console.log("=== Direct Endpoint Test ===");
-                try {
-                  // Test if member info endpoint works
-                  const infoResponse = await axiosMember.get(
-                    "/info/getMemberInfo"
-                  );
-                  console.log("✅ Member info working:", infoResponse.data);
-                  toast.success("Member info endpoint works!");
-                } catch (error: any) {
-                  console.log("❌ Member info failed:", error.response?.status);
-                  console.log(
-                    "This confirms the issue is with ALL member endpoints"
-                  );
-
-                  // Test a simple member endpoint if it exists
-                  try {
-                    const testResponse = await axiosMember.get("/test");
-                    console.log(
-                      "✅ Member test endpoint works:",
-                      testResponse.data
-                    );
-                  } catch (testError: any) {
-                    console.log(
-                      "❌ Member test endpoint also failed:",
-                      testError.response?.status
-                    );
-                    console.log(
-                      "🔍 DIAGNOSIS: ALL /member/** endpoints are blocked"
-                    );
-                    console.log(
-                      "🔧 SOLUTION: Check for @PreAuthorize annotations or other security configs"
-                    );
-                    toast.error(
-                      "ALL member endpoints blocked - check backend security"
-                    );
-                  }
-                }
-              }}
-            >
-              Test Member Info
-            </Button>
-            {/* Test admin endpoint access for comparison */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                console.log("=== Testing Admin Endpoint Access ===");
-                try {
-                  // Test if we can access admin endpoints with current auth
-                  const response = await axiosAdmin.get("/campaign/get/active");
-                  console.log("✅ Admin endpoint working:", response.data);
-                  toast.success(
-                    "Admin endpoints work - issue is member-specific"
-                  );
-                } catch (error: any) {
-                  console.log(
-                    "❌ Admin endpoint also failing:",
-                    error.response?.status
-                  );
-                  console.log("This suggests a general auth issue");
-                  toast.error(`Admin test failed: ${error.response?.status}`);
-                }
-              }}
-            >
-              Test Admin Access
-            </Button>
-            {donationStats && !statsLoading && (
-              <Badge variant="outline">
-                <DollarSign className="h-3 w-3 mr-1" />
-                LKR {donationStats.totalDonated.toLocaleString()} Total Donated
-              </Badge>
-            )}
           </div>
         </div>
 
