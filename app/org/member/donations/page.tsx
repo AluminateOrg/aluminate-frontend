@@ -55,12 +55,12 @@ interface Campaign {
   raised: number;
   endDate: string;
   category:
-    | "scholarship"
-    | "infrastructure"
-    | "emergency"
-    | "general"
-    | "fundraising"
-    | "other";
+  | "scholarship"
+  | "infrastructure"
+  | "emergency"
+  | "general"
+  | "fundraising"
+  | "other";
   donorCount: number;
   isActive: boolean;
   progressPercentage?: number;
@@ -306,10 +306,8 @@ export default function DonationsPage() {
         console.log("🔄 Trying member endpoint first...");
         let response;
 
-        // Try member endpoint: /member/donations/my-donations
-        response = await axiosMember.get(
-          `/donations/my-donations/${user?.id}`,
-          {
+          // Try member endpoint: /member/donations/my-donations
+          response = await axiosMember.get(`/donations/my-donations/${user?.id}`, {
             params: {
               page: page.toString(),
               size: "10",
@@ -317,6 +315,7 @@ export default function DonationsPage() {
             },
           }
         );
+
 
         console.log("SUCCESS! Donations response:", response.data);
         const donationsData = response.data.data || response.data;
@@ -399,6 +398,7 @@ export default function DonationsPage() {
           memberError.response?.status
         );
       }
+
     } catch (error: any) {
       console.error(
         "Error fetching donation stats from both axios instances:",
@@ -666,7 +666,7 @@ export default function DonationsPage() {
                     </span>
                     <span>
                       {(selectedCampaignDetails.daysRemaining || 0) > 0 &&
-                      isCampaignAcceptingDonations(selectedCampaignDetails)
+                        isCampaignAcceptingDonations(selectedCampaignDetails)
                         ? `${selectedCampaignDetails.daysRemaining} days remaining`
                         : "Campaign ended"}
                     </span>
@@ -1140,7 +1140,7 @@ export default function DonationsPage() {
                           {Math.round(
                             (donationStats.completedDonations /
                               donationStats.totalDonations) *
-                              100
+                            100
                           )}
                           %
                         </div>

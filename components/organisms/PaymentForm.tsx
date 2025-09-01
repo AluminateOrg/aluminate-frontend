@@ -124,21 +124,11 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
       return;
     }
 
-    //cus 1 campaign id
-    const campaignId = campaign.id;
 
-    payByPayhere(
-      "DONATION",
-      parseFloat(formData.amount),
-      "donation",
-      `${campaignId}`,
-      formData.email,
-      formData.firstName,
-      formData.lastName,
-      formData.email,
-      `${window.origin}/success`,
-      `${window.origin}/cancel`
-    );
+
+    payByPayhere("DONATION",parseFloat(formData.amount),"donation","",formData.email,formData.firstName,formData.lastName,formData.email,`${window.origin}/success`,`${window.origin}/cancel`);
+    
+
   };
 
   const suggestedAmounts = [500, 1000, 2500, 5000, 10000];
