@@ -8,6 +8,7 @@ interface Member {
   avatar: string | null;
   designation: string | null;
   joinedAt: string | null;
+  isMentor?: boolean | null;
 }
 
 interface Admin {
@@ -34,14 +35,14 @@ interface UserState {
   admin: Admin | null;
   member: Member | null;
   isAuthenticated: boolean;
-  organization: Organization | null; 
+  organization: Organization | null;
 }
 
 const initialState: UserState = {
   admin: null,
   member: null,
   isAuthenticated: false,
-  organization: null, 
+  organization: null,
 };
 
 const userSlice = createSlice({
@@ -74,5 +75,6 @@ const userSlice = createSlice({
   },
 });
 
-export const { setAdminUser, setMemberUser, logoutUser, setOrganization } = userSlice.actions;
+export const { setAdminUser, setMemberUser, logoutUser, setOrganization } =
+  userSlice.actions;
 export default userSlice.reducer;
