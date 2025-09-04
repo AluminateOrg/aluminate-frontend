@@ -129,7 +129,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
 
 
 
-    payByPayhere("DONATION",parseFloat(formData.amount),"donation","",formData.email,formData.firstName,formData.lastName,formData.email,`${window.origin}/success`,`${window.origin}/cancel`);
+    payByPayhere("DONATION",parseFloat(formData.amount),"donation","",formData.email,formData.firstName,formData.lastName,formData.email,`${window.origin}/org/member/donations/success`,`${window.origin}/org/member/donations/cancel`);
     
 
 
