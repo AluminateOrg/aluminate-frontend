@@ -14,6 +14,7 @@ import axiosMember from "@/axiosInstances/axiosMember";
 import { set } from "date-fns";
 import axiosCommon from '@/axiosInstances/axiosCommon';
 import { toast } from "sonner";
+import { rejects } from "assert";
 
 export type UserRole = "admin" | "member";
 
@@ -220,13 +221,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user); // Save real user
       setLoading(false);
 
-      router.push(data.user.role.toLowerCase() === "admin" ? "/org/admin" : "/org/member");
-      router.refresh();
+      const target = pathName && pathName !== "/login" ? pathName : data.user.role.toLowerCase() === "admin" ? "/org/admin" : "/org/member";
+      window.location.href = target;
+
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
     } finally {
       setLoading(false);
+
     }
   };
 

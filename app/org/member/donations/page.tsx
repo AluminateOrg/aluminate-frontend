@@ -119,6 +119,9 @@ export default function DonationsPage() {
   const [totalPages, setTotalPages] = useState(0);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  // Check authentication tokens
+    const csrfToken = document.cookie.match(/csrf-token=([^;]+)/)?.[1];
+    const sessionId = document.cookie.match(/sessionId=([^;]+)/)?.[1];
 
   const mapCategoryFromBackend = useCallback(
     (type: string): Campaign["category"] => {
@@ -248,47 +251,10 @@ export default function DonationsPage() {
     [transformBackendCampaign]
   );
 
-  // Enhanced authentication check with better error handling
-  const ensureAuthenticated = useCallback(async () => {
-    if (!user?.id) {
-      console.warn("❌ No user ID available");
-      toast.error("Please log in to view your donations");
-      return false;
-    }
-
-    if (user.role !== "member") {
-      console.warn("❌ User is not a member:", user.role);
-      toast.error("This page is for members only");
-      return false;
-    }
-
-    // Check authentication tokens
-    const csrfToken = document.cookie.match(/csrf-token=([^;]+)/)?.[1];
-    const sessionId = document.cookie.match(/sessionId=([^;]+)/)?.[1];
-
-    console.log("🔍 Authentication check:", {
-      userId: user.id,
-      role: user.role,
-      hasCSRF: !!csrfToken,
-      hasSession: !!sessionId,
-    });
-
-    if (!csrfToken || !sessionId) {
-      console.warn("❌ Missing authentication tokens");
-      toast.error("Authentication tokens missing. Please log in again.");
-      return false;
-    }
-
-    console.log("✅ Authentication check passed");
-    return true;
-  }, [user]);
-
   // Fetch user's donations - try multiple axios instances like other pages do
   const fetchMyDonations = useCallback(
     async (page: number = 0) => {
-      if (!(await ensureAuthenticated())) {
-        return;
-      }
+ 
 
       setDonationsLoading(true);
       try {
@@ -314,7 +280,10 @@ export default function DonationsPage() {
               size: "10",
               sort: "createdAt,desc",
             },
-          });    
+
+          }
+        );
+
 
 
         console.log("SUCCESS! Donations response:", response.data);
@@ -367,14 +336,12 @@ export default function DonationsPage() {
         setDonationsLoading(false);
       }
     },
-    [user, ensureAuthenticated]
+    [user]
   );
 
   // Fetch donation statistics - try multiple axios instances like other pages do
   const fetchDonationStats = useCallback(async () => {
-    if (!(await ensureAuthenticated())) {
-      return;
-    }
+
 
     setStatsLoading(true);
     try {
@@ -400,7 +367,7 @@ export default function DonationsPage() {
 
       }
 
-      
+
     } catch (error: any) {
       console.error(
         "Error fetching donation stats from both axios instances:",
@@ -413,9 +380,7 @@ export default function DonationsPage() {
     } finally {
       setStatsLoading(false);
     }
-  }, [user, ensureAuthenticated]);
-
-
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -457,6 +422,7 @@ export default function DonationsPage() {
     toast.info("Payment was cancelled");
     setShowPaymentForm(false);
     setSelectedCampaign(null);
+
   };
 
   const handlePaymentError = (error: string) => {
@@ -464,6 +430,7 @@ export default function DonationsPage() {
     setShowPaymentForm(false);
     setSelectedCampaign(null);
   };
+
 
   // Filter functions
   const getFilteredCampaigns = () => {
@@ -566,10 +533,10 @@ export default function DonationsPage() {
         <PaymentForm
           campaign={selectedCampaign}
           member={{
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
+            id: user?.id,
+            name: user?.name,
+            email: user?.email,
+            phone: user?.phone,
           }}
           onSuccess={handlePaymentSuccess}
           onCancel={handlePaymentCancel}
@@ -746,7 +713,7 @@ export default function DonationsPage() {
               Support causes that matter to our community
             </p>
           </div>
-          
+
         </div>
 
         {/* Quick Stats */}
@@ -889,6 +856,7 @@ export default function DonationsPage() {
                               {campaign.category}
                             </span>
                           </Badge>
+
                         </div>
                       </CardHeader>
 
@@ -994,6 +962,7 @@ export default function DonationsPage() {
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
+
 
             {/* Donation History */}
             <Card>
@@ -1162,4 +1131,4 @@ export default function DonationsPage() {
       </div>
     </>
   );
-}
+};

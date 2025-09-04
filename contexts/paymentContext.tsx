@@ -1,6 +1,7 @@
 "use client";
 import axiosAdmin from '@/axiosInstances/axiosAdmin';
 import axiosCommon from '@/axiosInstances/axiosCommon';
+import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
     const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
     const apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX;
     const apiUrl = `${backend}/${apiPrefix}`;
+    const router = useRouter();
     
 
     const payByPayhere = async (
@@ -99,6 +101,8 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
                 console.log("Payment completed. Order ID:", orderId);
                 toast.success("Payment completed successfully!");
                 // Redirect or refresh status
+                router.replace(returnUrl);
+                router.refresh();
             };
 
             payhere.onDismissed = function () {
@@ -109,6 +113,8 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
             payhere.onError = function (error: any) {
                 console.error("PayHere Error:", error);
                 toast.error("Payment error occurred. Please try again.");
+                router.replace(cancelUrl);
+                router.refresh();
             };
 
             // 4. Start PayHere Payment
