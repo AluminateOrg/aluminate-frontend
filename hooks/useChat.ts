@@ -75,7 +75,6 @@ export function useChat(
   ) => {
     const jwt = await getServerToken();
 
-    console.log("jwt:", jwt);
     const url = new URL(`${API_ROOT}${path}`);
 
     if (options?.params) {
@@ -85,7 +84,6 @@ export function useChat(
       });
     }
 
-    console.log("options:", options);
     const res = await fetch(url.toString(), {
       method,
       credentials: "include",
@@ -238,7 +236,7 @@ export function useChat(
             subRef.current = client.subscribe(topic, (frame: IMessage) => {
               try {
                 const obj = JSON.parse(frame.body);
-                // preserve server-provided senderName (may be undefined) — do not force fallback here
+                // preserve server-provided senderName (may be undefined)
                 const msg: ChatMessage = {
                   id: obj.id,
                   content: obj.content,
@@ -247,9 +245,28 @@ export function useChat(
                   timestamp: obj.createdAt || new Date().toISOString(),
                   type: "text",
                 };
+
                 setMessages((prev) => {
-                  if (prev.find((m) => m.id === msg.id)) return prev;
-                  return [...prev, msg];
+                  // If this is an authoritative server message for a message we previously added optimistically,
+                  // remove any matching optimistic entries first. Match rule: optimistic messages have ids that start with 'tmp-'
+                  // and were created by the current user (we used currentUserName for optimistic senderName).
+                  let next = prev;
+                  if (msg.senderId !== "me") {
+                    next = prev.filter(
+                      (m) =>
+                        !(
+                          m.id?.toString().startsWith("tmp-") &&
+                          m.content === msg.content &&
+                          // compare senderName used for optimistic message; default "You" if none provided
+                          m.senderName === (currentUserName ?? "You")
+                        )
+                    );
+                  }
+
+                  // Avoid duplicate by id
+                  if (next.find((m) => m.id === msg.id)) return next;
+
+                  return [...next, msg];
                 });
               } catch (e) {
                 console.error("Invalid WS message payload", e);
