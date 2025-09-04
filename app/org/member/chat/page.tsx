@@ -42,37 +42,39 @@ interface ChatRoom {
 
 export default function MemberChatPage() {
   const { user } = useAuth();
-  const { groups } = useOrg();
+  const { groups, organization } = useOrg(); // <-- use organization
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Chat hooks based on selected room
+  // Pass organization id and currently selected room id (UNIVERSAL for org chat)
   const { messages, loading, sending, sendMessage } = useChat(
-    user?.id || "",
-    selectedRoom?.type === "group" ? selectedRoom.id : undefined
+    organization?.id || "",
+    selectedRoom?.id ?? undefined
   );
 
   // Create chat rooms list
   const organizationRoom: ChatRoom = {
-    id: "organization",
+    id: "UNIVERSAL", // <-- backend expects UNIVERSAL for org-wide chat
     name: "Organization Chat",
     type: "organization",
-    memberCount: 245,
+    memberCount: organization?.currentMemberCount ?? 0,
     lastMessage: "Welcome to the organization chat!",
     lastMessageTime: "2 hours ago",
     unreadCount: 3,
   };
 
-  const groupRooms: ChatRoom[] = groups.map((group) => ({
-    id: group.id,
-    name: group.name,
-    type: "group" as ChatType,
-    memberCount: group.currentMembers,
-    lastMessage: "Latest group discussion...",
-    lastMessageTime: "1 hour ago",
-    unreadCount: Math.floor(Math.random() * 5),
-  }));
+  const groupRooms: ChatRoom[] = Array.isArray(groups)
+    ? groups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        type: "group" as ChatType,
+        memberCount: group.currentMembers,
+        lastMessage: "Latest group discussion...",
+        lastMessageTime: "1 hour ago",
+        unreadCount: Math.floor(Math.random() * 5),
+      }))
+    : [];
 
   const allRooms = [organizationRoom, ...groupRooms];
 
