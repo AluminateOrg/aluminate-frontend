@@ -47,10 +47,11 @@ export default function MemberChatPage() {
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Pass organization id and currently selected room id (UNIVERSAL for org chat)
+  // Pass organization id, selected room id and current user's display name
   const { messages, loading, sending, sendMessage } = useChat(
     organization?.id || "",
-    selectedRoom?.id ?? undefined
+    selectedRoom?.id ?? undefined,
+    user?.name ?? undefined
   );
 
   // Create chat rooms list
@@ -336,13 +337,28 @@ function ChatContent({ messages, loading, currentUserId }: ChatContentProps) {
   return (
     <ScrollArea className="flex-1 px-6">
       <div className="space-y-4 py-4">
-        {messages.map((message) => (
-          <ChatMessage
-            key={message.id}
-            message={message}
-            isOwn={message.senderId === currentUserId}
-          />
-        ))}
+        {messages.map((message) => {
+          const isOwn = message.senderId == currentUserId;
+          return (
+            <div
+              key={message.id}
+              className={cn(
+                "flex w-full",
+                isOwn ? "justify-end" : "justify-start"
+              )}
+            >
+              <div
+                className={cn(
+                  // ensure the message container shrinks to content so justify-end works
+                  "inline-block max-w-[70%] break-words",
+                  isOwn ? "text-right" : "text-left"
+                )}
+              >
+                <ChatMessage message={message} isOwn={isOwn} />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </ScrollArea>
   );

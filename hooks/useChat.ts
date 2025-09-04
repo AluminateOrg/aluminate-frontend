@@ -13,7 +13,11 @@ export interface ChatMessage {
   type?: "text" | "image" | "file";
 }
 
-export function useChat(orgId: string, groupId?: string) {
+export function useChat(
+  orgId: string,
+  groupId?: string,
+  currentUserName?: string
+) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -234,12 +238,12 @@ export function useChat(orgId: string, groupId?: string) {
             subRef.current = client.subscribe(topic, (frame: IMessage) => {
               try {
                 const obj = JSON.parse(frame.body);
-                // transform to ChatMessage and append if not present
+                // preserve server-provided senderName (may be undefined) — do not force fallback here
                 const msg: ChatMessage = {
                   id: obj.id,
                   content: obj.content,
                   senderId: obj.senderId,
-                  senderName: obj.senderName || obj.senderId,
+                  senderName: obj.senderName ?? undefined,
                   timestamp: obj.createdAt || new Date().toISOString(),
                   type: "text",
                 };
@@ -269,7 +273,6 @@ export function useChat(orgId: string, groupId?: string) {
           setConnected(false);
         },
         debug: (str) => {
-          // comment out or route to console if needed
           // console.debug('[STOMP]', str);
         },
       });
@@ -281,7 +284,7 @@ export function useChat(orgId: string, groupId?: string) {
     // start async connection flow (don't block render)
     ensureJwtAndConnect();
     return;
-  }, [orgId, groupId]);
+  }, [orgId, groupId, getServerToken]);
 
   const teardownWebsocket = useCallback(() => {
     if (clientRef.current) {
@@ -304,7 +307,7 @@ export function useChat(orgId: string, groupId?: string) {
       setSending(true);
 
       try {
-        // 1) Try WS publish first (fast, optimistic)
+        // Try WS first
         if (clientRef.current && connected) {
           try {
             const jwt = "";
@@ -319,12 +322,12 @@ export function useChat(orgId: string, groupId?: string) {
               },
             });
 
-            // optimistic UI: temporary message until server echoes authoritative one
+            // optimistic UI: use currentUserName if available, otherwise "You"
             const optimistic: ChatMessage = {
               id: `tmp-${Date.now()}`,
               content,
               senderId: "me",
-              senderName: "You",
+              senderName: currentUserName ?? "You",
               timestamp: new Date().toISOString(),
               type,
             };
@@ -332,11 +335,10 @@ export function useChat(orgId: string, groupId?: string) {
             return optimistic;
           } catch (wsErr) {
             console.warn("WS send failed, falling back to REST", wsErr);
-            // fall through to REST fallback
           }
         }
 
-        // 2) REST fallback
+        // REST fallback
         const path =
           groupId === "UNIVERSAL"
             ? `/orgs/${orgId}/groups/UNIVERSAL/messages`
@@ -355,7 +357,6 @@ export function useChat(orgId: string, groupId?: string) {
         };
 
         setMessages((prev) => {
-          // remove optimistic messages (tmp-...) then append server message if not duplicated
           const withoutOptimistic = prev.filter(
             (m) => !m.id?.toString().startsWith("tmp-")
           );
@@ -382,7 +383,7 @@ export function useChat(orgId: string, groupId?: string) {
         setSending(false);
       }
     },
-    [orgId, groupId, connected]
+    [orgId, groupId, connected, currentUserName]
   );
 
   const refreshMessages = useCallback(async () => {
