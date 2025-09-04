@@ -33,9 +33,10 @@ import {
   CheckCircle,
   Award,
 } from "lucide-react";
-import { toast } from "sonner";
 import axios from "axios";
 import axiosMember from "@/axiosInstances/axiosMember";
+import {toast} from "sonner";
+import { Calendar as CalendarIcon, Clock as ClockIcon } from "lucide-react";
 
 interface Mentor {
   id: string;
@@ -81,6 +82,11 @@ export default function MentorsPage() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [connectMentorId, setConnectMentorId] = useState<string | null>(null);
   const [showConnectModal, setShowConnectModal] = useState(false);
+  const [showBookModal, setShowBookModal] = useState(false);
+  const [bookMentorId, setBookMentorId] = useState<string | null>(null);
+  const [requestedDate, setRequestedDate] = useState<string>("");
+  const [requestedTime, setRequestedTime] = useState<string>("");
+  const [bookingLoading, setBookingLoading] = useState(false);
 
   // Mentor application form state
   const [applicationForm, setApplicationForm] = useState<MentorApplicationForm>(
@@ -99,10 +105,8 @@ export default function MentorsPage() {
     }
   );
 
+  // const handleBookSession = 
 
-  // const mentors: Mentor[] = [];
-
-  // console.log("user from the context: ", user?.id);
   const memberId = user?.id || "";
 
   const fetchMentors = async () => {
@@ -196,7 +200,6 @@ export default function MentorsPage() {
         userId: selectedMembers,
         mentorId: connectMentorId
       })
-      console.log("data from connecting mentor: ", data);
       toast.success("Session booking request sent! The mentor will contact you soon.");
       setShowConnectModal(false);
       setSelectedMembers([]);

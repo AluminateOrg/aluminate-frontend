@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -52,23 +52,13 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { recentNotifications, unreadCount, markAsRead } = useNotifications();
-  const pathname = usePathname();
-  const router = useRouter();
 
-  if (!user || user.role !== "member") {
-    return null;
-  }
+
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const openMobileMenu = () => setMobileMenuOpen(true);
-
-  const checkRouter = async () => {
-      navigation.forEach(item => {
-        router.prefetch(item.href);
-      });
-    }
-
-  checkRouter();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const handleNotificationClick = async (
     notificationId: string,
@@ -94,7 +84,13 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
         return <Bell className="h-4 w-4 text-gray-600" />;
     }
   };
+  const checkRouter = async () => {
+      navigation.forEach(item => {
+        router.prefetch(item.href);
+      });
+    }
 
+  checkRouter();
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}

@@ -68,7 +68,7 @@ export default function MemberDashboard() {
         time: form.time
       })
       console.log("response after accepting session", data);
-      toast.success("Session accepted successfully");
+      toast.success(data.message);
       setAcceptModalOpen(false);
       fetchSessions();
     } catch (error) {
@@ -78,16 +78,21 @@ export default function MemberDashboard() {
     }
   }
 
-  
+
 
   const fetchSessions = async () => {
+    // const memberId = user?.id || "";
+    // const isMentor = user?.isMentor;
+    // console.log("member id " + memberId + " isMentor: " + isMentor);
     try {
       if (user?.isMentor) {
+        console.log("user is mentor >>>>>>>", user?.isMentor)
         const { data } = await axiosMember.get(`/mentor/get-all-sessions/${user?.id}`);
         console.log("from mentor side")
         console.log("data of sessions: ", data);
         setSessions(data);
       } else {
+        console.log("user is mentor >>>>>>>", user?.isMentor)
         const { data } = await axiosMember.get(`/mentor/get-all-sessions-by-user/${user?.id}`);
         console.log("data of sessions: ", data);
         console.log("from member side")
@@ -99,8 +104,10 @@ export default function MemberDashboard() {
   }
 
   useEffect(() => {
-    fetchSessions();
-  }, [])
+    if (user?.id) {
+      fetchSessions();
+    }
+  }, [user])
 
   const loading = eventsLoading;
 
