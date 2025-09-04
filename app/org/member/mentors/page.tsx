@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
+import axiosMember from "@/axiosInstances/axiosMember";
 
 interface Mentor {
   id: string;
@@ -76,6 +77,10 @@ export default function MentorsPage() {
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [applicationLoading, setApplicationLoading] = useState(false);
   const [mentors, setMentors] = useState<Mentor[]>([]);
+  const [orgMembers, setOrgMembers] = useState<any[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [connectMentorId, setConnectMentorId] = useState<string | null>(null);
+  const [showConnectModal, setShowConnectModal] = useState(false);
 
   // Mentor application form state
   const [applicationForm, setApplicationForm] = useState<MentorApplicationForm>(
@@ -94,13 +99,16 @@ export default function MentorsPage() {
     }
   );
 
-  
+
   // const mentors: Mentor[] = [];
+
+  // console.log("user from the context: ", user?.id);
+  const memberId = user?.id || "";
 
   const fetchMentors = async () => {
     try {
-      
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/get-all-approved`);
+
+      const response = await axiosMember.get('/mentor/get-all-approved');
       console.log("response: ", response);
       if (response.status === 200) {
         setMentors(response.data);
@@ -117,7 +125,7 @@ export default function MentorsPage() {
 
   useEffect(() => {
     fetchMentors();
-  },[])
+  }, [])
 
   const filteredMentors = mentors.filter((mentor) => {
     const matchesSearch =
@@ -144,11 +152,11 @@ export default function MentorsPage() {
     console.log("Booking session for mentor:", mentorId);
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success(
-        "Session booking request sent! The mentor will contact you soon."
-      );
+      const {data} = await axiosMember.post('/mentor/request-session', {
+        mentorId,
+        userId: [memberId]
+      })
+      console.log("data from booking session: ", data);
     } catch (error) {
       toast.error("Failed to book session. Please try again.");
     } finally {
@@ -158,12 +166,45 @@ export default function MentorsPage() {
 
   const handleConnectMentor = async (mentorId: string) => {
     try {
-      // TODO: Replace with actual API call
-      toast.success("Connection request sent to mentor!");
+      const { data } = await axiosMember.get(`/mentor/connect/get-all-members/${memberId}`);
+      console.log("data from connected members: ", data);
+      setOrgMembers(data.data);
+      setConnectMentorId(mentorId);
+      setShowConnectModal(true);
     } catch (error) {
       toast.error("Failed to send connection request. Please try again.");
     }
   };
+
+  console.log("orgMembers: ", orgMembers);
+
+  const handleMemberSelect = (memberId: string) => {
+    setSelectedMembers((prev) =>
+      prev.includes(memberId)
+        ? prev.filter((id) => id !== memberId)
+        : [...prev, memberId]
+    )
+  }
+
+  const handleSubmitConnect = async () => {
+    if (!connectMentorId || selectedMembers.length === 0) {
+      toast.error("Please select at least one member to connect.");
+      return;
+    }
+    try {
+      const {data} = await axiosMember.post('/mentor/request-session', {
+        userId: selectedMembers,
+        mentorId: connectMentorId
+      })
+      console.log("data from connecting mentor: ", data);
+      toast.success("Session booking request sent! The mentor will contact you soon.");
+      setShowConnectModal(false);
+      setSelectedMembers([]);
+      setConnectMentorId(null);
+    } catch (error) {
+      toast.error("Failed to send connection request. Please try again.");
+    }
+  }
 
   const handleApplicationInputChange = (
     field: keyof MentorApplicationForm,
@@ -200,7 +241,7 @@ export default function MentorsPage() {
     }
   };
 
-  
+
 
   const handleLanguageRemove = (language: string) => {
     if (applicationForm.languages.length > 1) {
@@ -217,12 +258,16 @@ export default function MentorsPage() {
     e.preventDefault();
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const memberId = user?.id;
+
+
 
     const payLoad = {
       ...applicationForm,
-      memberId,
+      memberId
     };
+
+    console.log("payLoad: ", payLoad);
+    console.log("memberID>>>", user.id);
 
     // Validation
     if (!applicationForm.motivation.trim()) {
@@ -248,16 +293,16 @@ export default function MentorsPage() {
     setApplicationLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/user/mentor/apply`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payLoad)
-      })
 
-      if (!response.ok) toast.error("Failed to submit application. Please try again.");
-      const data = await response.json();
+      const response = await axiosMember.post('/mentor/apply', payLoad);
+
+      console.log("response when submitting application: ", response);
+
+      const data = response.data;
+      if (!data) {
+        toast.error("Failed to submit application. Please try again.");
+        return;
+      }
 
       console.log("data: ", data);
 
@@ -436,7 +481,7 @@ export default function MentorsPage() {
                   </div>
                 </div>
               </CardHeader>
- 
+
               <CardContent className="space-y-4">
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">
@@ -530,6 +575,47 @@ export default function MentorsPage() {
         </Card>
       )}
 
+      {/* Connect Modal */}
+      {showConnectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-lg">
+            <CardHeader>
+              <CardTitle>Select Members to Connect</CardTitle>
+              <CardDescription>
+                Choose organization members to join the session with this mentor.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="max-h-64 overflow-y-auto mb-4">
+                {orgMembers.length > 0 ? (
+                  orgMembers.map((member: any) => (
+                    <div key={member.id} className="flex items-center space-x-3 py-2 border-b">
+                      <input
+                        type="checkbox"
+                        checked={selectedMembers.includes(member.id)}
+                        onChange={() => handleMemberSelect(member.id)}
+                      />
+                      <span className="font-medium">{member.name}</span>
+                      <span className="text-muted-foreground text-xs">{member.email}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p>No members found.</p>
+                )}
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setShowConnectModal(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSubmitConnect} disabled={selectedMembers.length === 0}>
+                  Book Session
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Become a Mentor Section */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
         <CardHeader>
@@ -615,7 +701,7 @@ export default function MentorsPage() {
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Apply to Become a Mentor
-              </Button>
+              </Button>Book a
             </div>
           </div>
         </CardContent>
@@ -700,7 +786,7 @@ export default function MentorsPage() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Personal Information</h3>
                   <div className="bg-accent/20 p-4 rounded-lg">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-3">Book a
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={user?.avatar} alt={user?.name} />
                         <AvatarFallback>

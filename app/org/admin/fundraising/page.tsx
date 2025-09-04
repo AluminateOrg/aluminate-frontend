@@ -41,9 +41,6 @@ import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import { DeleteCampaignConfirmationModal } from "./delete-confirmation";
 import { EditCampaignModal } from "./edit-campaign-modal";
 
-// ===========================================
-// INTERFACES - Updated to handle both field naming conventions
-// ===========================================
 
 interface BackendCampaignResponse {
   id: number;
@@ -61,15 +58,18 @@ interface BackendCampaignResponse {
   startDate: string; // LocalDate as string
   endDate: string; // LocalDate as string
   donorCount: number;
+
   // Backend can send either `isActive` OR `active`
   isActive?: boolean | string;
   active?: boolean | string;
   isDeleted?: boolean | string;
   deleted?: boolean | string;
+
   deletedAt?: string;
   createdAt?: string;
   updatedAt?: string;
   progressPercentage?: number;
+
   isExpired?: boolean | string;
   expired?: boolean | string;
   canAcceptDonations?: boolean | string;
@@ -78,6 +78,7 @@ interface BackendCampaignResponse {
   remainingAmount?: string; // BigDecimal as string
   isGoalAchieved?: boolean | string;
   goalAchieved?: boolean | string;
+
 }
 
 interface Campaign {
@@ -229,24 +230,11 @@ export default function AdminFundraisingPage() {
     return mapping[type?.toUpperCase()] || "general";
   };
 
-  // FIXED: Enhanced transform function with field name mapping
+
   const transformBackendCampaign = (
     backendCampaign: BackendCampaignResponse
   ): Campaign => {
     try {
-      // Debug: Log the raw backend response fields
-      console.log("Raw backend campaign fields:", {
-        id: backendCampaign.id,
-        title: backendCampaign.title,
-        isActive: backendCampaign.isActive,
-        active: backendCampaign.active,
-        isDeleted: backendCampaign.isDeleted,
-        deleted: backendCampaign.deleted,
-        isExpired: backendCampaign.isExpired,
-        expired: backendCampaign.expired,
-        isGoalAchieved: backendCampaign.isGoalAchieved,
-        goalAchieved: backendCampaign.goalAchieved,
-      });
 
       return {
         id: backendCampaign.id.toString(),
@@ -260,6 +248,7 @@ export default function AdminFundraisingPage() {
           backendCampaign.endDate || new Date().toISOString().split("T")[0],
         category: mapCategoryFromBackend(backendCampaign.type),
         donorCount: backendCampaign.donorCount || 0,
+
 
         // FIXED: Handle both field naming conventions with fallbacks
         isActive: safeParseBool(
@@ -286,6 +275,7 @@ export default function AdminFundraisingPage() {
         daysRemaining: backendCampaign.daysRemaining || 0,
         status: backendCampaign.status || "INACTIVE",
         remainingAmount: safeParseNumber(backendCampaign.remainingAmount),
+
       };
     } catch (error) {
       console.error("Error transforming campaign:", error);
@@ -326,8 +316,6 @@ export default function AdminFundraisingPage() {
       console.log("Fetching campaigns...");
       const response = await axiosAdmin.get("/campaign/get/all");
 
-      // DEBUG: Log the raw response
-      console.log("Raw backend response:", response.data);
 
       if (response.status === 200 && response.data) {
         let campaignsData = [];
@@ -353,6 +341,7 @@ export default function AdminFundraisingPage() {
           });
         });
 
+
         const transformedCampaigns = campaignsData
           .map((campaign: any) => {
             try {
@@ -368,6 +357,7 @@ export default function AdminFundraisingPage() {
           })
           .filter(Boolean);
 
+
         // DEBUG: Log transformed campaigns
         console.log(
           "Transformed campaigns:",
@@ -378,6 +368,7 @@ export default function AdminFundraisingPage() {
             typeOfIsActive: typeof c.isActive,
           }))
         );
+
 
         setCampaigns(transformedCampaigns);
       }
@@ -465,6 +456,7 @@ export default function AdminFundraisingPage() {
         endDate: formData.endDate,
         isActive: formData.isActive,
       };
+      console.log("request->",requestPayload)
 
       const response = await axiosAdmin.post(
         "/campaign/create",
@@ -494,15 +486,14 @@ export default function AdminFundraisingPage() {
     }
   };
 
-  // FIXED: Enhanced toggle function with better field mapping
   const handleToggleCampaign = async (campaignId: string) => {
     try {
       setActionLoading(campaignId);
 
-      // Get the current campaign from state
       const currentCampaign = campaigns.find((c) => c.id === campaignId);
       if (!currentCampaign) {
-        throw new Error("Campaign not found");
+        toast.error("Campaign not found");
+        return;
       }
 
       const currentIsActive = currentCampaign.isActive;
@@ -516,6 +507,7 @@ export default function AdminFundraisingPage() {
         typeOfIsActive: typeof currentCampaign.isActive,
       });
 
+
       const response = await axiosAdmin.put(
         `/campaign/${campaignId}/toggle-status`,
         null,
@@ -525,6 +517,7 @@ export default function AdminFundraisingPage() {
           },
         }
       );
+
 
       if (response.status === 200 && response.data) {
         const updatedCampaignData = response.data.data || response.data;
@@ -566,6 +559,7 @@ export default function AdminFundraisingPage() {
       console.error("Toggle error:", error);
       handleApiError(error, "Failed to update campaign status");
       // Refresh campaigns on error to ensure UI consistency
+
       await fetchCampaigns();
     } finally {
       setActionLoading(null);
@@ -691,6 +685,7 @@ export default function AdminFundraisingPage() {
     return names[category];
   };
 
+
   // Status functions with proper boolean checking
   const getStatusColor = (campaign: Campaign) => {
     if (campaign.isDeleted === true) {
@@ -703,17 +698,22 @@ export default function AdminFundraisingPage() {
       return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
     }
     if (campaign.isActive === false) {
+
       return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
     }
     return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
   };
 
   const getStatusDisplayName = (campaign: Campaign) => {
-    if (campaign.isDeleted === true) return "Deleted";
-    if (campaign.isExpired === true) return "Expired";
-    if (campaign.isGoalAchieved === true) return "Completed";
-    return campaign.isActive === true ? "Active" : "Inactive";
+
+    if (campaign.isDeleted) return "Deleted";
+    if (campaign.isExpired) return "Expired";
+    if (campaign.isGoalAchieved) return "Completed";
+    if (!campaign.isActive) return "Inactive";
+    return "Active";
   };
+
+  
 
   // Check authentication
   if (!user || (user.role !== "admin" && user.role !== "ADMIN")) {
@@ -892,6 +892,7 @@ export default function AdminFundraisingPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateCampaign} className="space-y-4">
+
                   <div className="space-y-2">
                     <Label htmlFor="title">Campaign Title *</Label>
                     <Input
@@ -992,8 +993,10 @@ export default function AdminFundraisingPage() {
                     <Button type="submit" disabled={loading}>
                       {loading ? (
                         <>
+
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
                           Creating...
+
                         </>
                       ) : (
                         "Create Campaign"
@@ -1148,6 +1151,7 @@ export default function AdminFundraisingPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2 pt-2 border-t">
+
                       <Button
                         variant={campaign.isActive ? "destructive" : "default"}
                         size="sm"
@@ -1176,6 +1180,7 @@ export default function AdminFundraisingPage() {
                           ? "Deactivate"
                           : "Activate"}
                       </Button>
+
                       <Button variant="outline" size="sm">
                         <Eye className="h-4 w-4 mr-1" />
                         View Details
@@ -1285,7 +1290,9 @@ export default function AdminFundraisingPage() {
                 </div>
               ) : (
                 <div className="text-center py-8">
+
                   <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+
                   <p className="text-muted-foreground mt-4">
                     Loading analytics...
                   </p>

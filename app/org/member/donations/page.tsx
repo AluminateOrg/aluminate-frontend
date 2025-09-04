@@ -279,10 +279,6 @@ export default function DonationsPage() {
       return false;
     }
 
-    console.log("✅ Authentication check passed");
-    return true;
-  }, [user]);
-
   // Fetch user's donations - try multiple axios instances like other pages do
   const fetchMyDonations = useCallback(
     async (page: number = 0) => {
@@ -306,6 +302,7 @@ export default function DonationsPage() {
         console.log("🔄 Trying member endpoint first...");
         let response;
 
+
           // Try member endpoint: /member/donations/my-donations
           response = await axiosMember.get(`/donations/my-donations/${user?.id}`, {
             params: {
@@ -313,8 +310,10 @@ export default function DonationsPage() {
               size: "10",
               sort: "createdAt,desc",
             },
+
           }
         );
+
 
 
         console.log("SUCCESS! Donations response:", response.data);
@@ -397,7 +396,9 @@ export default function DonationsPage() {
           "❌ Member stats endpoint failed:",
           memberError.response?.status
         );
+
       }
+
 
     } catch (error: any) {
       console.error(
@@ -453,6 +454,7 @@ export default function DonationsPage() {
     toast.info("Payment was cancelled");
     setShowPaymentForm(false);
     setSelectedCampaign(null);
+
   };
 
   const handlePaymentError = (error: string) => {
@@ -460,6 +462,7 @@ export default function DonationsPage() {
     setShowPaymentForm(false);
     setSelectedCampaign(null);
   };
+
 
   // Filter functions
   const getFilteredCampaigns = () => {
@@ -742,6 +745,7 @@ export default function DonationsPage() {
               Support causes that matter to our community
             </p>
           </div>
+
         </div>
 
         {/* Quick Stats */}
@@ -884,6 +888,7 @@ export default function DonationsPage() {
                               {campaign.category}
                             </span>
                           </Badge>
+
                         </div>
                       </CardHeader>
 
@@ -989,6 +994,7 @@ export default function DonationsPage() {
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
+
 
             {/* Donation History */}
             <Card>
