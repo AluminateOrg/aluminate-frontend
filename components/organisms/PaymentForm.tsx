@@ -81,7 +81,11 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
       newErrors.amount = "Please enter a valid donation amount";
     } else if (parseFloat(formData.amount) < 100) {
       newErrors.amount = "Minimum donation amount is LKR 100";
-    } else if (parseFloat(formData.amount) > parseFloat(campaign.goal.toString())) {
+
+    } else if (
+      parseFloat(formData.amount) > parseFloat(campaign.goal.toString())
+    ) {
+
       newErrors.amount = `Maximum donation amount is LKR ${campaign.goal.toLocaleString()}`;
     }
 
@@ -122,11 +126,12 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
       return;
     }
 
-    //cus 1 campaign id
-    const campaignId = campaign.id;  
 
 
-    payByPayhere("DONATION", parseFloat(formData.amount), "donation", `${campaignId}`, formData.email, formData.firstName, formData.lastName, formData.email, `${window.origin}/success`, `${window.origin}/cancel`);
+
+    payByPayhere("DONATION",parseFloat(formData.amount),"donation","",formData.email,formData.firstName,formData.lastName,formData.email,`${window.origin}/org/member/donations/success`,`${window.origin}/org/member/donations/cancel`);
+    
+
 
   };
 
@@ -305,8 +310,6 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
         </div>
 
 
-        
-
         {/* Security Notice */}
         <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg border border-green-200 dark:border-green-800">
           <div className="flex items-center space-x-2 text-green-800 dark:text-green-200">
@@ -355,4 +358,6 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
       </CardContent>
     </Card>
   );
+
 };
+
