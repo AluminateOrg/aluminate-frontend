@@ -18,6 +18,9 @@ export interface Organization {
   maxMemberCount: number;
   currentMemberCount: number;
   deleted: boolean;
+  tier?: SubscriptionTier;
+  description?: string;
+  logo?: string;
 }
 
 export interface Group {
