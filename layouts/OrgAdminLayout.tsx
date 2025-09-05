@@ -19,6 +19,7 @@ import {
   Bell,
   UserPlus,
   X,
+  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -33,6 +34,7 @@ const navigation = [
   { name: "Members", href: "/org/admin/members", icon: UserPlus },
   { name: "Subscriptions", href: "/org/admin/subscriptions", icon: CreditCard },
   { name: "Groups", href: "/org/admin/groups", icon: Users },
+  { name: "Chat", href: "/org/admin/chat", icon: MessageSquare },
   { name: "Events", href: "/org/admin/events", icon: Calendar },
   { name: "Mentorship", href: "/org/admin/mentorship", icon: Heart },
   { name: "Fundraising", href: "/org/admin/fundraising", icon: Heart },
@@ -46,16 +48,15 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-
   const closeSidebar = () => setSidebarOpen(false);
   const openSidebar = () => setSidebarOpen(true);
 
   const checkRouter = async () => {
-      (navigation.map(item => {
-        console.log("prefetching route", item.href);
-        return router.prefetch(item.href);
-      }));
-    }
+    navigation.map((item) => {
+      console.log("prefetching route", item.href);
+      return router.prefetch(item.href);
+    });
+  };
 
   checkRouter();
 
@@ -273,7 +274,6 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
                       "absolute inset-0 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 opacity-0 transition-opacity duration-200",
                       "group-hover:opacity-100"
                     )}
-                  
                   />
                 </Link>
               );
