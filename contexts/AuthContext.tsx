@@ -12,7 +12,7 @@ import { useSelector } from "react-redux";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
 import axiosMember from "@/axiosInstances/axiosMember";
 import { set } from "date-fns";
-import axiosCommon from '@/axiosInstances/axiosCommon';
+import axiosCommon from "@/axiosInstances/axiosCommon";
 import { toast } from "sonner";
 
 export type UserRole = "admin" | "member";
@@ -99,7 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await axiosMember.get("/info/getMemberInfo");
         if (res.status === 200) {
           const { data } = res.data;
-          const response = await axiosCommon.get(`/mentor/is-mentor/${data.user.id}`)
+          const response = await axiosCommon.get(
+            `/mentor/is-mentor/${data.user.id}`
+          );
           //setMemberUser in redux
           dispatch(
             setMemberUser({
@@ -140,7 +142,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-
   const login = async (email: string, password: string, role: UserRole) => {
     setLoading(true);
     try {
@@ -162,15 +163,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Login failed");
       }
 
-
-
       const { data } = res.data;
       console.log("data from login response:", data);
 
-      const response = await axiosCommon.get(`/mentor/is-mentor/${data.user.id}`)
+      const response = await axiosCommon.get(
+        `/mentor/is-mentor/${data.user.id}`
+      );
       const isMentor = response.data.data;
 
-      if (role === "admin" && role===data.user.role.toLowerCase()) {
+      if (role === "admin" && role === data.user.role.toLowerCase()) {
         dispatch(
           setAdminUser({
             id: data.user.id,
@@ -183,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             createdAt: data.user.createdAt || null,
           })
         );
-      } else if(role === "member" && role===data.user.role.toLowerCase()){
+      } else if (role === "member" && role === data.user.role.toLowerCase()) {
         dispatch(
           setMemberUser({
             id: data.user.id,
@@ -196,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isMentor: isMentor,
           })
         );
-      }else{
+      } else {
         toast.error("Invalid login entry: Check Role!");
         throw new Error("Invalid login entry: Check Role!");
       }
@@ -217,7 +218,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user); // Save real user
       setLoading(false);
 
-      router.push(data.user.role.toLowerCase() === "admin" ? "/org/admin" : "/org/member");
+      router.push(
+        data.user.role.toLowerCase() === "admin" ? "/org/admin" : "/org/member"
+      );
       router.refresh();
     } catch (error) {
       console.error("Login failed:", error);
