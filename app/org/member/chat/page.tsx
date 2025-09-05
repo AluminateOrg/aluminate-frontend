@@ -98,7 +98,6 @@ export default function MemberChatPage() {
         unreadCount: 0,
       }))
     : [];
-  console.log(memberGroups);
 
   const allRooms = [organizationRoom, ...groupRooms];
 
@@ -154,7 +153,7 @@ export default function MemberChatPage() {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="flex-1 flex flex-col p-0">
+            <CardContent className="flex-1 flex flex-col p-0 min-h-0">
               {/* Search */}
               <div className="px-6 pb-4">
                 <div className="relative">
@@ -169,7 +168,8 @@ export default function MemberChatPage() {
               </div>
 
               {/* Room List */}
-              <ScrollArea className="flex-1">
+              {/* make the messages area take full available height and scroll */}
+              <ScrollArea className="flex-1 h-full px-0">
                 <div className="space-y-1 px-3 pb-4">
                   {filteredRooms.map((room) => (
                     <div
@@ -358,7 +358,8 @@ function ChatContent({ messages, loading, currentUserId }: ChatContentProps) {
   }
 
   return (
-    <ScrollArea className="flex-1 px-6">
+    // ensure ScrollArea fills the remaining CardContent height and provides internal scrolling
+    <ScrollArea className="flex-1 h-full px-6">
       <div className="space-y-4 py-4">
         {messages.map((message) => {
           const isOwn = message.senderId == currentUserId;

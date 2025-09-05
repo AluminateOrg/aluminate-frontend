@@ -52,7 +52,8 @@ export default function AdminChatPage() {
           <div className="text-sm text-muted-foreground">Admin view</div>
         </CardHeader>
 
-        <CardContent className="flex-1 flex flex-col p-0">
+        {/* constrain flex column so inner ScrollArea can scroll instead of expanding */}
+        <CardContent className="flex-1 flex flex-col p-0 min-h-0">
           {/* Messages area */}
           <div className="flex-1">
             {loading ? (
