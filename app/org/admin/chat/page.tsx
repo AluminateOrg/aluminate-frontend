@@ -25,8 +25,10 @@ export default function AdminChatPage() {
   const { messages, loading, sending, sendMessage } = useChat(
     orgId,
     groupId,
-    user?.name ?? undefined
+    user?.name ?? undefined,
+    user?.id ?? undefined
   );
+  console.log("admin chat messages:", messages);
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -63,7 +65,7 @@ export default function AdminChatPage() {
               <ScrollArea className="h-full px-6 py-4">
                 <div className="space-y-4">
                   {messages.map((message) => {
-                    const isOwn = message.senderId === user?.id;
+                    const isOwn = message.senderId == user?.id;
                     return (
                       <div
                         key={message.id}

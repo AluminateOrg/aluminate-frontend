@@ -51,7 +51,8 @@ export default function MemberChatPage() {
   const { messages, loading, sending, sendMessage } = useChat(
     organization?.id || "",
     selectedRoom?.id ?? undefined,
-    user?.name ?? undefined
+    user?.name ?? undefined,
+    user?.id ?? undefined
   );
 
   // Create chat rooms list

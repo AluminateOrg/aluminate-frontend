@@ -16,7 +16,8 @@ export interface ChatMessage {
 export function useChat(
   orgId: string,
   groupId?: string,
-  currentUserName?: string
+  currentUserName?: string,
+  currentUserId?: string
 ) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -241,7 +242,13 @@ export function useChat(
                   id: obj.id,
                   content: obj.content,
                   senderId: obj.senderId,
-                  senderName: obj.senderName ?? undefined,
+                  // if server did not include senderName but this message is from the logged-in user,
+                  // use currentUserName so UI shows the name instead of id
+                  senderName:
+                    obj.senderName ??
+                    (obj.senderId === currentUserId
+                      ? currentUserName ?? undefined
+                      : undefined),
                   timestamp: obj.createdAt || new Date().toISOString(),
                   type: "text",
                 };

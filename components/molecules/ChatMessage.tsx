@@ -11,18 +11,32 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message, isOwn = false }: ChatMessageProps) {
+  // compute display name: prefer senderName, fallback to senderId
+  const rawName = message.senderName ?? message.senderId ?? "";
+  // numeric-only name detection (e.g. "1", "2") -> treat as Admin
+  const isNumericName = /^[0-9]+$/.test(String(rawName).trim());
+  const displayName = isOwn
+    ? "You"
+    : isNumericName
+    ? "Admin"
+    : rawName || "Unknown";
+
+  // Avatar initials from displayName (take up to 2 initials)
+  const initials =
+    displayName
+      .split(" ")
+      .map((n) => n[0] || "")
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "A";
+
   return (
     <div
       className={cn("flex gap-3 mb-4", isOwn ? "flex-row-reverse" : "flex-row")}
     >
       <Avatar className="w-8 h-8 flex-shrink-0">
-        <AvatarImage src={message.senderAvatar} alt={message.senderName} />
-        <AvatarFallback className="text-xs">
-          {message
-            .senderName!.split(" ")
-            .map((n) => n[0])
-            .join("")}
-        </AvatarFallback>
+        <AvatarImage src={message.senderAvatar} alt={displayName} />
+        <AvatarFallback className="text-xs">{initials}</AvatarFallback>
       </Avatar>
 
       <div
@@ -33,7 +47,7 @@ export function ChatMessage({ message, isOwn = false }: ChatMessageProps) {
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-foreground">
-            {isOwn ? "You" : message.senderName}
+            {displayName}
           </span>
           <span className="text-xs text-muted-foreground">
             {format(new Date(message.timestamp), "HH:mm")}
