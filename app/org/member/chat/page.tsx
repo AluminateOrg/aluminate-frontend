@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import { useChat } from "@/hooks/useChat";
@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Send,
   Users,
@@ -27,6 +26,7 @@ import {
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import { cn } from "@/lib/utils";
+import axiosMember from "@/axiosInstances/axiosMember";
 
 type ChatType = "organization" | "group";
 
@@ -43,6 +43,26 @@ interface ChatRoom {
 export default function MemberChatPage() {
   const { user } = useAuth();
   const { groups, organization } = useOrg(); // <-- use organization
+  // only groups this member belongs to (fetched from backend)
+  const [memberGroups, setMemberGroups] = useState<any[]>([]);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!user?.id) return;
+      try {
+        const res = await axiosMember.get(`/group/get/by-member/${user.id}`);
+        // axiosMember responses in this project typically put actual payload at res.data.data
+        const items = res?.data?.data ?? res?.data ?? [];
+        if (mounted) setMemberGroups(Array.isArray(items) ? items : []);
+      } catch (err) {
+        console.error("Failed to fetch member groups:", err);
+        if (mounted) setMemberGroups([]);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -66,17 +86,19 @@ export default function MemberChatPage() {
     unreadCount: 3,
   };
 
-  const groupRooms: ChatRoom[] = Array.isArray(groups)
-    ? groups.map((group) => ({
+  // use only memberGroups fetched for this user
+  const groupRooms: ChatRoom[] = Array.isArray(memberGroups)
+    ? memberGroups.map((group: any) => ({
         id: group.id,
-        name: group.name,
+        name: group.name ?? group.groupName ?? "Unnamed Group",
         type: "group" as ChatType,
-        memberCount: group.currentMembers,
-        lastMessage: "Latest group discussion...",
-        lastMessageTime: "1 hour ago",
-        unreadCount: Math.floor(Math.random() * 5),
+        memberCount: group.currentMembers ?? 0,
+        lastMessage: group.lastMessage ?? "Latest group discussion...",
+        lastMessageTime: group.lastMessageTime ?? "1 hour ago",
+        unreadCount: 0,
       }))
     : [];
+  console.log(memberGroups);
 
   const allRooms = [organizationRoom, ...groupRooms];
 
