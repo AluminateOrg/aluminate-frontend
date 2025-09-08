@@ -1,20 +1,23 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import axiosMember from "@/axiosInstances/axiosMember";
+import axiosGlobal from "@/axiosInstances/axiosGlobal";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface Notification {
   id: string;
   title: string;
   message: string;
   type:
-    | "info"
-    | "success"
-    | "warning"
-    | "error"
-    | "event"
-    | "group"
-    | "donation"
-    | "mentorship";
+  | "info"
+  | "success"
+  | "warning"
+  | "error"
+  | "event"
+  | "group"
+  | "donation"
+  | "mentorship";
   read: boolean;
   timestamp: string;
   actionUrl?: string;
@@ -28,194 +31,210 @@ export interface Notification {
   };
 }
 
+/** Backend row */
+type InAppNotification = {
+  id: number;
+  memberId: string;
+  tenantId: string;
+  type: string;          // e.g. EVENT_PUBLISHED
+  payloadJson: string;   // JSON string
+  readFlag: boolean;
+  createdAt: string;     // ISO
+};
+
+const API_BASE = "/notifications";
+
+/** Map API `type` to UI category */
+function mapUiType(apiType: string): Notification["type"] {
+  switch (apiType) {
+    case "EVENT_PUBLISHED":
+    case "EVENT_REMINDER":
+      return "event";
+    case "GROUP_ADDED":
+    case "GROUP_MESSAGE":
+    case "GROUP_JOIN_APPROVED":
+      return "group";
+    case "DONATION_RECEIVED":
+      return "donation";
+    case "MENTORSHIP_CONFIRMED":
+      return "mentorship";
+    case "PROFILE_UPDATE_REQUIRED":
+      return "info";
+    default:
+      return "info";
+  }
+}
+
+/** Title/message/cta per notification kind */
+function buildCopy(apiType: string, p: Record<string, any>) {
+  switch (apiType) {
+    case "EVENT_PUBLISHED":
+      return {
+        title: p.eventName ?? "New Event",
+        message: `Join us for ${p.eventName ?? "an event"}${p.start ? ` — starts ${p.start}` : ""}.`,
+        actionText: "View Event",
+        actionUrl: p.ctaUrl,
+        metadata: { eventId: p.eventId },
+      };
+    case "EVENT_REMINDER":
+      return {
+        title: "Event Reminder",
+        message: `${p.eventName ?? "An event"} starts soon${p.start ? `: ${p.start}` : ""}.`,
+        actionText: "Join Event",
+        actionUrl: p.ctaUrl,
+        metadata: { eventId: p.eventId },
+      };
+    case "GROUP_ADDED":
+      return {
+        title: `Welcome to ${p.groupName ?? "the group"}`,
+        message: "You’ve been added to the group. Say hello!",
+        actionText: "View Group",
+        actionUrl: p.ctaUrl,
+        metadata: { groupId: p.groupId },
+      };
+    case "GROUP_MESSAGE":
+      return {
+        title: `New message in ${p.groupName ?? "group"}`,
+        message: p.preview ?? "A new discussion was posted.",
+        actionText: "View Chat",
+        actionUrl: p.ctaUrl,
+        metadata: { groupId: p.groupId },
+      };
+    case "GROUP_JOIN_APPROVED":
+      return {
+        title: "Group request approved",
+        message: `You're now a member of ${p.groupName ?? "the group"}.`,
+        actionText: "Open Group",
+        actionUrl: p.ctaUrl,
+        metadata: { groupId: p.groupId },
+      };
+    case "DONATION_RECEIVED":
+      return {
+        title: "Donation Received",
+        message: `Thank you for your ${p.currency ?? ""}${p.amount ?? ""} donation.`,
+        actionText: "View Donations",
+        actionUrl: p.ctaUrl,
+        metadata: { campaignId: p.campaignId, amount: Number(p.amount) || undefined },
+      };
+    case "MENTORSHIP_CONFIRMED":
+      return {
+        title: "Mentorship Session Confirmed",
+        message: `Your session${p.whenIso ? ` at ${p.whenIso}` : ""}${p.mentorName ? ` with ${p.mentorName}` : ""} is confirmed.`,
+        actionText: "View Details",
+        actionUrl: p.ctaUrl,
+        metadata: { mentorId: p.mentorId },
+      };
+    case "PROFILE_UPDATE_REQUIRED":
+      return {
+        title: "Profile Update Required",
+        message: p.reason ?? "Please update your professional information.",
+        actionText: "Update Profile",
+        actionUrl: p.ctaUrl ?? "/org/member/profile",
+      };
+    default:
+      return {
+        title: "Notification",
+        message: p.message ?? "You have a new notification.",
+        actionText: p.ctaUrl ? "View" : undefined,
+        actionUrl: p.ctaUrl,
+      };
+  }
+}
+
+/** Convert backend row -> UI card */
+function mapRow(row: InAppNotification): Notification {
+  let payload: Record<string, any> = {};
+  try {
+    payload = row.payloadJson ? JSON.parse(row.payloadJson) : {};
+  } catch {
+    payload = {};
+  }
+  const copy = buildCopy(row.type, payload);
+  return {
+    id: String(row.id),
+    type: mapUiType(row.type),
+    title: copy.title,
+    message: copy.message,
+    actionText: copy.actionText,
+    actionUrl: copy.actionUrl,
+    metadata: copy.metadata,
+    timestamp: row.createdAt,
+    read: !!row.readFlag,
+  };
+}
+
 export function useNotifications() {
+  const { user } = useAuth();
+  const memberId = user?.id ? String(user.id) : undefined;
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Mock notifications data
-  const mockNotifications: Notification[] = [
-    {
-      id: "1",
-      title: "New Event: Alumni Networking",
-      message:
-        "Join us for our biggest networking event of the year! RSVP now to secure your spot.",
-      type: "event",
-      read: false,
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-      actionUrl: "/org/member/events",
-      actionText: "View Event",
-      metadata: { eventId: "1" },
-    },
-    {
-      id: "2",
-      title: "Welcome to Software Engineers Group",
-      message:
-        "You have been added to the Software Engineers group. Start connecting with fellow developers!",
-      type: "group",
-      read: false,
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-      actionUrl: "/org/member/groups",
-      actionText: "View Group",
-      metadata: { groupId: "group-1" },
-    },
-    {
-      id: "3",
-      title: "Donation Received",
-      message:
-        "Thank you for your $100 donation to the Student Scholarship Fund. Your contribution makes a difference!",
-      type: "donation",
-      read: true,
-      timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-      actionUrl: "/org/member/donations",
-      actionText: "View Donations",
-      metadata: { campaignId: "1", amount: 100 },
-    },
-    {
-      id: "4",
-      title: "Mentorship Session Confirmed",
-      message:
-        "Your mentorship session with Sheane Mario has been confirmed for tomorrow at 2:00 PM.",
-      type: "mentorship",
-      read: false,
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-      actionUrl: "/org/member/mentors",
-      actionText: "View Details",
-      metadata: { mentorId: "1" },
-    },
-    {
-      id: "5",
-      title: "Profile Update Required",
-      message:
-        "Please update your professional information to help other members connect with you.",
-      type: "info",
-      read: true,
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-      actionUrl: "/org/member/profile",
-      actionText: "Update Profile",
-    },
-    {
-      id: "6",
-      title: "New Message in Data Scientists Group",
-      message:
-        "Michael Chen posted a new discussion about machine learning trends. Join the conversation!",
-      type: "group",
-      read: true,
-      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-      actionUrl: "/org/member/chat",
-      actionText: "View Chat",
-      metadata: { groupId: "group-2" },
-    },
-    {
-      id: "7",
-      title: "Event Reminder",
-      message:
-        "Tech Workshop: AI Trends starts in 2 hours. Don't forget to join us!",
-      type: "event",
-      read: false,
-      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
-      actionUrl: "/org/member/events",
-      actionText: "Join Event",
-      metadata: { eventId: "2" },
-    },
-    {
-      id: "8",
-      title: "System Maintenance",
-      message:
-        "The platform will undergo scheduled maintenance tonight from 2:00 AM to 4:00 AM EST.",
-      type: "warning",
-      read: true,
-      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-    },
-    {
-      id: "9",
-      title: "Fundraising Goal Reached!",
-      message:
-        "Amazing news! The Student Scholarship Fund has reached its $50,000 goal thanks to your support.",
-      type: "success",
-      read: true,
-      timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week ago
-      actionUrl: "/org/member/donations",
-      actionText: "View Campaign",
-    },
-    {
-      id: "10",
-      title: "Welcome to Alumni Portal!",
-      message:
-        "Welcome to our alumni community! Complete your profile and start connecting with fellow alumni.",
-      type: "info",
-      read: true,
-      timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks ago
-      actionUrl: "/org/member/profile",
-      actionText: "Complete Profile",
-    },
-  ];
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchNotifications = useCallback(async () => {
+    if (!memberId) return;
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setNotifications(mockNotifications);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+      // list
+      const listRes = await axiosMember.get(`${API_BASE}/${memberId}`);
+      const rows: InAppNotification[] = Array.isArray(listRes.data)
+        ? listRes.data
+        : listRes.data?.data ?? [];
+      const mapped = rows.map(mapRow);
+      setNotifications(mapped);
+
+      // unread count
+      const unreadRes = await axiosMember.get(`${API_BASE}/${memberId}/unread-count`);
+      const raw = unreadRes.data?.data ?? unreadRes.data;
+      setUnreadCount(Number(raw) || 0);
+    } catch (err) {
+      // keep UI usable even if API hiccups
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  const markAsRead = useCallback(async (notificationId: string) => {
-    try {
-      // TODO: Replace with actual API call
-      setNotifications((prev) =>
-        prev.map((notification) =>
-          notification.id === notificationId
-            ? { ...notification, read: true }
-            : notification
-        )
-      );
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
-  }, []);
-
-  const markAllAsRead = useCallback(async () => {
-    try {
-      // TODO: Replace with actual API call
-      setNotifications((prev) =>
-        prev.map((notification) => ({ ...notification, read: true }))
-      );
-    } catch (error) {
-      console.error("Failed to mark all notifications as read:", error);
-    }
-  }, []);
-
-  const deleteNotification = useCallback(async (notificationId: string) => {
-    try {
-      // TODO: Replace with actual API call
-      setNotifications((prev) =>
-        prev.filter((notification) => notification.id !== notificationId)
-      );
-    } catch (error) {
-      console.error("Failed to delete notification:", error);
-    }
-  }, []);
-
-  const clearAllNotifications = useCallback(async () => {
-    try {
-      // TODO: Replace with actual API call
-      setNotifications([]);
-    } catch (error) {
-      console.error("Failed to clear all notifications:", error);
-    }
-  }, []);
+  }, [memberId]);
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Computed values
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const recentNotifications = notifications.slice(0, 5); // For header dropdown
+  // actions
+  const markAsRead = useCallback(
+    async (notificationId: string) => {
+      await axiosMember.post(`${API_BASE}/${notificationId}/read`).catch(() => { });
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    },
+    []
+  );
+
+  const markAllAsRead = useCallback(async () => {
+    // no bulk endpoint yet → call one by one
+    const toRead = notifications.filter((n) => !n.read).map((n) => n.id);
+    await Promise.all(toRead.map((id) => axiosMember.post(`${API_BASE}/${id}/read`).catch(() => { })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+  }, [notifications]);
+
+  const deleteNotification = useCallback(async (notificationId: string) => {
+    // if you add DELETE later, this will just work
+    await axiosMember.delete?.(`${API_BASE}/${notificationId}`).catch(() => { });
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+  }, []);
+
+  const clearAllNotifications = useCallback(async () => {
+    if (!memberId) return;
+    await axiosMember.delete?.(`${API_BASE}/${memberId}`).catch(() => { });
+    setNotifications([]);
+    setUnreadCount(0);
+  }, [memberId]);
+
+  // computed
+  const recentNotifications = notifications.slice(0, 5);
 
   return {
     notifications,
