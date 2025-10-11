@@ -53,8 +53,6 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const { recentNotifications, unreadCount, markAsRead } = useNotifications();
 
-
-
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const openMobileMenu = () => setMobileMenuOpen(true);
   const pathname = usePathname();
@@ -84,12 +82,13 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
         return <Bell className="h-4 w-4 text-gray-600" />;
     }
   };
+  const checkRouter = async () => {
+    navigation.forEach((item) => {
+      router.prefetch(item.href);
+    });
+  };
 
-  useEffect(() => {
-    navigation.forEach(({ href }) => router.prefetch?.(href));
-  }, [router]);
-
-  
+  checkRouter();
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
@@ -341,7 +340,10 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
               {/* Enhanced user profile section */}
               <div className="hidden md:flex items-center space-x-3 pl-2">
                 <Avatar className="h-8 w-8 ring-2 ring-primary/10 transition-all duration-200 hover:ring-primary/20">
-                  <AvatarImage src={user?.avatar} alt={user?.name} />
+                  <AvatarImage
+                    src={user?.avatar ?? undefined}
+                    alt={user?.name ?? undefined}
+                  />
                   <AvatarFallback className="bg-gradient-to-br from-primary/10 to-primary/20 text-primary font-medium">
                     {(user?.name || "Unknown User")
                       .split(" ")
@@ -477,7 +479,10 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
           <div className="bg-background/80 backdrop-blur-sm rounded-xl p-4 mb-3 border border-border/30 shadow-sm">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12 ring-2 ring-primary/20 shadow-sm">
-                <AvatarImage src={user?.avatar} alt={user?.name} />
+                <AvatarImage
+                  src={user?.avatar ?? undefined}
+                  alt={user?.name ?? undefined}
+                />
                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30 text-primary font-semibold text-sm">
                   {(user?.name || "Unknown User")
                     .split(" ")
