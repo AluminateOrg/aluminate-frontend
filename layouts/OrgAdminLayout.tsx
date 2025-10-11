@@ -19,6 +19,7 @@ import {
   Bell,
   UserPlus,
   X,
+  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -33,6 +34,7 @@ const navigation = [
   { name: "Members", href: "/org/admin/members", icon: UserPlus },
   { name: "Subscriptions", href: "/org/admin/subscriptions", icon: CreditCard },
   { name: "Groups", href: "/org/admin/groups", icon: Users },
+  { name: "Chat", href: "/org/admin/chat", icon: MessageSquare },
   { name: "Events", href: "/org/admin/events", icon: Calendar },
   { name: "Mentorship", href: "/org/admin/mentorship", icon: Heart },
   { name: "Fundraising", href: "/org/admin/fundraising", icon: Heart },
@@ -46,16 +48,15 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-
   const closeSidebar = () => setSidebarOpen(false);
   const openSidebar = () => setSidebarOpen(true);
 
   const checkRouter = async () => {
-      (navigation.map(item => {
-        console.log("prefetching route", item.href);
-        return router.prefetch(item.href);
-      }));
-    }
+    navigation.map((item) => {
+      console.log("prefetching route", item.href);
+      return router.prefetch(item.href);
+    });
+  };
 
   checkRouter();
 
@@ -165,7 +166,10 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
               {/* Enhanced user profile section */}
               <div className="flex items-center space-x-3 pl-2">
                 <Avatar className="h-8 w-8 ring-2 ring-primary/10 transition-all duration-200 hover:ring-primary/20">
-                  <AvatarImage src={user?.avatar} alt={user?.name} />
+                  <AvatarImage
+                    src={user?.avatar ?? undefined}
+                    alt={user?.name ?? undefined}
+                  />
                   <AvatarFallback className="bg-gradient-to-br from-primary/10 to-primary/20 text-primary font-medium">
                     {user?.name
                       ? user.name
@@ -273,7 +277,6 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
                       "absolute inset-0 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 opacity-0 transition-opacity duration-200",
                       "group-hover:opacity-100"
                     )}
-                  
                   />
                 </Link>
               );
@@ -287,7 +290,10 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
           <div className="bg-background/80 backdrop-blur-sm rounded-xl p-4 mb-3 border border-border/30 shadow-sm">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12 ring-2 ring-primary/20 shadow-sm">
-                <AvatarImage src={user?.avatar} alt={user?.name} />
+                <AvatarImage
+                  src={user?.avatar ?? undefined}
+                  alt={user?.name ?? undefined}
+                />
                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30 text-primary font-semibold text-sm">
                   {user?.name
                     ? user.name
