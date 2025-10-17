@@ -31,7 +31,7 @@ import {
   GraduationCap,
   AlertCircle,
   CheckCircle,
-  X,
+  X, // <--- Pay special attention to this line, as it often causes issues.
   Search,
   Filter,
   MoreHorizontal,

@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { 
+// Replace all non-standard spaces with a regular space or remove them if they are just line breaks.
+import {
   Plus, 
   Calendar, 
   Clock, 
