@@ -1,19 +1,26 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-
-export type SubscriptionTier = 'basic' | 'premium' | 'enterprise';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
+import axios from "axios";
+import axiosCommon from "@/axiosInstances/axiosCommon";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
+export type SubscriptionTier = "basic" | "premium" | "enterprise";
+import { useDispatch, useSelector } from "react-redux";
+import { set } from "date-fns";
+import { setOrganization as setOrganizationRedux } from "@/redux/userSlice";
+import { toast } from "sonner";
 
 export interface Organization {
   id: string;
-  name: string;
-  tier: SubscriptionTier;
-  memberCount: number;
-  memberLimit: number;
-  logo?: string;
+  organizationName: string;
+  membershipFree: boolean;
+  maxMemberCount: number;
+  currentMemberCount: number;
+  deleted: boolean;
+  tier?: SubscriptionTier;
   description?: string;
-  createdAt: string;
+  logo?: string;
 }
 
 export interface Group {
@@ -23,7 +30,9 @@ export interface Group {
   maxMembers: number;
   currentMembers: number;
   createdAt: string;
+  requiredApproval: boolean;
   adminId: string;
+  active: boolean;
 }
 
 interface OrgContextType {
@@ -37,52 +46,45 @@ interface OrgContextType {
 const OrgContext = createContext<OrgContextType | undefined>(undefined);
 
 export function OrgProvider({ children }: { children: React.ReactNode }) {
-  const [organization, setOrganization] = useState<Organization | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, checking } = useAuth();
+  const dispatch = useDispatch();
+
+  const adminId = useSelector((state: any) => state.user.admin?.id);
+  const isAuthenticated = useSelector(
+    (state: any) => state.user.isAuthenticated
+  );
+  const organization = useSelector((state: any) => state.user.organization);
+  console.log("admin id from redux: >>>", adminId);
 
   const fetchOrganization = async () => {
-    if (!user?.orgId) return;
-    
     try {
-      // TODO: Replace with actual API call
-      const mockOrg: Organization = {
-        id: user.orgId,
-        name: 'Tech Alumni Network',
-        tier: 'premium',
-        memberCount: 245,
-        memberLimit: 500,
-        logo: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1',
-        description: 'Connecting technology professionals and fostering innovation',
-        createdAt: new Date().toISOString(),
-      };
-
-      const mockGroups: Group[] = [
-        {
-          id: 'group-1',
-          name: 'Software Engineers',
-          description: 'For all software engineering professionals',
-          maxMembers: 100,
-          currentMembers: 45,
-          createdAt: new Date().toISOString(),
-          adminId: user.id,
-        },
-        {
-          id: 'group-2',
-          name: 'Data Scientists',
-          description: 'Data science and analytics professionals',
-          maxMembers: 50,
-          currentMembers: 23,
-          createdAt: new Date().toISOString(),
-          adminId: user.id,
-        },
-      ];
-
-      setOrganization(mockOrg);
-      setGroups(mockGroups);
+      if (isAuthenticated) {
+        const response = await axiosCommon.get(`/get-org`);
+        console.log("response from the backend: ", response.data);
+        if (response.data) {
+          dispatch(setOrganizationRedux(response.data as Organization));
+        }
+      }
     } catch (error) {
-      console.error('Failed to fetch organization:', error);
+      console.error("Failed to fetch organization:", error);
+    }
+  };
+
+  const fetchGroups = async () => {
+    try {
+      const { data } = await axiosCommon.get("/group/get/all");
+      console.log("Groups fetched from backend: ", data.data);
+      if (data) {
+        setGroups(data.data as Group[]);
+      } else {
+        setGroups([]);
+        toast.warning("No groups found.");
+      }
+    } catch (error) {
+      console.error("Failed to fetch groups:", error);
+      toast.error("Failed to fetch groups.");
     } finally {
       setLoading(false);
     }
@@ -90,33 +92,53 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 
   const updateSubscription = async (tier: SubscriptionTier) => {
     if (!organization) return;
-    
+
     try {
       // TODO: Replace with actual API call
       const updatedOrg = {
         ...organization,
         tier,
-        memberLimit: tier === 'basic' ? 100 : tier === 'premium' ? 500 : 1000,
+        memberLimit: tier === "basic" ? 100 : tier === "premium" ? 500 : 1000,
       };
-      setOrganization(updatedOrg);
+      // setOrganization(updatedOrg);
     } catch (error) {
-      console.error('Failed to update subscription:', error);
+      console.error("Failed to update subscription:", error);
       throw error;
     }
   };
 
+
+
   useEffect(() => {
-    fetchOrganization();
-  }, [user]);
+    if (!checking) {
+      const fetchAll = async () => {
+        setLoading(true);
+        await Promise.all([fetchOrganization(), fetchGroups()]);
+        setLoading(false);
+      };
+      fetchAll();
+    }
+  }, [checking]);
+
+  useEffect(() => {
+    if (organization) {
+      const fetchData = setInterval(() => {
+        fetchGroups();
+      }, 100000);
+      return () => clearInterval(fetchData);
+    }
+  });
 
   return (
-    <OrgContext.Provider value={{
-      organization,
-      groups,
-      loading,
-      refreshOrganization: fetchOrganization,
-      updateSubscription,
-    }}>
+    <OrgContext.Provider
+      value={{
+        organization,
+        groups,
+        loading,
+        refreshOrganization: fetchOrganization,
+        updateSubscription,
+      }}
+    >
       {children}
     </OrgContext.Provider>
   );
@@ -125,7 +147,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 export const useOrg = () => {
   const context = useContext(OrgContext);
   if (context === undefined) {
-    throw new Error('useOrg must be used within an OrgProvider');
+    throw new Error("useOrg must be used within an OrgProvider");
   }
   return context;
 };

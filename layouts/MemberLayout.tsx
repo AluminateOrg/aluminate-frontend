@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -28,6 +28,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation";
 
 interface MemberLayoutProps {
   children: React.ReactNode;
@@ -51,14 +52,11 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { recentNotifications, unreadCount, markAsRead } = useNotifications();
-  const pathname = usePathname();
-
-  if (!user || user.role !== "member") {
-    return null;
-  }
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const openMobileMenu = () => setMobileMenuOpen(true);
+  const pathname = usePathname();
+  const router = useRouter();
 
   const handleNotificationClick = async (
     notificationId: string,
@@ -84,6 +82,8 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
         return <Bell className="h-4 w-4 text-gray-600" />;
     }
   };
+  
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -170,6 +170,7 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
                           ? "border-primary text-foreground"
                           : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
                       )}
+                    
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {item.name}
@@ -335,12 +336,17 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
               {/* Enhanced user profile section */}
               <div className="hidden md:flex items-center space-x-3 pl-2">
                 <Avatar className="h-8 w-8 ring-2 ring-primary/10 transition-all duration-200 hover:ring-primary/20">
-                  <AvatarImage src={user?.avatar} alt={user?.name} />
+                  <AvatarImage
+                    src={user?.avatar ?? undefined}
+                    alt={user?.name ?? undefined}
+                  />
                   <AvatarFallback className="bg-gradient-to-br from-primary/10 to-primary/20 text-primary font-medium">
-                    {user?.name
+                    {(user?.name || "Unknown User")
                       .split(" ")
                       .map((n) => n[0])
-                      .join("")}
+                      .join("")
+                      .toUpperCase()
+                      .substring(0, 2)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -469,12 +475,17 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
           <div className="bg-background/80 backdrop-blur-sm rounded-xl p-4 mb-3 border border-border/30 shadow-sm">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12 ring-2 ring-primary/20 shadow-sm">
-                <AvatarImage src={user?.avatar} alt={user?.name} />
+                <AvatarImage
+                  src={user?.avatar ?? undefined}
+                  alt={user?.name ?? undefined}
+                />
                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30 text-primary font-semibold text-sm">
-                  {user?.name
+                  {(user?.name || "Unknown User")
                     .split(" ")
                     .map((n) => n[0])
-                    .join("")}
+                    .join("")
+                    .toUpperCase()
+                    .substring(0, 2)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
