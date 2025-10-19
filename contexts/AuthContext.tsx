@@ -167,10 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data } = res.data;
       console.log("data from login response:", data);
 
-      const response = await axiosCommon.get(
-        `/mentor/is-mentor/${data.user.id}`
-      );
-      const isMentor = response.data.data;
+
 
       if (role === "admin" && role === data.user.role.toLowerCase()) {
         dispatch(
@@ -195,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             avatar: data.user.photoUrl || null,
             designation: data.user.position || null,
             joinedAt: data.user.createdAt || null,
-            isMentor: isMentor,
+            isMentor: false,
           })
         );
       } else {
@@ -212,7 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         designation: data.user.position || null,
         phone: data.user.phone || null,
         joinedAt: data.user.createdAt || null,
-        isMentor: isMentor,
+        isMentor: false,
       };
 
       // @ts-ignore
@@ -220,8 +217,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
 
 
-      const target = pathName && pathName !== "/login" ? pathName : data.user.role.toLowerCase() === "admin" ? "/org/admin" : "/org/member";
-      window.location.href = target;
+      // Determine target path
+      const target =
+        pathName && pathName !== "/login"
+          ? pathName
+          : data.user.role.toLowerCase() === "admin"
+            ? "/org/admin"
+            : "/org/member";
+
+      // Use Next.js router push (respects basePath)
+      router.push(target);
 
 
     } catch (error) {
