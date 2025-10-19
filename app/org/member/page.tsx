@@ -1,32 +1,108 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/hooks/useAuth';
-import { useOrg } from '@/hooks/useOrg';
-import { useCalendar } from '@/hooks/useCalendar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Users, 
-  Calendar, 
-  MessageSquare, 
-  Heart, 
+import { useAuth } from "@/hooks/useAuth";
+import { useOrg } from "@/hooks/useOrg";
+import { useCalendar } from "@/hooks/useCalendar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Users,
+  Calendar,
+  MessageSquare,
+  Heart,
   DollarSign,
   ArrowRight,
   Clock,
-  MapPin
-} from 'lucide-react';
-import Link from 'next/link';
-import { format } from 'date-fns';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+  MapPin,
+} from "lucide-react";
+import Link from "next/link";
+import { format } from "date-fns";
+import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import { usePaymentContext } from "@/contexts/paymentContext";
+import React, { useEffect, useState } from "react";
+import axiosMember from "@/axiosInstances/axiosMember";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Toast } from "@/components/ui/toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export default function MemberDashboard() {
   const { user } = useAuth();
+  const { payByPayhere } = usePaymentContext();
   const { organization, groups, loading: orgLoading } = useOrg();
-  const { events, loading: eventsLoading } = useCalendar(user?.orgId || '');
+  const { events, loading: eventsLoading } = useCalendar(user?.id || "");
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [acceptModalOpen, setAcceptModalOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [form, setForm] = useState({ programUrl: "", date: "", time: "" });
+  const [acceptLoading, setAcceptLoading] = useState(false);
 
-  const loading = orgLoading || eventsLoading;
+  const handleAcceptClick = (sessions: any) => {
+    setSelectedSession(sessions);
+    setAcceptModalOpen(true);
+    setForm({ programUrl: "", date: "", time: "" });
+  }
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
+  console.log("form data", form);
+  console.log("selected session", selectedSession);
+
+  const handleAcceptSubmit = async () => {
+    setAcceptLoading(true);
+    try {
+      const { data } = await axiosMember.post(`/mentor/accept-session/${selectedSession.id}`, {
+        programUrl: form.programUrl,
+        date: form.date,
+        time: form.time
+      })
+      console.log("response after accepting session", data);
+      toast.success("Session accepted successfully");
+      setAcceptModalOpen(false);
+      fetchSessions();
+    } catch (error) {
+      toast.error("Error accepting session. Please try again.");
+    } finally {
+      setAcceptLoading(false);
+    }
+  }
+
+  
+
+  const fetchSessions = async () => {
+    try {
+      if (user?.isMentor) {
+        const { data } = await axiosMember.get(`/mentor/get-all-sessions/${user?.id}`);
+        console.log("from mentor side")
+        console.log("data of sessions: ", data);
+        setSessions(data);
+      } else {
+        const { data } = await axiosMember.get(`/member/mentor/get-all-sessions-by-user/${user?.id}`);
+        console.log("data of sessions: ", data);
+        console.log("from member side")
+        setSessions(data);
+      }
+    } catch (error) {
+      console.error("Error fetching sessions: ", error);
+    }
+  }
+
+  useEffect(() => {
+    fetchSessions();
+  }, [])
+
+  const loading = eventsLoading;
 
   if (loading) {
     return (
@@ -41,8 +117,10 @@ export default function MemberDashboard() {
     );
   }
 
+  console.log("groups", groups);
+
   const upcomingEvents = events.slice(0, 3);
-  const recentGroups = groups.slice(0, 4);
+  const recentGroups = Array.isArray(groups) && groups.slice(0, 4);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -50,21 +128,33 @@ export default function MemberDashboard() {
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg p-6">
         <div className="flex items-center space-x-4">
           <Avatar className="h-16 w-16">
-            <AvatarImage src={user?.avatar} alt={user?.name} />
+            <AvatarImage
+              src={user?.avatar ?? undefined}
+              alt={user?.name ?? undefined}
+            />
             <AvatarFallback className="text-lg">
-              {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+              {user?.name
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("") || "U"}
             </AvatarFallback>
           </Avatar>
           <div>
             <h1 className="text-2xl font-bold text-foreground">
-              Welcome back, {user?.name || 'User'}!
+              Welcome back, {user?.name || "User"}!
             </h1>
+
             <p className="text-muted-foreground">
-              {user?.designation} at {organization?.name}
+              {user?.designation} at {organization?.organizationName}
             </p>
             {user?.joinedAt && (
               <Badge variant="secondary" className="mt-1">
-                Member since {format(new Date(user.joinedAt), 'MMM yyyy')}
+                Member since {format(new Date(user.joinedAt), "MMM yyyy")}
+              </Badge>
+            )}
+            {user?.isMentor && (
+              <Badge variant="outline" className="mt-1 ml-2 text-green-700 border-green-700">
+                Mentor
               </Badge>
             )}
           </div>
@@ -97,7 +187,7 @@ export default function MemberDashboard() {
         <Card>
           <CardContent className="p-4 text-center">
             <DollarSign className="h-8 w-8 mx-auto mb-2 text-primary" />
-            <div className="text-2xl font-bold">$150</div>
+            <div className="text-2xl font-bold">LKR 150</div>
             <p className="text-sm text-muted-foreground">Total Donated</p>
           </CardContent>
         </Card>
@@ -110,7 +200,9 @@ export default function MemberDashboard() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Upcoming Events</CardTitle>
-              <CardDescription>Events you might be interested in</CardDescription>
+              <CardDescription>
+                Events you might be interested in
+              </CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/org/member/events">
@@ -126,20 +218,25 @@ export default function MemberDashboard() {
             ) : (
               <div className="space-y-4">
                 {upcomingEvents.map((event) => (
-                  <div key={event.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-accent transition-colors">
+                  <div
+                    key={event.id}
+                    className="flex items-start space-x-3 p-3 rounded-lg hover:bg-accent transition-colors"
+                  >
                     <div className="bg-primary text-primary-foreground rounded-lg p-2 text-center min-w-[48px]">
                       <div className="text-xs font-medium">
-                        {format(new Date(event.startDate), 'MMM')}
+                        {format(new Date(event.startDate), "MMM")}
                       </div>
                       <div className="text-lg font-bold">
-                        {format(new Date(event.startDate), 'd')}
+                        {format(new Date(event.startDate), "d")}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-medium text-foreground">{event.title}</h4>
+                      <h4 className="font-medium text-foreground">
+                        {event.title}
+                      </h4>
                       <div className="flex items-center text-sm text-muted-foreground mt-1">
                         <Clock className="h-3 w-3 mr-1" />
-                        {format(new Date(event.startDate), 'h:mm a')}
+                        {format(new Date(event.startDate), "h:mm a")}
                         {event.location && (
                           <>
                             <MapPin className="h-3 w-3 ml-2 mr-1" />
@@ -172,35 +269,210 @@ export default function MemberDashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {orgLoading ? (
+            {loading ? (
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner size="md" />
               </div>
             ) : (
               <div className="space-y-3">
-                {recentGroups.map((group) => (
-                  <div key={group.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-medium">
-                        {group.name.charAt(0)}
+                {Array.isArray(recentGroups) &&
+                  recentGroups.map((group) => (
+                    <div
+                      key={group.id}
+                      className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-medium">
+                          {group.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-foreground">
+                            {group.name}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            {group.currentMembers} members
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">{group.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {group.currentMembers} members
-                        </p>
-                      </div>
+                      <Button variant="ghost" size="sm">
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      <MessageSquare className="h-4 w-4" />
-                    </Button>
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Mentor Sessions Section */}
+      {user?.isMentor && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Mentor Sessions</CardTitle>
+            <CardDescription>Review and accept your session requests</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {sessions.length === 0 ? (
+              <p className="text-muted-foreground">No sessions found.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sessions.map((session) => (
+                  <div key={session.id} className="border rounded-lg p-4 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-semibold">{session.menteeName}</h4>
+                        <p className="text-sm text-muted-foreground">{session.menteeEmail}</p>
+                      </div>
+                      <Badge variant={session.status === "PENDING" ? "outline" : "secondary"}>
+                        {session.status}
+                      </Badge>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Duration:</span> {session.sessionDuration}
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Requested:</span> {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
+                    </div>
+                    {session.programUrl && (
+                      <div className="text-sm">
+                        <span className="font-medium">Program URL:</span> <a href={session.programUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">{session.programUrl}</a>
+                      </div>
+                    )}
+                    <div className="flex gap-2 mt-2">
+                      {session.status === "PENDING" && (
+                        <Button size="sm" onClick={() => handleAcceptClick(session)}>
+                          Accept & Set Details
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
-      </div>
+      )}
+
+      {!user?.isMentor && (
+        <Card>
+          <CardHeader>
+            <CardTitle>My Booked Sessions</CardTitle>
+            <CardDescription>Sessions you have requested with mentors</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {sessions.length === 0 ? (
+              <p className="text-muted-foreground">No sessions found.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sessions.map((session) => (
+                  <div key={session.id} className="border rounded-lg p-4 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-semibold">{session.mentorName}</h4>
+                        <p className="text-sm text-muted-foreground">{session.sessionDuration}</p>
+                      </div>
+                      <Badge variant={session.status === "PENDING" ? "outline" : "secondary"}>
+                        {session.status}
+                      </Badge>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Requested:</span> {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Date:</span> {session.date ? format(new Date(session.date), "MMM d, yyyy") : "-"}
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Time:</span> {session.time || "-"}
+                    </div>
+                    {/* Show programUrl only if scheduled and paid */}
+                    {session.status === "SCHEDULED" && (
+                      <div className="mt-2">
+                        {!session.isPaid ? (
+                          <div className="text-sm text-muted-foreground">
+                            <span className="font-medium">Program URL:</span> <span className="italic">Pay mentor fee to reveal</span>
+                            {/* <Button
+                              className="ml-2"
+                              size="sm"
+                              onClick={() => payByPayhere(session)}
+                            >
+                              Pay Now
+                            </Button> */}
+                          </div>
+                        ) : (
+                          <div className="text-sm">
+                            <span className="font-medium">Program URL:</span>{" "}
+                            <a
+                              href={session.programUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary underline"
+                            >
+                              {session.programUrl}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Accept Session Modal */}
+      <Dialog open={acceptModalOpen} onOpenChange={setAcceptModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Accept Session</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="programUrl">Program URL</Label>
+              <Input
+                id="programUrl"
+                name="programUrl"
+                placeholder="Google Meet/Zoom link"
+                value={form.programUrl}
+                onChange={handleFormChange}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                value={form.date}
+                onChange={handleFormChange}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="time">Time</Label>
+              <Input
+                id="time"
+                name="time"
+                type="time"
+                value={form.time}
+                onChange={handleFormChange}
+                required
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAcceptModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAcceptSubmit} disabled={acceptLoading}>
+              {acceptLoading ? "Accepting..." : "Accept Session"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Quick Actions */}
       <Card>
@@ -238,5 +510,7 @@ export default function MemberDashboard() {
         </CardContent>
       </Card>
     </div>
+
   );
+
 }
