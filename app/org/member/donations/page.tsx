@@ -119,9 +119,6 @@ export default function DonationsPage() {
   const [totalPages, setTotalPages] = useState(0);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-  // Check authentication tokens
-    const csrfToken = document.cookie.match(/csrf-token=([^;]+)/)?.[1];
-    const sessionId = document.cookie.match(/sessionId=([^;]+)/)?.[1];
 
   const mapCategoryFromBackend = useCallback(
     (type: string): Campaign["category"] => {
@@ -254,7 +251,7 @@ export default function DonationsPage() {
   // Fetch user's donations - try multiple axios instances like other pages do
   const fetchMyDonations = useCallback(
     async (page: number = 0) => {
- 
+
 
       setDonationsLoading(true);
       try {
@@ -273,15 +270,15 @@ export default function DonationsPage() {
         let response;
 
 
-          // Try member endpoint: /member/donations/my-donations
-          response = await axiosMember.get(`/donations/my-donations/${user?.id}`, {
-            params: {
-              page: page.toString(),
-              size: "10",
-              sort: "createdAt,desc",
-            },
+        // Try member endpoint: /member/donations/my-donations
+        response = await axiosMember.get(`/donations/my-donations/${user?.id}`, {
+          params: {
+            page: page.toString(),
+            size: "10",
+            sort: "createdAt,desc",
+          },
 
-          }
+        }
         );
 
 
@@ -533,10 +530,10 @@ export default function DonationsPage() {
         <PaymentForm
           campaign={selectedCampaign}
           member={{
-            id: user?.id,
-            name: user?.name,
-            email: user?.email,
-            phone: user?.phone,
+            id: Number(user?.id) || 0, // convert safely to number
+            name: user?.name || "",
+            email: user?.email || "",
+            phone: user?.phone || "",
           }}
           onSuccess={handlePaymentSuccess}
           onCancel={handlePaymentCancel}

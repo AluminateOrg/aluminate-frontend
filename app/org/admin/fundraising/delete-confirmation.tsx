@@ -43,13 +43,12 @@ export function DeleteCampaignConfirmationModal({
   const isActiveCampaign = campaignData && campaignData.isActive;
 
   // Loading component with fallback
-  const LoadingComponent = LoadingSpinner
-    ? LoadingSpinner
-    : () => (
-        <div className="flex items-center justify-center">
-          <Loader2 className="h-4 w-4 animate-spin" />
-        </div>
-      );
+ const LoadingComponent = LoadingSpinner ?? (() => (
+  <div className="flex items-center justify-center">
+    <Loader2 className="h-4 w-4 animate-spin" />
+  </div>
+));
+
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>

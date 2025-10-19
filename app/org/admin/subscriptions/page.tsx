@@ -8,10 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { 
-  CreditCard, 
-  Users, 
-  Calendar, 
+import {
+  CreditCard,
+  Users,
+  Calendar,
   TrendingUp,
   Check,
   X,
@@ -174,8 +174,8 @@ export default function SubscriptionsPage() {
 
     try {
       // Validate required fields
-      if (!paymentForm.cardNumber || !paymentForm.expiryMonth || !paymentForm.expiryYear || 
-          !paymentForm.cvv || !paymentForm.cardholderName) {
+      if (!paymentForm.cardNumber || !paymentForm.expiryMonth || !paymentForm.expiryYear ||
+        !paymentForm.cvv || !paymentForm.cardholderName) {
         toast.error('Please fill in all payment method fields');
         return;
       }
@@ -207,9 +207,9 @@ export default function SubscriptionsPage() {
 
     try {
       // Validate required fields
-      if (!billingForm.companyName || !billingForm.contactName || !billingForm.email || 
-          !billingForm.addressLine1 || !billingForm.city || !billingForm.state || 
-          !billingForm.zipCode || !billingForm.country) {
+      if (!billingForm.companyName || !billingForm.contactName || !billingForm.email ||
+        !billingForm.addressLine1 || !billingForm.city || !billingForm.state ||
+        !billingForm.zipCode || !billingForm.country) {
         toast.error('Please fill in all required billing address fields');
         return;
       }
@@ -252,7 +252,9 @@ export default function SubscriptionsPage() {
   };
 
   const currentPlan = plans.find(plan => plan.current);
-  const memberUsagePercent = organization ? (organization.memberCount / organization.memberLimit) * 100 : 0;
+  const memberUsagePercent = organization
+    ? (organization.currentMemberCount / organization.maxMemberCount) * 100
+    : 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -296,12 +298,12 @@ export default function SubscriptionsPage() {
                   Next billing: {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 <h4 className="font-medium">Member Usage</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>{organization.memberCount} of {organization.memberLimit} members</span>
+                    {organization.currentMemberCount} of {organization.maxMemberCount} members
                     <span>{Math.round(memberUsagePercent)}%</span>
                   </div>
                   <Progress value={memberUsagePercent} className="h-2" />
@@ -312,13 +314,13 @@ export default function SubscriptionsPage() {
                   </p>
                 )}
               </div>
-              
+
               <div className="space-y-2">
                 <h4 className="font-medium">Quick Stats</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center space-x-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span>{organization.memberCount} Members</span>
+                    <span>{organization.currentMemberCount} Members</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -352,7 +354,7 @@ export default function SubscriptionsPage() {
                   </Badge>
                 </div>
               )}
-              
+
               <CardHeader className="text-center">
                 <div className="flex justify-center mb-2">
                   {plan.id === 'basic' && <Building className="h-8 w-8 text-muted-foreground" />}
@@ -370,7 +372,7 @@ export default function SubscriptionsPage() {
                   Up to {plan.memberLimit} members
                 </CardDescription>
               </CardHeader>
-              
+
               <CardContent className="space-y-4">
                 <ul className="space-y-2">
                   {plan.features.map((feature, index) => (
@@ -380,7 +382,7 @@ export default function SubscriptionsPage() {
                     </li>
                   ))}
                 </ul>
-                
+
                 <div className="pt-4">
                   {plan.current ? (
                     <Button disabled className="w-full">
@@ -427,15 +429,15 @@ export default function SubscriptionsPage() {
                   <p className="text-sm text-muted-foreground">Expires 12/25</p>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => setShowPaymentModal(true)}
               >
                 Update Payment Method
               </Button>
             </div>
-            
+
             <div className="space-y-4">
               <h4 className="font-medium">Billing Address</h4>
               <div className="text-sm text-muted-foreground space-y-1">
@@ -444,8 +446,8 @@ export default function SubscriptionsPage() {
                 <p>San Francisco, CA 94105</p>
                 <p>United States</p>
               </div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => setShowBillingModal(true)}
               >
@@ -573,7 +575,7 @@ export default function SubscriptionsPage() {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="expiryYear">Year *</Label>
                     <select
@@ -594,7 +596,7 @@ export default function SubscriptionsPage() {
                       })}
                     </select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="cvv">CVV *</Label>
                     <Input

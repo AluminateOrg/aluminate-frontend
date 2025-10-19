@@ -82,13 +82,9 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
         return <Bell className="h-4 w-4 text-gray-600" />;
     }
   };
-  const checkRouter = async () => {
-    navigation.forEach((item) => {
-      router.prefetch(item.href);
-    });
-  };
+  
 
-  checkRouter();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
@@ -174,7 +170,7 @@ export default function MemberLayout({ children }: MemberLayoutProps) {
                           ? "border-primary text-foreground"
                           : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
                       )}
-                      prefetch
+                    
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {item.name}
