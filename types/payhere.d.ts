@@ -6,7 +6,7 @@ export interface PayHerePaymentObject {
   notify_url: string;
   order_id: string;
   items: string;
-  amount: number;
+  amount: string;
   currency: string;
   hash: string;
   first_name: string;

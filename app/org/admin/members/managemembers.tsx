@@ -16,7 +16,6 @@ import {
   Users,
   Mail,
   Phone,
-  Briefcase,
   Search,
   Filter,
   Edit,
@@ -25,11 +24,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
-import axios from "axios";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 interface Member {
-  id: number;
+  id: string; // normalized as string
   name: string;
   email: string;
   phone?: string;
@@ -37,7 +35,12 @@ interface Member {
   regNo?: string;
   address?: string;
   batch?: number;
-  isActive: boolean;
+  designation?: string;
+  company?: string;
+  degree?: string;
+  avatar?: string;
+  status: "active" | "pending" | "inactive";
+  joinedAt?: string;
   groupIds: number[];
 }
 
@@ -48,71 +51,48 @@ export default function ManageMembers({
   members: Member[];
   setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
 }) {
-  const { organization, groups } = useOrg();
+  const { groups } = useOrg();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "active" | "pending" | "inactive"
-  >("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "inactive">("all");
+  const [loading, setLoading] = useState(true);
 
-  const getMemberGroups = (groupIds?: string[] | null) => {
-    // Ensure both groups and groupIds are valid arrays
-    if (
-      !Array.isArray(groups) ||
-      !Array.isArray(groupIds) ||
-      groupIds.length === 0
-    ) {
-      return [];
-    }
+  const getMemberGroups = (groupIds?: number[] | null) => {
+  if (!Array.isArray(groups) || !Array.isArray(groupIds) || groupIds.length === 0) return [];
 
-    try {
-      return groups.filter((group) => {
-        // Additional safety check for group.id
-        return group && group.id && groupIds.includes(group.id);
-      });
-    } catch (error) {
-      console.error("Error filtering member groups:", error);
-      return [];
-    }
-  };
+  return groups.filter(
+    (group) => group && group.id && groupIds.includes(Number(group.id))
+  );
+};
 
-  // Enhanced getAllMembers function
+
   const getAllMembers = useCallback(async () => {
     try {
       const response = await axiosAdmin.get(`/member/get/all`);
 
       if (response.data && Array.isArray(response.data.data)) {
-        const mappedMembers = response.data.data.map((member: any) => ({
+        const mappedMembers: Member[] = response.data.data.map((member: any) => ({
           id: (member.id || member.nic || "").toString(),
           name: member.name || "Unknown",
           email: member.email || "",
           phone: member.phone || "",
           designation: member.position || "",
           company: member.company || "",
-          graduationYear: member.batch?.toString() || "",
+          batch: member.batch,
           degree: member.degree || "",
-          location: member.address || "",
           avatar: member.photoUrl || "",
-          status: (member.status || "active") as
-            | "active"
-            | "pending"
-            | "inactive",
+          status: (member.status || "active") as "active" | "pending" | "inactive",
           joinedAt: member.createdAt || new Date().toISOString(),
           groupIds: Array.isArray(member.groupIds) ? member.groupIds : [],
         }));
-
         setMembers(mappedMembers);
       } else {
-        console.warn("Invalid response structure:", response.data);
         toast.error("Invalid data received");
       }
     } catch (error) {
-      console.error("Error fetching members:", error);
+      console.error(error);
       toast.error("Failed to fetch members");
     }
   }, [setMembers]);
-
-  // Add loading state
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -120,10 +100,8 @@ export default function ManageMembers({
       await getAllMembers();
       setLoading(false);
     };
-
     fetchData();
-
-    const interval = setInterval(fetchData, 300000); // Reduce frequency to 5 minutes
+    const interval = setInterval(fetchData, 300000);
     return () => clearInterval(interval);
   }, [getAllMembers]);
 
@@ -136,49 +114,33 @@ export default function ManageMembers({
     toast.success("Invitation email sent successfully");
   };
 
-  // Enhanced filteredMembers with safety checks
   const filteredMembers = members.filter((member) => {
     if (!member) return false;
-
-    const memberName = member.name || "";
-    const memberEmail = member.email || "";
-    const memberCompany = member.company || "";
-
     const matchesSearch =
-      memberName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      memberEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      memberCompany.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" || member.status === statusFilter;
+      member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (member.company?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+    const matchesStatus = statusFilter === "all" || member.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  // Helper function for safe name initials
-  const getInitials = (name?: string): string => {
-    if (!name || typeof name !== "string") return "UN";
-
-    try {
-      return name
-        .split(" ")
-        .filter((n) => n.length > 0)
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .substring(0, 2);
-    } catch (error) {
-      return "UN";
-    }
+  const getInitials = (name?: string) => {
+    if (!name) return "UN";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
   };
 
-  // Show loading state
   if (loading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading members...</p>
+            <LoadingSpinner />
+            <p className="text-muted-foreground mt-2">Loading members...</p>
           </div>
         </CardContent>
       </Card>
@@ -193,11 +155,9 @@ export default function ManageMembers({
           <span>Manage Members</span>
         </CardTitle>
         <CardDescription>
-          View, edit, and manage all organization members and their group
-          assignments
+          View, edit, and manage all organization members and their group assignments
         </CardDescription>
       </CardHeader>
-
       <CardContent>
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -217,7 +177,7 @@ export default function ManageMembers({
                 key={status}
                 variant={statusFilter === status ? "default" : "outline"}
                 size="sm"
-                onClick={() => setStatusFilter(status as any)}
+                onClick={() => setStatusFilter(status as "all" | "active" | "pending" | "inactive")}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </Button>
@@ -228,8 +188,7 @@ export default function ManageMembers({
         {/* Member List */}
         <div className="space-y-4">
           {filteredMembers.map((member) => {
-            if (!member || !member.id) return null; // Skip invalid members
-
+            if (!member.id) return null;
             const memberGroups = getMemberGroups(member.groupIds);
             return (
               <div
@@ -241,12 +200,9 @@ export default function ManageMembers({
                     <AvatarImage src={member.avatar} alt={member.name} />
                     <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                   </Avatar>
-
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      <h4 className="font-medium">
-                        {member.name || "Unknown"}
-                      </h4>
+                      <h4 className="font-medium">{member.name}</h4>
                       <Badge
                         variant={
                           member.status === "active"
@@ -272,18 +228,12 @@ export default function ManageMembers({
                       )}
                     </div>
                     {member.designation && (
-                      <p className="text-sm text-muted-foreground">
-                        {member.designation}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{member.designation}</p>
                     )}
                     {memberGroups.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {memberGroups.map((group) => (
-                          <Badge
-                            key={group.id}
-                            variant="outline"
-                            className="text-xs"
-                          >
+                          <Badge key={group.id} variant="outline" className="text-xs">
                             {group.name}
                           </Badge>
                         ))}
@@ -294,11 +244,7 @@ export default function ManageMembers({
 
                 <div className="flex items-center space-x-2">
                   {member.status === "pending" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => resendInvitation(member.id)}
-                    >
+                    <Button size="sm" variant="outline" onClick={() => resendInvitation(member.id)}>
                       <Mail className="h-4 w-4 mr-1" /> Resend
                     </Button>
                   )}

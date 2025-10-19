@@ -32,12 +32,12 @@ interface Campaign {
   title: string;
   description: string;
   category:
-    | "general"
-    | "scholarship"
-    | "infrastructure"
-    | "emergency"
-    | "fundraising"
-    | "other";
+  | "general"
+  | "scholarship"
+  | "infrastructure"
+  | "emergency"
+  | "fundraising"
+  | "other";
   goal: number;
   raised: number;
   startDate: string;
@@ -221,10 +221,11 @@ export function EditCampaignModal({
       return;
     }
 
-    if (!user || (user.role !== "admin" && user.role !== "ADMIN")) {
+    if (!user || user.role.toLowerCase() !== "admin") {
       showError("Access denied. Admin privileges required.");
       return;
     }
+
 
     if (!validateForm()) {
       return;
@@ -306,13 +307,12 @@ export function EditCampaignModal({
   };
 
   // Loading component with fallback
-  const LoadingComponent = LoadingSpinner
-    ? LoadingSpinner
-    : () => (
-        <div className="flex items-center justify-center">
-          <Loader2 className="h-4 w-4 animate-spin" />
-        </div>
-      );
+  const LoadingComponent: React.FC = LoadingSpinner ?? (() => (
+  <div className="flex items-center justify-center">
+    <Loader2 className="h-4 w-4 animate-spin" />
+  </div>
+));
+
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
