@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 import {
   Card,
   CardContent,
@@ -17,7 +18,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Plus,
   DollarSign,
@@ -28,17 +28,58 @@ import {
   Edit,
   Trash2,
   Eye,
-  AlertCircle,
   X,
-  Send,
-  Mail,
-  Download,
-  Filter,
-  Search,
+  Power,
+  PowerOff,
+  BarChart3,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
+import { DeleteCampaignConfirmationModal } from "./delete-confirmation";
+import { EditCampaignModal } from "./edit-campaign-modal";
+
+
+interface BackendCampaignResponse {
+  id: number;
+  title: string;
+  description: string;
+  type:
+    | "FUNDRAISING"
+    | "EMERGENCY"
+    | "GENERAL"
+    | "SCHOLARSHIP"
+    | "INFRASTRUCTURE"
+    | "OTHER";
+  goal: string; // BigDecimal comes as string
+  raised: string; // BigDecimal comes as string
+  startDate: string; // LocalDate as string
+  endDate: string; // LocalDate as string
+  donorCount: number;
+
+  // Backend can send either `isActive` OR `active`
+  isActive?: boolean | string;
+  active?: boolean | string;
+  isDeleted?: boolean | string;
+  deleted?: boolean | string;
+
+  deletedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  progressPercentage?: number;
+
+  isExpired?: boolean | string;
+  expired?: boolean | string;
+  canAcceptDonations?: boolean | string;
+  daysRemaining?: number;
+  status?: string;
+  remainingAmount?: string; // BigDecimal as string
+  isGoalAchieved?: boolean | string;
+  goalAchieved?: boolean | string;
+
+}
 
 interface Campaign {
   id: string;
@@ -48,209 +89,391 @@ interface Campaign {
   raised: number;
   startDate: string;
   endDate: string;
-  category: "scholarship" | "infrastructure" | "emergency" | "general";
+  category:
+    | "general"
+    | "scholarship"
+    | "infrastructure"
+    | "emergency"
+    | "fundraising"
+    | "other";
   donorCount: number;
   isActive: boolean;
-  createdBy: string;
-}
-interface Donation {
-  id: string;
-  campaignId: string;
-  donorName: string;
-  donorEmail: string;
-  donorAvatar?: string;
-  amount: number;
-  date: string;
-  isAnonymous: boolean;
-  paymentMethod: "credit_card" | "bank_transfer" | "paypal";
-  message?: string;
-  status: "completed" | "pending" | "failed";
+  isDeleted?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  progressPercentage?: number;
+  isExpired?: boolean;
+  canAcceptDonations?: boolean;
+  daysRemaining?: number;
+  status?: string;
+  remainingAmount?: number;
+  isGoalAchieved?: boolean;
 }
 
-interface UpdateForm {
-  subject: string;
-  message: string;
-  includeProgress: boolean;
-  sendToAll: boolean;
-  selectedDonors: string[];
+interface CampaignFormData {
+  title: string;
+  description: string;
+  goal: string;
+  endDate: string;
+  category: Campaign["category"];
+  isActive: boolean;
+}
+
+interface CampaignStats {
+  totalCampaigns: number;
+  activeCampaigns: number;
+  inactiveCampaigns: number;
+  expiredCampaigns: number;
+  totalGoal: number;
+  totalRaised: number;
+  totalDonors: number;
+  averageProgress: number;
+  averageDonationAmount: number;
+  mostPopularCampaignType: string;
+  campaignsNeedingAttention: number;
 }
 
 export default function AdminFundraisingPage() {
   const { user } = useAuth();
   const { organization } = useOrg();
-  const [campaigns, setCampaigns] = useState<Campaign[]>([
-    {
-      id: "1",
-      title: "Student Scholarship Fund",
-      description:
-        "Supporting deserving students with financial assistance for their education",
-      goal: 50000,
-      raised: 32500,
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      category: "scholarship",
-      donorCount: 145,
-      isActive: true,
-      createdBy: user?.id || "",
-    },
-    {
-      id: "2",
-      title: "Campus Infrastructure Upgrade",
-      description:
-        "Modernizing campus facilities and technology infrastructure",
-      goal: 100000,
-      raised: 67800,
-      startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-      endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-      category: "infrastructure",
-      donorCount: 89,
-      isActive: true,
-      createdBy: user?.id || "",
-    },
-  ]);
 
+  // ===========================================
+  // STATE MANAGEMENT
+  // ===========================================
+
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [stats, setStats] = useState<CampaignStats | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
 
-  // New state for modals
-  const [showDonationsModal, setShowDonationsModal] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(
     null
   );
-  const [donationsLoading, setDonationsLoading] = useState(false);
-  const [updateLoading, setUpdateLoading] = useState(false);
-  const [donationSearchTerm, setDonationSearchTerm] = useState("");
-  const [donationFilter, setDonationFilter] = useState<
-    "all" | "completed" | "pending" | "anonymous"
-  >("all");
-
-  // Mock donations data
-  const [donations, setDonations] = useState<Donation[]>([
-    {
-      id: "1",
-      campaignId: "1",
-      donorName: "John Smith",
-      donorEmail: "john.smith@example.com",
-      donorAvatar:
-        "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      amount: 500,
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: false,
-      paymentMethod: "credit_card",
-      message: "Happy to support education for future generations!",
-      status: "completed",
-    },
-    {
-      id: "2",
-      campaignId: "1",
-      donorName: "Anonymous Donor",
-      donorEmail: "anonymous@example.com",
-      amount: 1000,
-      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: true,
-      paymentMethod: "bank_transfer",
-      status: "completed",
-    },
-    {
-      id: "3",
-      campaignId: "1",
-      donorName: "Sachini Jayawardana",
-      donorEmail: "sachini.jayawardana@example.com",
-      donorAvatar:
-        "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      amount: 250,
-      date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: false,
-      paymentMethod: "paypal",
-      message: "Education is the key to success!",
-      status: "completed",
-    },
-    {
-      id: "4",
-      campaignId: "2",
-      donorName: "Nirosha Yogendran",
-      donorEmail: "nirosha.yogendran@example.com",
-      donorAvatar:
-        "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      amount: 750,
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: false,
-      paymentMethod: "credit_card",
-      message: "Excited to see the new facilities!",
-      status: "completed",
-    },
-    {
-      id: "5",
-      campaignId: "1",
-      donorName: "Tharushi Rathnayake",
-      donorEmail: "tharushi.rathnayake@example.com",
-      amount: 100,
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      isAnonymous: false,
-      paymentMethod: "credit_card",
-      status: "pending",
-    },
-  ]);
-
-  // Update form state
-  const [updateForm, setUpdateForm] = useState<UpdateForm>({
-    subject: "",
-    message: "",
-    includeProgress: true,
-    sendToAll: true,
-    selectedDonors: [],
-  });
 
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CampaignFormData>({
     title: "",
     description: "",
     goal: "",
     endDate: "",
-    category: "general" as Campaign["category"],
+    category: "general",
+    isActive: true,
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  // ===========================================
+  // UTILITY FUNCTIONS
+  // ===========================================
+
+  // Safe number conversion for BigDecimal strings
+  const safeParseNumber = (value: string | number | undefined): number => {
+    if (typeof value === "number") return value;
+    if (!value || value === "") return 0;
+
+    try {
+      const parsed = parseFloat(value.toString());
+      return isNaN(parsed) ? 0 : parsed;
+    } catch {
+      return 0;
+    }
+  };
+
+  // FIXED: Enhanced boolean conversion with fallback field names
+  const safeParseBool = (
+    primary: boolean | string | undefined,
+    fallback?: boolean | string | undefined
+  ): boolean => {
+    // Try primary value first
+    if (typeof primary === "boolean") return primary;
+    if (typeof primary === "string") {
+      return primary.toLowerCase() === "true" || primary === "1";
+    }
+
+    // Try fallback value
+    if (typeof fallback === "boolean") return fallback;
+    if (typeof fallback === "string") {
+      return fallback.toLowerCase() === "true" || fallback === "1";
+    }
+
+    return false;
+  };
+
+  // Map frontend category to backend enum
+  const mapCategoryToBackend = (category: Campaign["category"]): string => {
+    const mapping: Record<Campaign["category"], string> = {
+      general: "GENERAL",
+      scholarship: "SCHOLARSHIP",
+      infrastructure: "INFRASTRUCTURE",
+      emergency: "EMERGENCY",
+      fundraising: "FUNDRAISING",
+      other: "OTHER",
+    };
+    return mapping[category] || "GENERAL";
+  };
+
+  // Map backend enum to frontend category
+  const mapCategoryFromBackend = (type: string): Campaign["category"] => {
+    const mapping: Record<string, Campaign["category"]> = {
+      GENERAL: "general",
+      SCHOLARSHIP: "scholarship",
+      INFRASTRUCTURE: "infrastructure",
+      EMERGENCY: "emergency",
+      FUNDRAISING: "fundraising",
+      OTHER: "other",
+    };
+    return mapping[type?.toUpperCase()] || "general";
+  };
+
+
+  const transformBackendCampaign = (
+    backendCampaign: BackendCampaignResponse
+  ): Campaign => {
+    try {
+
+      return {
+        id: backendCampaign.id.toString(),
+        title: backendCampaign.title || "",
+        description: backendCampaign.description || "",
+        goal: safeParseNumber(backendCampaign.goal),
+        raised: safeParseNumber(backendCampaign.raised),
+        startDate:
+          backendCampaign.startDate || new Date().toISOString().split("T")[0],
+        endDate:
+          backendCampaign.endDate || new Date().toISOString().split("T")[0],
+        category: mapCategoryFromBackend(backendCampaign.type),
+        donorCount: backendCampaign.donorCount || 0,
+
+
+        // FIXED: Handle both field naming conventions with fallbacks
+        isActive: safeParseBool(
+          backendCampaign.isActive,
+          backendCampaign.active
+        ),
+        isDeleted: safeParseBool(
+          backendCampaign.isDeleted,
+          backendCampaign.deleted
+        ),
+        isExpired: safeParseBool(
+          backendCampaign.isExpired,
+          backendCampaign.expired
+        ),
+        isGoalAchieved: safeParseBool(
+          backendCampaign.isGoalAchieved,
+          backendCampaign.goalAchieved
+        ),
+
+        createdAt: backendCampaign.createdAt,
+        updatedAt: backendCampaign.updatedAt,
+        progressPercentage: backendCampaign.progressPercentage || 0,
+        canAcceptDonations: safeParseBool(backendCampaign.canAcceptDonations),
+        daysRemaining: backendCampaign.daysRemaining || 0,
+        status: backendCampaign.status || "INACTIVE",
+        remainingAmount: safeParseNumber(backendCampaign.remainingAmount),
+
+      };
+    } catch (error) {
+      console.error("Error transforming campaign:", error);
+      throw new Error(`Failed to transform campaign: ${error}`);
+    }
+  };
+
+  // ===========================================
+  // API FUNCTIONS
+  // ===========================================
+
+  const handleApiError = (error: any, defaultMessage: string) => {
+    console.error("API Error:", error);
+
+    if (error.response) {
+      const status = error.response.status;
+      const message = error.response.data?.message || error.response.statusText;
+
+      if (status === 401 || status === 403) {
+        toast.error("Authentication required. Please login again.");
+      } else if (status >= 400 && status < 500) {
+        toast.error(message || "Invalid request");
+      } else if (status >= 500) {
+        toast.error("Server error. Please try again later.");
+      } else {
+        toast.error(message || defaultMessage);
+      }
+    } else if (error.request) {
+      toast.error("Network error. Please check your connection.");
+    } else {
+      toast.error(error.message || defaultMessage);
+    }
+  };
+
+  const fetchCampaigns = useCallback(async () => {
+    setLoading(true);
+    try {
+      console.log("Fetching campaigns...");
+      const response = await axiosAdmin.get("/campaign/get/all");
+
+
+      if (response.status === 200 && response.data) {
+        let campaignsData = [];
+
+        if (response.data.data && Array.isArray(response.data.data)) {
+          campaignsData = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          campaignsData = response.data;
+        } else {
+          console.warn("Unexpected response format:", response.data);
+          campaignsData = [];
+        }
+
+        // DEBUG: Log each campaign's boolean fields
+        campaignsData.forEach((campaign: any, index: number) => {
+          console.log(`Campaign ${index}:`, {
+            id: campaign.id,
+            title: campaign.title,
+            isActive: campaign.isActive,
+            active: campaign.active,
+            typeOfIsActive: typeof campaign.isActive,
+            typeOfActive: typeof campaign.active,
+          });
+        });
+
+
+        const transformedCampaigns = campaignsData
+          .map((campaign: any) => {
+            try {
+              return transformBackendCampaign(campaign);
+            } catch (error) {
+              console.error(
+                "Error transforming individual campaign:",
+                campaign,
+                error
+              );
+              return null;
+            }
+          })
+          .filter(Boolean);
+
+
+        // DEBUG: Log transformed campaigns
+        
+
+
+        setCampaigns(transformedCampaigns);
+      }
+    } catch (error) {
+      console.error("Error fetching campaigns:", error);
+      setCampaigns([]);
+      handleApiError(error, "Failed to load campaigns. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await axiosAdmin.get("/campaign/stats");
+
+      if (response.status === 200 && response.data) {
+        const statsData = response.data.data || response.data;
+
+        const transformedStats = {
+          ...statsData,
+          totalGoal: safeParseNumber(statsData.totalGoal),
+          totalRaised: safeParseNumber(statsData.totalRaised),
+          averageProgress: safeParseNumber(statsData.averageProgress),
+          averageDonationAmount: safeParseNumber(
+            statsData.averageDonationAmount
+          ),
+        };
+
+        setStats(transformedStats);
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+  if (user && user.role.toLowerCase() === "admin") {
+    fetchCampaigns();
+    fetchStats();
+  }
+}, [user, fetchCampaigns, fetchStats]);
+
+
+  // ===========================================
+  // EVENT HANDLERS
+  // ===========================================
+
+  const handleInputChange = (
+    field: keyof CampaignFormData,
+    value: string | boolean
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!formData.title || !formData.goal || !formData.endDate) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    setLoading(true);
-    try {
-      const newCampaign: Campaign = {
-        id: Date.now().toString(),
-        title: formData.title,
-        description: formData.description,
-        goal: Number(formData.goal),
-        raised: 0,
-        startDate: new Date().toISOString(),
-        endDate: new Date(formData.endDate).toISOString(),
-        category: formData.category,
-        donorCount: 0,
-        isActive: true,
-        createdBy: user?.id || "",
-      };
+    const goalValue = parseFloat(formData.goal);
+    if (goalValue <= 0) {
+      toast.error("Goal amount must be greater than zero");
+      return;
+    }
 
-      setCampaigns((prev) => [newCampaign, ...prev]);
-      setFormData({
-        title: "",
-        description: "",
-        goal: "",
-        endDate: "",
-        category: "general",
-      });
-      setShowCreateForm(false);
-      toast.success("Campaign created successfully!");
+    const endDate = new Date(formData.endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (endDate <= today) {
+      toast.error("End date must be in the future");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const requestPayload = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        type: mapCategoryToBackend(formData.category),
+        goal: goalValue,
+        endDate: formData.endDate,
+        isActive: formData.isActive,
+      };
+      console.log("request->",requestPayload)
+
+      const response = await axiosAdmin.post(
+        "/campaign/create",
+        requestPayload
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        await fetchCampaigns();
+        await fetchStats();
+
+        setFormData({
+          title: "",
+          description: "",
+          goal: "",
+          endDate: "",
+          category: "general",
+          isActive: true,
+        });
+        setShowCreateForm(false);
+        toast.success("Campaign created successfully!");
+      }
     } catch (error) {
-      toast.error("Failed to create campaign. Please try again.");
+      console.error("Error creating campaign:", error);
+      handleApiError(error, "Failed to create campaign. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -258,173 +481,173 @@ export default function AdminFundraisingPage() {
 
   const handleToggleCampaign = async (campaignId: string) => {
     try {
+      setActionLoading(campaignId);
+
+      const currentCampaign = campaigns.find((c) => c.id === campaignId);
+      if (!currentCampaign) {
+        toast.error("Campaign not found");
+        return;
+      }
+
+      const currentIsActive = currentCampaign.isActive;
+      const newStatus = !currentIsActive;
+
+      console.log("Toggle Debug:", {
+        campaignId,
+        campaignTitle: currentCampaign.title,
+        currentIsActive,
+        newStatus,
+        typeOfIsActive: typeof currentCampaign.isActive,
+      });
+
+
+      const response = await axiosAdmin.put(
+        `/campaign/${campaignId}/toggle-status`,
+        null,
+        {
+          params: {
+            isActive: newStatus,
+          },
+        }
+      );
+
+
+      if (response.status === 200 && response.data) {
+        const updatedCampaignData = response.data.data || response.data;
+
+        // FIXED: Enhanced debug logging to check both field names
+        console.log("Toggle response:", {
+          campaignId,
+          responseData: updatedCampaignData,
+          isActiveInResponse: updatedCampaignData.isActive,
+          activeInResponse: updatedCampaignData.active,
+          typeOfIsActiveInResponse: typeof updatedCampaignData.isActive,
+          typeOfActiveInResponse: typeof updatedCampaignData.active,
+        });
+
+        const transformedCampaign =
+          transformBackendCampaign(updatedCampaignData);
+
+        console.log("Transformed toggle result:", {
+          campaignId,
+          transformedIsActive: transformedCampaign.isActive,
+          typeOfTransformedIsActive: typeof transformedCampaign.isActive,
+        });
+
+        setCampaigns((prevCampaigns) =>
+          prevCampaigns.map((c) =>
+            c.id === campaignId ? transformedCampaign : c
+          )
+        );
+
+        toast.success(
+          newStatus
+            ? "Campaign activated successfully!"
+            : "Campaign deactivated successfully!"
+        );
+
+        await fetchStats();
+      }
+    } catch (error: any) {
+      console.error("Toggle error:", error);
+      handleApiError(error, "Failed to update campaign status");
+      // Refresh campaigns on error to ensure UI consistency
+
+      await fetchCampaigns();
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteCampaign = (campaign: Campaign) => {
+    setCampaignToDelete(campaign);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteCampaign = async () => {
+    if (!campaignToDelete) return;
+
+    try {
+      setLoading(true);
+
+      const response = await axiosAdmin.delete(
+        `/campaign/${campaignToDelete.id}/delete`
+      );
+
+      if (response.status === 200 || response.status === 204) {
+        setCampaigns((prev) =>
+          prev.filter((campaign) => campaign.id !== campaignToDelete.id)
+        );
+        await fetchStats();
+        toast.success("Campaign deleted successfully!");
+      }
+    } catch (error) {
+      console.error("Error deleting campaign:", error);
+      handleApiError(error, "Failed to delete campaign");
+    } finally {
+      setLoading(false);
+      setShowDeleteModal(false);
+      setCampaignToDelete(null);
+    }
+  };
+
+  const handleEditCampaign = (campaign: Campaign) => {
+    setEditingCampaign(campaign);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateCampaign = async (updatedCampaign: Campaign) => {
+    try {
       setCampaigns((prev) =>
         prev.map((campaign) =>
-          campaign.id === campaignId
-            ? { ...campaign, isActive: !campaign.isActive }
-            : campaign
+          campaign.id === updatedCampaign.id ? updatedCampaign : campaign
         )
       );
-      toast.success("Campaign status updated successfully!");
+
+      await fetchStats();
+      setShowEditModal(false);
+      setEditingCampaign(null);
+      toast.success("Campaign updated successfully!");
     } catch (error) {
-      toast.error("Failed to update campaign status.");
+      await fetchCampaigns();
+      handleApiError(error, "Failed to update campaign");
     }
   };
 
-  const handleDeleteCampaign = async (campaignId: string) => {
-    if (!confirm("Are you sure you want to delete this campaign?")) return;
+  // ===========================================
+  // UTILITY FUNCTIONS
+  // ===========================================
 
-    try {
-      setCampaigns((prev) =>
-        prev.filter((campaign) => campaign.id !== campaignId)
-      );
-      toast.success("Campaign deleted successfully!");
-    } catch (error) {
-      toast.error("Failed to delete campaign.");
-    }
-  };
+  const getFilteredCampaigns = () => {
+    let filtered = campaigns;
 
-  const handleViewDonations = async (campaign: Campaign) => {
-    setSelectedCampaign(campaign);
-    setShowDonationsModal(true);
-    setDonationsLoading(true);
-
-    try {
-      // TODO: Replace with actual API call to fetch donations
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // Donations are already loaded in state for demo
-    } catch (error) {
-      toast.error("Failed to load donations");
-    } finally {
-      setDonationsLoading(false);
-    }
-  };
-
-  const handleSendUpdate = (campaign: Campaign) => {
-    setSelectedCampaign(campaign);
-    setUpdateForm({
-      subject: `Update on ${campaign.title}`,
-      message: "",
-      includeProgress: true,
-      sendToAll: true,
-      selectedDonors: [],
-    });
-    setShowUpdateModal(true);
-  };
-
-  const handleSubmitUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!updateForm.subject.trim() || !updateForm.message.trim()) {
-      toast.error("Please fill in both subject and message");
-      return;
-    }
-
-    setUpdateLoading(true);
-
-    try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      const recipientCount = updateForm.sendToAll
-        ? selectedCampaign?.donorCount || 0
-        : updateForm.selectedDonors.length;
-
-      toast.success(`Update sent successfully to ${recipientCount} donors!`);
-      setShowUpdateModal(false);
-      setUpdateForm({
-        subject: "",
-        message: "",
-        includeProgress: true,
-        sendToAll: true,
-        selectedDonors: [],
-      });
-    } catch (error) {
-      toast.error("Failed to send update. Please try again.");
-    } finally {
-      setUpdateLoading(false);
-    }
-  };
-
-  const handleExportDonations = async (campaignId: string) => {
-    try {
-      const campaignDonations = donations.filter(
-        (d) => d.campaignId === campaignId
-      );
-      const csvContent = [
-        "Donor Name,Email,Amount,Date,Payment Method,Status,Message",
-        ...campaignDonations.map(
-          (d) =>
-            `"${d.isAnonymous ? "Anonymous" : d.donorName}","${
-              d.donorEmail
-            }","$${d.amount}","${format(new Date(d.date), "yyyy-MM-dd")}","${
-              d.paymentMethod
-            }","${d.status}","${d.message || ""}"`
-        ),
-      ].join("\n");
-
-      const blob = new Blob([csvContent], { type: "text/csv" });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `donations-${campaignId}-${format(
-        new Date(),
-        "yyyy-MM-dd"
-      )}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-
-      toast.success("Donations exported successfully!");
-    } catch (error) {
-      toast.error("Failed to export donations");
-    }
-  };
-
-  const getCampaignDonations = (campaignId: string) => {
-    return donations.filter((d) => d.campaignId === campaignId);
-  };
-
-  const getFilteredDonations = (campaignId: string) => {
-    let campaignDonations = getCampaignDonations(campaignId);
-
-    // Apply search filter
-    if (donationSearchTerm) {
-      campaignDonations = campaignDonations.filter(
-        (d) =>
-          d.donorName
-            .toLowerCase()
-            .includes(donationSearchTerm.toLowerCase()) ||
-          d.donorEmail
-            .toLowerCase()
-            .includes(donationSearchTerm.toLowerCase()) ||
-          (d.message &&
-            d.message.toLowerCase().includes(donationSearchTerm.toLowerCase()))
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (campaign) =>
+          campaign.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          campaign.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Apply status filter
-    switch (donationFilter) {
-      case "completed":
-        return campaignDonations.filter((d) => d.status === "completed");
-      case "pending":
-        return campaignDonations.filter((d) => d.status === "pending");
-      case "anonymous":
-        return campaignDonations.filter((d) => d.isAnonymous);
-      default:
-        return campaignDonations;
+    if (filterType !== "all") {
+      switch (filterType) {
+        case "active":
+          filtered = filtered.filter((c) => c.isActive && !c.isExpired);
+          break;
+        case "inactive":
+          filtered = filtered.filter((c) => !c.isActive && !c.isExpired);
+          break;
+        case "expired":
+          filtered = filtered.filter((c) => c.isExpired);
+          break;
+        case "completed":
+          filtered = filtered.filter((c) => c.isGoalAchieved);
+          break;
+      }
     }
-  };
 
-  const handleUpdateInputChange = (field: keyof UpdateForm, value: any) => {
-    setUpdateForm((prev) => ({ ...prev, [field]: value }));
+    return filtered;
   };
-
-  const totalRaised = campaigns.reduce(
-    (sum, campaign) => sum + campaign.raised,
-    0
-  );
-  const totalGoal = campaigns.reduce((sum, campaign) => sum + campaign.goal, 0);
-  const activeCampaigns = campaigns.filter((campaign) => campaign.isActive);
 
   const getCategoryColor = (category: Campaign["category"]) => {
     switch (category) {
@@ -434,36 +657,92 @@ export default function AdminFundraisingPage() {
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "emergency":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "fundraising":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
+      case "other":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
   };
 
-  const getPaymentMethodIcon = (method: string) => {
-    switch (method) {
-      case "credit_card":
-        return "💳";
-      case "bank_transfer":
-        return "🏦";
-      case "paypal":
-        return "💰";
-      default:
-        return "💳";
-    }
+  const getCategoryDisplayName = (category: Campaign["category"]) => {
+    const names: Record<Campaign["category"], string> = {
+      general: "General",
+      scholarship: "Scholarship",
+      infrastructure: "Infrastructure",
+      emergency: "Emergency",
+      fundraising: "Fundraising",
+      other: "Other",
+    };
+    return names[category];
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "failed":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+
+  // Status functions with proper boolean checking
+  const getStatusColor = (campaign: Campaign) => {
+    if (campaign.isDeleted === true) {
+      return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
+    if (campaign.isExpired === true) {
+      return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+    }
+    if (campaign.isGoalAchieved === true) {
+      return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+    }
+    if (campaign.isActive === false) {
+
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+    }
+    return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
   };
+
+  const getStatusDisplayName = (campaign: Campaign) => {
+
+    if (campaign.isDeleted) return "Deleted";
+    if (campaign.isExpired) return "Expired";
+    if (campaign.isGoalAchieved) return "Completed";
+    if (!campaign.isActive) return "Inactive";
+    return "Active";
+  };
+
+  
+
+  // Check authentication
+  // Access control
+if (!user || user.role.toLowerCase() !== "admin") {
+  return (
+    <div className="p-6 flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+        <p className="text-muted-foreground">
+          You need admin privileges to access this page.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Loading component with fallback
+const LoadingComponent: React.FC = LoadingSpinner ?? (() => (
+  <div className="flex items-center justify-center">
+    <Loader2 className="h-8 w-8 animate-spin" />
+  </div>
+));
+
+
+  if (loading && campaigns.length === 0) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center space-y-4">
+          <LoadingComponent />
+          <p className="text-muted-foreground">Loading campaigns...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredCampaigns = getFilteredCampaigns();
 
   return (
     <div className="p-6 space-y-6">
@@ -477,85 +756,81 @@ export default function AdminFundraisingPage() {
             Create and manage donation campaigns
           </p>
         </div>
-        <Button onClick={() => setShowCreateForm(true)}>
+        <Button onClick={() => setShowCreateForm(true)} disabled={loading}>
           <Plus className="h-4 w-4 mr-2" />
           Create Campaign
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Raised</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${totalRaised.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {Math.round((totalRaised / totalGoal) * 100)}% of total goal
-            </p>
-          </CardContent>
-        </Card>
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Raised
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                LKR {stats.totalRaised.toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {stats.totalGoal > 0
+                  ? Math.round((stats.totalRaised / stats.totalGoal) * 100)
+                  : 0}
+                % of total goal
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Campaigns
-            </CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeCampaigns.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {campaigns.length - activeCampaigns.length} inactive
-            </p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Active Campaigns
+              </CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.activeCampaigns}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.inactiveCampaigns} inactive
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Donors</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {campaigns.reduce(
-                (sum, campaign) => sum + campaign.donorCount,
-                0
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Across all campaigns
-            </p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Donors
+              </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalDonors}</div>
+              <p className="text-xs text-muted-foreground">
+                Across all campaigns
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Donation</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              $
-              {Math.round(
-                totalRaised /
-                  Math.max(
-                    campaigns.reduce(
-                      (sum, campaign) => sum + campaign.donorCount,
-                      0
-                    ),
-                    1
-                  )
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">Per donation</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Avg. Donation
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                LKR {Math.round(stats.averageDonationAmount).toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Per donation</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Tabs defaultValue="campaigns" className="w-full">
         <TabsList>
@@ -564,36 +839,75 @@ export default function AdminFundraisingPage() {
         </TabsList>
 
         <TabsContent value="campaigns" className="space-y-6">
+          {/* Search and Filter */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <Input
+                placeholder="Search campaigns..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="px-3 py-2 border border-input bg-background rounded-md"
+              >
+                <option value="all">All Campaigns</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="expired">Expired</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+          </div>
+
           {/* Create Campaign Form */}
           {showCreateForm && (
             <Card>
               <CardHeader>
-                <CardTitle>Create New Campaign</CardTitle>
-                <CardDescription>
-                  Set up a new fundraising campaign
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Create New Campaign</CardTitle>
+                    <CardDescription>
+                      Set up a new fundraising campaign
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCreateForm(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateCampaign} className="space-y-4">
+
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Campaign Title *</Label>
+                    <Input
+                      id="title"
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) =>
+                        handleInputChange("title", e.target.value)
+                      }
+                      placeholder="Enter campaign title"
+                      required
+                    />
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="title">Campaign Title *</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) =>
-                          handleInputChange("title", e.target.value)
-                        }
-                        placeholder="Enter campaign title"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="goal">Fundraising Goal ($) *</Label>
+                      <Label htmlFor="goal">Fundraising Goal (LKR) *</Label>
                       <Input
                         id="goal"
                         type="number"
+                        step="0.01"
+                        min="100"
                         value={formData.goal}
                         onChange={(e) =>
                           handleInputChange("goal", e.target.value)
@@ -612,6 +926,7 @@ export default function AdminFundraisingPage() {
                         onChange={(e) =>
                           handleInputChange("endDate", e.target.value)
                         }
+                        min={new Date().toISOString().split("T")[0]}
                         required
                       />
                     </div>
@@ -622,7 +937,10 @@ export default function AdminFundraisingPage() {
                         id="category"
                         value={formData.category}
                         onChange={(e) =>
-                          handleInputChange("category", e.target.value)
+                          handleInputChange(
+                            "category",
+                            e.target.value as Campaign["category"]
+                          )
                         }
                         className="w-full px-3 py-2 border border-input rounded-md bg-background"
                       >
@@ -630,6 +948,8 @@ export default function AdminFundraisingPage() {
                         <option value="scholarship">Scholarship</option>
                         <option value="infrastructure">Infrastructure</option>
                         <option value="emergency">Emergency</option>
+                        <option value="fundraising">Fundraising</option>
+                        <option value="other">Other</option>
                       </select>
                     </div>
                   </div>
@@ -647,9 +967,33 @@ export default function AdminFundraisingPage() {
                     />
                   </div>
 
-                  <div className="flex space-x-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={formData.isActive}
+                      onChange={(e) =>
+                        handleInputChange("isActive", e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                    <Label htmlFor="isActive">
+                      Create campaign as active (ready to receive donations)
+                    </Label>
+                  </div>
+
+                  <div className="flex space-x-2 pt-4 border-t">
                     <Button type="submit" disabled={loading}>
-                      {loading ? "Creating..." : "Create Campaign"}
+                      {loading ? (
+                        <>
+
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Creating...
+
+                        </>
+                      ) : (
+                        "Create Campaign"
+                      )}
                     </Button>
                     <Button
                       type="button"
@@ -666,51 +1010,76 @@ export default function AdminFundraisingPage() {
 
           {/* Campaigns List */}
           <div className="space-y-4">
-            {campaigns.map((campaign) => {
-              const progressPercentage =
-                (campaign.raised / campaign.goal) * 100;
-              const daysLeft = Math.ceil(
-                (new Date(campaign.endDate).getTime() - Date.now()) /
-                  (1000 * 60 * 60 * 24)
-              );
-
-              return (
+            {filteredCampaigns.length === 0 && !loading ? (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center">
+                    <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">
+                      {searchTerm || filterType !== "all"
+                        ? "No Matching Campaigns"
+                        : "No Campaigns Yet"}
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      {searchTerm || filterType !== "all"
+                        ? "Try adjusting your search or filters."
+                        : "Create your first fundraising campaign to get started."}
+                    </p>
+                    {!searchTerm && filterType === "all" && (
+                      <Button onClick={() => setShowCreateForm(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Campaign
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredCampaigns.map((campaign) => (
                 <Card key={campaign.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap">
                           <CardTitle className="text-lg">
                             {campaign.title}
                           </CardTitle>
                           <Badge
                             className={getCategoryColor(campaign.category)}
                           >
-                            {campaign.category}
+                            {getCategoryDisplayName(campaign.category)}
                           </Badge>
-                          <Badge
-                            variant={
-                              campaign.isActive ? "default" : "secondary"
-                            }
-                          >
-                            {campaign.isActive ? "Active" : "Inactive"}
+                          <Badge className={getStatusColor(campaign)}>
+                            {getStatusDisplayName(campaign)}
                           </Badge>
+                          {campaign.daysRemaining !== undefined &&
+                            campaign.daysRemaining <= 7 &&
+                            campaign.daysRemaining > 0 && (
+                              <Badge
+                                variant="outline"
+                                className="border-orange-500 text-orange-700"
+                              >
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                {campaign.daysRemaining} days left
+                              </Badge>
+                            )}
                         </div>
                         <CardDescription>
-                          {campaign.description}
+                          {campaign.description || "No description provided"}
                         </CardDescription>
                       </div>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditCampaign(campaign)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteCampaign(campaign.id)}
+                          onClick={() => handleDeleteCampaign(campaign)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -723,15 +1092,24 @@ export default function AdminFundraisingPage() {
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Progress</span>
                         <span className="font-medium">
-                          ${campaign.raised.toLocaleString()} / $
+                          LKR {campaign.raised.toLocaleString()} / LKR{" "}
                           {campaign.goal.toLocaleString()}
                         </span>
                       </div>
-                      <Progress value={progressPercentage} className="h-2" />
+                      <Progress
+                        value={Math.min(campaign.progressPercentage || 0, 100)}
+                        className="h-2"
+                      />
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{Math.round(progressPercentage)}% funded</span>
                         <span>
-                          {daysLeft > 0 ? `${daysLeft} days left` : "Ended"}
+                          {Math.round(campaign.progressPercentage || 0)}% funded
+                        </span>
+                        <span>
+                          {campaign.daysRemaining !== undefined
+                            ? campaign.daysRemaining > 0
+                              ? `${campaign.daysRemaining} days left`
+                              : "Ended"
+                            : ""}
                         </span>
                       </div>
                     </div>
@@ -757,439 +1135,198 @@ export default function AdminFundraisingPage() {
                       <div className="flex items-center space-x-1">
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                         <span>
-                          Avg: $
+                          Avg: LKR{" "}
                           {Math.round(
                             campaign.raised / Math.max(campaign.donorCount, 1)
-                          )}
+                          ).toLocaleString()}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex space-x-2 pt-2 border-t">
+                    <div className="flex flex-wrap gap-2 pt-2 border-t">
+
                       <Button
-                        variant={campaign.isActive ? "outline" : "default"}
+                        variant={campaign.isActive ? "destructive" : "default"}
                         size="sm"
                         onClick={() => handleToggleCampaign(campaign.id)}
+                        disabled={
+                          actionLoading === campaign.id ||
+                          campaign.isExpired ||
+                          campaign.isDeleted
+                        }
+                        className={
+                          !campaign.isActive
+                            ? "bg-green-600 hover:bg-green-700 text-white"
+                            : ""
+                        }
                       >
-                        {campaign.isActive
-                          ? "Pause Campaign"
-                          : "Activate Campaign"}
+                        {actionLoading === campaign.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        ) : campaign.isActive ? (
+                          <PowerOff className="h-4 w-4 mr-1" />
+                        ) : (
+                          <Power className="h-4 w-4 mr-1" />
+                        )}
+                        {actionLoading === campaign.id
+                          ? "Updating..."
+                          : campaign.isActive
+                          ? "Deactivate"
+                          : "Activate"}
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDonations(campaign)}
-                      >
+
+                      <Button variant="outline" size="sm">
                         <Eye className="h-4 w-4 mr-1" />
-                        View Donations
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSendUpdate(campaign)}
-                      >
-                        <Send className="h-4 w-4 mr-1" />
-                        Send Update
+                        View Details
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })}
+              ))
+            )}
           </div>
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Fundraising Analytics</CardTitle>
+              <CardTitle className="flex items-center space-x-2">
+                <BarChart3 className="h-5 w-5" />
+                <span>Campaign Analytics</span>
+              </CardTitle>
               <CardDescription>
                 Detailed insights into your fundraising performance
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  Analytics Coming Soon
-                </h3>
-                <p className="text-muted-foreground">
-                  Detailed analytics and reporting features will be available in
-                  the next update.
-                </p>
-              </div>
+              {stats ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Campaign Overview</h4>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Total Campaigns:</span>
+                        <span className="font-medium">
+                          {stats.totalCampaigns}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Active:</span>
+                        <span className="font-medium text-green-600">
+                          {stats.activeCampaigns}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Inactive:</span>
+                        <span className="font-medium text-gray-600">
+                          {stats.inactiveCampaigns}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Expired:</span>
+                        <span className="font-medium text-red-600">
+                          {stats.expiredCampaigns}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Financial Performance</h4>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Total Goal:</span>
+                        <span className="font-medium">
+                          LKR {stats.totalGoal.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total Raised:</span>
+                        <span className="font-medium text-green-600">
+                          LKR {stats.totalRaised.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Average Progress:</span>
+                        <span className="font-medium">
+                          {Math.round(stats.averageProgress)}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Avg. Donation:</span>
+                        <span className="font-medium">
+                          LKR{" "}
+                          {Math.round(
+                            stats.averageDonationAmount
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Additional Insights</h4>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Most Popular Type:</span>
+                        <span className="font-medium">
+                          {stats.mostPopularCampaignType}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Needs Attention:</span>
+                        <span className="font-medium text-orange-600">
+                          {stats.campaignsNeedingAttention}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+
+                  <p className="text-muted-foreground mt-4">
+                    Loading analytics...
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* View Donations Modal */}
-      {showDonationsModal && selectedCampaign && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Eye className="h-5 w-5" />
-                    <span>Donations for {selectedCampaign.title}</span>
-                  </CardTitle>
-                  <CardDescription>
-                    View and manage all donations for this campaign
-                  </CardDescription>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleExportDonations(selectedCampaign.id)}
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    Export CSV
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowDonationsModal(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {donationsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <LoadingSpinner size="lg" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Search and Filters */}
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search donations..."
-                        value={donationSearchTerm}
-                        onChange={(e) => setDonationSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Filter className="h-4 w-4 text-muted-foreground" />
-                      <select
-                        value={donationFilter}
-                        onChange={(e) =>
-                          setDonationFilter(e.target.value as any)
-                        }
-                        className="px-3 py-2 border border-input bg-background rounded-md"
-                      >
-                        <option value="all">All Donations</option>
-                        <option value="completed">Completed</option>
-                        <option value="pending">Pending</option>
-                        <option value="anonymous">Anonymous</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Donations List */}
-                  <div className="space-y-3">
-                    {getFilteredDonations(selectedCampaign.id).map(
-                      (donation) => (
-                        <div
-                          key={donation.id}
-                          className="border rounded-lg p-4 hover:bg-accent transition-colors"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start space-x-3">
-                              <Avatar className="h-10 w-10">
-                                <AvatarImage
-                                  src={donation.donorAvatar}
-                                  alt={donation.donorName}
-                                />
-                                <AvatarFallback>
-                                  {donation.isAnonymous
-                                    ? "?"
-                                    : donation.donorName
-                                        .split(" ")
-                                        .map((n) => n[0])
-                                        .join("")}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="space-y-1">
-                                <div className="flex items-center space-x-2">
-                                  <h4 className="font-medium">
-                                    {donation.isAnonymous
-                                      ? "Anonymous Donor"
-                                      : donation.donorName}
-                                  </h4>
-                                  <Badge
-                                    className={getStatusColor(donation.status)}
-                                  >
-                                    {donation.status}
-                                  </Badge>
-                                  {donation.isAnonymous && (
-                                    <Badge variant="outline">Anonymous</Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                  {donation.donorEmail}
-                                </p>
-                                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                                  <span>
-                                    {format(
-                                      new Date(donation.date),
-                                      "MMM d, yyyy"
-                                    )}
-                                  </span>
-                                  <span className="flex items-center space-x-1">
-                                    <span>
-                                      {getPaymentMethodIcon(
-                                        donation.paymentMethod
-                                      )}
-                                    </span>
-                                    <span>
-                                      {donation.paymentMethod.replace("_", " ")}
-                                    </span>
-                                  </span>
-                                </div>
-                                {donation.message && (
-                                  <p className="text-sm bg-muted p-2 rounded mt-2 italic">
-                                    &quot{donation.message}&quot
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-lg font-bold text-primary">
-                                ${donation.amount.toLocaleString()}
-                              </div>
-                              <div className="flex space-x-1 mt-2">
-                                <Button size="sm" variant="outline">
-                                  <Mail className="h-3 w-3 mr-1" />
-                                  Contact
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-
-                  {getFilteredDonations(selectedCampaign.id).length === 0 && (
-                    <div className="text-center py-8">
-                      <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">
-                        No Donations Found
-                      </h3>
-                      <p className="text-muted-foreground">
-                        {donationSearchTerm || donationFilter !== "all"
-                          ? "Try adjusting your search or filters."
-                          : "No donations have been made to this campaign yet."}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      {/* Edit Campaign Modal */}
+      {showEditModal && editingCampaign && (
+        <EditCampaignModal
+          campaign={editingCampaign}
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingCampaign(null);
+          }}
+          onUpdate={handleUpdateCampaign}
+        />
       )}
 
-      {/* Send Update Modal */}
-      {showUpdateModal && selectedCampaign && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Send className="h-5 w-5" />
-                    <span>Send Campaign Update</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Send an update to donors of {selectedCampaign.title}
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowUpdateModal(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmitUpdate} className="space-y-6">
-                {/* Campaign Progress Summary */}
-                <div className="bg-accent/20 p-4 rounded-lg">
-                  <h4 className="font-medium mb-2">Campaign Progress</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>
-                        Raised: ${selectedCampaign.raised.toLocaleString()}
-                      </span>
-                      <span>
-                        Goal: ${selectedCampaign.goal.toLocaleString()}
-                      </span>
-                    </div>
-                    <Progress
-                      value={
-                        (selectedCampaign.raised / selectedCampaign.goal) * 100
-                      }
-                      className="h-2"
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>
-                        {Math.round(
-                          (selectedCampaign.raised / selectedCampaign.goal) *
-                            100
-                        )}
-                        % funded
-                      </span>
-                      <span>{selectedCampaign.donorCount} donors</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Update Content */}
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="subject">Subject *</Label>
-                    <Input
-                      id="subject"
-                      value={updateForm.subject}
-                      onChange={(e) =>
-                        handleUpdateInputChange("subject", e.target.value)
-                      }
-                      placeholder="Update on Campaign Progress"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="message">Message *</Label>
-                    <Textarea
-                      id="message"
-                      value={updateForm.message}
-                      onChange={(e) =>
-                        handleUpdateInputChange("message", e.target.value)
-                      }
-                      placeholder="Write your update message to donors..."
-                      rows={6}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Update Options */}
-                <div className="space-y-4">
-                  <h4 className="font-medium">Update Options</h4>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="includeProgress"
-                        checked={updateForm.includeProgress}
-                        onChange={(e) =>
-                          handleUpdateInputChange(
-                            "includeProgress",
-                            e.target.checked
-                          )
-                        }
-                        className="rounded"
-                      />
-                      <Label htmlFor="includeProgress">
-                        Include campaign progress chart
-                      </Label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="sendToAll"
-                        checked={updateForm.sendToAll}
-                        onChange={(e) =>
-                          handleUpdateInputChange("sendToAll", e.target.checked)
-                        }
-                        className="rounded"
-                      />
-                      <Label htmlFor="sendToAll">
-                        Send to all donors ({selectedCampaign.donorCount}{" "}
-                        recipients)
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Preview */}
-                <div className="space-y-2">
-                  <Label>Email Preview</Label>
-                  <div className="border rounded-lg p-4 bg-muted/20">
-                    <div className="space-y-3">
-                      <div className="border-b pb-2">
-                        <h4 className="font-medium">
-                          {updateForm.subject || "Subject will appear here"}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">
-                          From: {organization?.name || "Your Organization"}
-                        </p>
-                      </div>
-                      <div className="text-sm">
-                        <p>Dear Supporter,</p>
-                        <div className="mt-2 whitespace-pre-wrap">
-                          {updateForm.message ||
-                            "Your message will appear here..."}
-                        </div>
-                        {updateForm.includeProgress && (
-                          <div className="mt-4 p-3 bg-background rounded border">
-                            <p className="font-medium text-sm">
-                              Campaign Progress
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              ${selectedCampaign.raised.toLocaleString()} raised
-                              of ${selectedCampaign.goal.toLocaleString()} goal
-                            </p>
-                          </div>
-                        )}
-                        <p className="mt-4 text-xs text-muted-foreground">
-                          Thank you for your continued support!
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Form Actions */}
-                <div className="flex justify-end space-x-2 pt-4 border-t">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowUpdateModal(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={updateLoading}>
-                    {updateLoading ? (
-                      <>
-                        <LoadingSpinner size="sm" className="mr-2" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="mr-2 h-4 w-4" />
-                        Send Update
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Delete Campaign Confirmation Modal */}
+      {showDeleteModal && campaignToDelete && (
+        <DeleteCampaignConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setCampaignToDelete(null);
+          }}
+          onConfirm={confirmDeleteCampaign}
+          campaignTitle={campaignToDelete.title}
+          isDeleting={loading}
+          campaignData={{
+            raised: campaignToDelete.raised,
+            donorCount: campaignToDelete.donorCount,
+            isActive: campaignToDelete.isActive,
+            goal: campaignToDelete.goal,
+          }}
+        />
       )}
     </div>
   );

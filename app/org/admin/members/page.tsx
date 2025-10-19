@@ -1,9 +1,7 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
-import { useOrg } from "@/hooks/useOrg";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -12,96 +10,54 @@ import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import AddSingleMember from "./singlemember";
 import BulkCsvUpload from "./bulkupload";
 import ManageMembers from "./managemembers";
-import { useEffect, useState } from "react";
+import { useOrg } from "@/hooks/useOrg";
 
-export default function MembersPage() {
-  const { user } = useAuth();
-  const { organization, loading: orgLoading } = useOrg();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  // Determine tab from URL
-  const pathToTab = {
-    "/org/admin/members/singlemember": "add-single",
-    "/org/admin/members/bulkupload": "bulk-upload",
-    "/org/admin/members/managemembers": "manage-members",
-    "/org/admin/members": "add-single", // default
-  };
-
-  const tabToPath = {
-    "add-single": "/org/admin/members/singlemember",
-    "bulk-upload": "/org/admin/members/bulkupload",
-    "manage-members": "/org/admin/members/managemembers",
-  };
-
-  const [tab, setTab] = useState("add-single");
-
-  useEffect(() => {
-    const selectedTab = pathToTab[pathname as keyof typeof pathToTab] || "add-single";
-    setTab(selectedTab);
-  }, [pathname]);
-
-  const handleTabChange = (value: string) => {
-    setTab(value); // Only update tab state, not URL
-  };
-
+type TabValue = "add-single" | "bulk-upload" | "manage-members";
 
   interface Member {
-    id: string;
-    name: string;
-    email: string;
-    phone?: string;
-    designation?: string;
-    company?: string;
-    graduationYear?: string;
-    degree?: string;
-    location?: string;
-    avatar?: string;
-    status: "active" | "pending" | "inactive";
-    joinedAt: string;
-    groupIds: string[];
-  }
+  id: string; // normalized as string
+  name: string;
+  email: string;
+  phone?: string;
+  nic?: string;
+  regNo?: string;
+  address?: string;
+  batch?: number;
+  designation?: string;
+  company?: string;
+  degree?: string;
+  avatar?: string;
+  status: "active" | "pending" | "inactive";
+  joinedAt?: string;
+  groupIds: number[];
+}
 
-  const [members, setMembers] = useState<Member[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john.doe@example.com",
-      phone: "+1234567890",
-      designation: "Software Engineer",
-      company: "Tech Corp",
-      graduationYear: "2019",
-      degree: "Computer Science",
-      location: "San Francisco, CA",
-      avatar:
-        "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=1",
-      status: "active" as const,
-      joinedAt: new Date().toISOString(),
-      groupIds: ["1", "2"],
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-      designation: "Product Manager",
-      company: "Innovation Inc",
-      graduationYear: "2020",
-      degree: "Business Administration",
-      location: "New York, NY",
-      status: "pending" as const,
-      joinedAt: new Date().toISOString(),
-      groupIds: ["3"],
-    },
-  ]);
+export default function MembersPage() {
+  const { organization, loading: orgLoading } = useOrg();
+  const pathname = usePathname();
+
+  const [tab, setTab] = useState<TabValue>("add-single");
+  const [members, setMembers] = useState<Member[]>([]);
+
+  // Sync tab with URL
+  useEffect(() => {
+    const pathToTab: Record<string, TabValue> = {
+      "/org/admin/members/singlemember": "add-single",
+      "/org/admin/members/bulkupload": "bulk-upload",
+      "/org/admin/members/managemembers": "manage-members",
+      "/org/admin/members": "add-single",
+    };
+    setTab(pathToTab[pathname] || "add-single");
+  }, [pathname]);
 
   if (orgLoading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center space-y-4">
-            <LoadingSpinner size="lg" />
-            <p className="text-muted-foreground">Loading member management...</p>
-          </div>
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <LoadingSpinner /> {/* Ensure your LoadingSpinner accepts no props or type it properly */}
+          <p className="text-muted-foreground">
+            Loading member management...
+          </p>
         </div>
       </div>
     );
@@ -109,11 +65,14 @@ export default function MembersPage() {
 
   return (
     <div className="p-6 space-y-6">
-      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Member Management</h1>
-          <p className="text-muted-foreground">Add and manage organization members</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            Member Management
+          </h1>
+          <p className="text-muted-foreground">
+            Add and manage organization members
+          </p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
           <Badge variant="outline">
@@ -121,13 +80,15 @@ export default function MembersPage() {
             {members.length} Total Members
           </Badge>
           <Badge variant="outline">
-            {organization?.memberCount || 0} / {organization?.memberLimit || 0} Used
+            {organization?.currentMemberCount || 0} /{" "}
+            {organization?.maxMemberCount || 0} Used
           </Badge>
         </div>
       </div>
 
       {organization &&
-        organization.memberCount >= organization.memberLimit * 0.9 && (
+        organization.currentMemberCount >=
+          (organization.maxMemberCount * 0.9) && (
           <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
             <CardContent className="pt-6">
               <div className="flex items-center space-x-3">
@@ -137,8 +98,9 @@ export default function MembersPage() {
                     Approaching Member Limit
                   </p>
                   <p className="text-sm text-orange-700 dark:text-orange-300">
-                    You’re using {organization.memberCount} of {organization.memberLimit} members.
-                    Consider upgrading your plan.
+                    You’re using {organization.currentMemberCount} of{" "}
+                    {organization.maxMemberCount} members. Consider upgrading
+                    your plan.
                   </p>
                 </div>
               </div>
@@ -146,7 +108,7 @@ export default function MembersPage() {
           </Card>
         )}
 
-      <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
+      <Tabs value={tab} onValueChange={(value) => setTab(value as TabValue)} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="add-single">Add Single Member</TabsTrigger>
           <TabsTrigger value="bulk-upload">Bulk CSV Upload</TabsTrigger>
@@ -162,8 +124,8 @@ export default function MembersPage() {
         <TabsContent value="manage-members">
           <ManageMembers members={members} setMembers={setMembers} />
         </TabsContent>
-
       </Tabs>
     </div>
   );
 }
+  

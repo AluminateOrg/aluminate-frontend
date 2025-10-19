@@ -31,6 +31,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { set } from "date-fns";
+import { useSelector } from "react-redux";
+import axiosAdmin from "@/axiosInstances/axiosAdmin";
 
 export default function BulkCsvUpload() {
   const { groups } = useOrg();
@@ -50,6 +53,7 @@ export default function BulkCsvUpload() {
 
   const [finalizeProgress, setFinalizeProgress] = useState(0);
   const [finalizing, setFinalizing] = useState(false);
+  const orgId = useSelector((state: any) => state.user?.organization?.id)
 
   const handleGroupSelection = (groupId: string) => {
     setBulkUploadForm((prev) => ({
@@ -70,7 +74,11 @@ export default function BulkCsvUpload() {
     }
   };
 
-  /** Handle CSV Upload with Progress */
+
+
+  console.log("selected group data: ", bulkUploadForm.selectedGroups);
+  console.log("groups from redux in bulk upload page : ", groups);
+
   const handleCSVUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!csvFile) {
@@ -88,46 +96,43 @@ export default function BulkCsvUpload() {
     const formData = new FormData();
     formData.append("file", csvFile);
     formData.append("groups", JSON.stringify(bulkUploadForm.selectedGroups));
+    formData.append("organizationId", orgId || "");
+
+    console.log("formData::", formData.get("groups"));
 
     try {
-      const xhr = new XMLHttpRequest();
-      xhr.open(
-        "POST",
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/admin/bulk-upload`
-      );
+      // const xhr = new XMLHttpRequest();
+      // xhr.open(
+      //   "POST",
+      //   '/member/bulk-upload'
+      // );
 
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(percentComplete);
-        }
-      };
-
-      xhr.onload = async () => {
-        setLoading(false);
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const data = JSON.parse(xhr.responseText);
-          console.log("data from upload:", data);
-          setUploadResult(data);
-
-          if (data.invalidRows && data.invalidRows.length > 0) {
-            setEditableRows(data.invalidRows);
-            setShowInvalidPopup(true);
+      const res = await axiosAdmin.post('/member/bulk-upload', formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentComplete = Math.round(
+              (progressEvent.loaded / progressEvent.total) * 100
+            );
+            setUploadProgress(percentComplete);
           }
+        },
+      })
 
-          toast.success("Upload completed");
-        } else {
-          const errorData = JSON.parse(xhr.responseText);
-          toast.error(`Upload failed: ${errorData.message || "Unknown error"}`);
-        }
-      };
+      const data = await res.data;
+      console.log("data from upload:", data);
+      setUploadResult(data);
+      if (data.invalidRows && data.invalidRows.length > 0) {
+        setEditableRows(data.invalidRows);
+        setShowInvalidPopup(true);
+      } else {
+        toast.success(`${data.success} members uploaded successfully!`);
+      }
+      setCsvFile(null);
+      setLoading(false);
 
-      xhr.onerror = () => {
-        setLoading(false);
-        toast.error("Upload failed due to network error.");
-      };
-
-      xhr.send(formData);
     } catch (error: any) {
       setLoading(false);
       console.error("Bulk upload error:", error);
@@ -141,7 +146,6 @@ export default function BulkCsvUpload() {
     setEditableRows(updatedRows);
   };
 
-  /** Finalize bulk upload with simulated progress */
   const finalizeBulkUpload = async () => {
     setFinalizing(true);
     setFinalizeProgress(0);
@@ -150,17 +154,20 @@ export default function BulkCsvUpload() {
       setFinalizeProgress((prev) => (prev < 90 ? prev + 10 : prev));
     }, 200);
 
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_API_PREFIX}/admin/bulk-finalize`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editableRows),
-        }
-      );
+    const formData = new FormData();
+    formData.append("rows", JSON.stringify(editableRows));
+    formData.append("groups", JSON.stringify(bulkUploadForm.selectedGroups));
+    formData.append("organizationId", JSON.stringify(orgId));
 
-      const data = await response.json();
+    try {
+      
+      const response = await axiosAdmin.post('/member/bulk-finalize', formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+
+      const data = await response.data;
       console.log("data from finalize:", data);
       setUploadResult(data);
 
@@ -225,22 +232,23 @@ export default function BulkCsvUpload() {
           <div className="space-y-4">
             <h4 className="font-medium">Group Assignment *</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {groups.map((group) => (
-                <div
-                  key={group.id}
-                  className={`border rounded-lg p-4 cursor-pointer ${
-                    bulkUploadForm.selectedGroups.includes(group.id)
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:bg-accent"
-                  }`}
-                  onClick={() => handleGroupSelection(group.id)}
-                >
-                  <h4 className="font-medium">{group.name}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {group.description || "No description available"}
-                  </p>
-                </div>
-              ))}
+              {Array.isArray(groups) &&
+                groups.map((group) => (
+                  <div
+                    key={group.id}
+                    className={`border rounded-lg p-4 cursor-pointer ${
+                      bulkUploadForm.selectedGroups.includes(group.id)
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-accent"
+                    }`}
+                    onClick={() => handleGroupSelection(group.id)}
+                  >
+                    <h4 className="font-medium">{group.name}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {group.description || "No description available"}
+                    </p>
+                  </div>
+                ))}
             </div>
           </div>
 
@@ -261,7 +269,10 @@ export default function BulkCsvUpload() {
 
             {loading && (
               <div className="space-y-2">
-                <Progress value={uploadProgress} className="h-2 transition-all duration-300" />
+                <Progress
+                  value={uploadProgress}
+                  className="h-2 transition-all duration-300"
+                />
                 <p className="text-xs text-muted-foreground text-center">
                   Uploading... {uploadProgress}%
                 </p>
@@ -336,7 +347,10 @@ export default function BulkCsvUpload() {
           <DialogFooter className="flex flex-col space-y-3">
             {finalizing && (
               <div className="w-full">
-                <Progress value={finalizeProgress} className="h-2 transition-all duration-300" />
+                <Progress
+                  value={finalizeProgress}
+                  className="h-2 transition-all duration-300"
+                />
                 <p className="text-xs text-muted-foreground mt-1 text-center">
                   Saving... {finalizeProgress}%
                 </p>
