@@ -23,9 +23,10 @@ export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  // No 'e: React.FormEvent' needed here anymore
+  const handleSubmit = async () => {
+    // e.preventDefault(); // This is no longer needed
+
     if (!email || !password) {
       setError('Please fill in all fields');
       return;
@@ -37,7 +38,7 @@ export default function LoginPage() {
     try {
       await login(email, password, selectedRole);
       toast.success(`Welcome! Logged in as ${selectedRole}`);
-      // router.push('/dashboard'); 
+      // router.push('/dashboard');  
     } catch (err) {
       setError('Invalid credentials. Please try again.');
       console.error('Login error:', err);
@@ -62,16 +63,16 @@ export default function LoginPage() {
           {/* Role Selection Tabs (TOP) */}
           <Tabs defaultValue="member" onValueChange={(value: string) => setSelectedRole(value as UserRole)} className="w-full pt-4">
             <TabsList className="grid w-full grid-cols-2 h-10 p-1 bg-gray-100 rounded-md">
-              
-              <TabsTrigger 
-                value="member" 
+
+              <TabsTrigger
+                value="member"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-600 rounded-sm h-8"
               >
                 Member
               </TabsTrigger>
-              
-              <TabsTrigger 
-                value="admin" 
+
+              <TabsTrigger
+                value="admin"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-600 rounded-sm h-8"
               >
                 Admin
@@ -80,8 +81,8 @@ export default function LoginPage() {
             </TabsList>
           </Tabs>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-8 pt-4 pb-">
+          {/* Form replaced with a div */}
+          <div className="space-y-8 pt-4 pb-">
             {error && (
               <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300 text-sm">
                 <AlertCircle className="h-4 w-4" />
@@ -98,7 +99,6 @@ export default function LoginPage() {
                   id="email"
                   type="email"
                   placeholder="Enter your email"
-                  // --- FIX APPLIED HERE ---
                   className="pl-10 pr-4 py-2 h-11 rounded-md bg-white border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary transition-all duration-200 text-gray-900"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -122,7 +122,6 @@ export default function LoginPage() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
-                  // --- FIX APPLIED HERE ---
                   className="pl-10 pr-10 py-2 h-11 rounded-md bg-white border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary transition-all duration-200 text-gray-900"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -148,7 +147,8 @@ export default function LoginPage() {
 
             {/* Sign In Button */}
             <Button
-              type="submit"
+              // type="submit" removed
+              onClick={handleSubmit} // onClick added
               className="w-full py-3 h-11 text-base font-semibold rounded-md bg-gray-900 hover:bg-gray-800 text-white transition-all duration-200 mt-6"
               disabled={loading}
             >
@@ -158,7 +158,8 @@ export default function LoginPage() {
                 'Sign In'
               )}
             </Button>
-          </form>
+          </div>
+          {/* closing /div tag */}
 
           {/* Don't have an account? */}
           <p className="text-center text-sm text-gray-600 pt-4">
@@ -168,7 +169,7 @@ export default function LoginPage() {
         </div>
 
         {/* Right Panel - Logo & Welcome Message */}
-        <div className="hidden lg:flex w-1/2 p-12 flex-col items-center justify-center text-center space-y-6 bg-gradient-to-br from-[#0A2522] to-gray-900 text-white relative">
+        <div className="hidden lg:flex w-1/2 p-12 flex-col items-center justify-center text-center space-y-6 bg-gradient-to-br from-[#1A3A37] to-gray-900 text-white relative">
 
           <Image
             src="/logo2.png"
