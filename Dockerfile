@@ -19,6 +19,8 @@ COPY . .
 
 # 5. Build the application - Pass all necessary NEXT_PUBLIC variables as ARGS
 # IMPORTANT: Next.js variables must be available at BUILD TIME if they are used in config or getStaticProps.
+# --- ADDED ORG_SLUG ARG ---
+ARG ORG_SLUG
 ARG NEXT_PUBLIC_BACKEND_URL
 ARG NEXT_PUBLIC_API_PREFIX
 ARG NEXT_PUBLIC_ORGANIZATION_PUBLIC_KEY
@@ -26,6 +28,8 @@ ARG NEXT_PUBLIC_WS_URL
 ARG NEXT_PUBLIC_PAYHERE_MERCHANT_ID
 
 # Set build arguments as environment variables for the build process
+# --- ADDED ORG_SLUG ENV ---
+ENV ORG_SLUG=$ORG_SLUG
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_PUBLIC_API_PREFIX=$NEXT_PUBLIC_API_PREFIX
 ENV NEXT_PUBLIC_ORGANIZATION_PUBLIC_KEY=$NEXT_PUBLIC_ORGANIZATION_PUBLIC_KEY
@@ -50,7 +54,7 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 
 # 3. Set the fixed internal container port
-# The container will run on port 3000, and Docker Compose handles the dynamic host port mapping.
+# The container will run on port 3000, and Traefik handles external routing.
 ENV PORT=3000
 EXPOSE 3000
 
