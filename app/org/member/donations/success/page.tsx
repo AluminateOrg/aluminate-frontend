@@ -1,20 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Home, Receipt } from "lucide-react";
 import { PaymentService } from "@/lib/services/paymentService";
 
-export default function PaymentSuccessPage() {
+// ---- Inner Component (uses search params) ----
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const orderId = searchParams.get("orderId");
+
   const [loading, setLoading] = useState(true);
   const [paymentData, setPaymentData] = useState<any>(null);
 
-  useEffect(() => {        
+  useEffect(() => {
     const checkPaymentStatus = async () => {
       if (!orderId) {
         setLoading(false);
@@ -54,6 +56,7 @@ export default function PaymentSuccessPage() {
             Thank you for your generous donation
           </p>
         </CardHeader>
+
         <CardContent className="space-y-6">
           {orderId && (
             <div className="bg-muted/20 p-4 rounded-lg">
@@ -91,5 +94,14 @@ export default function PaymentSuccessPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ---- Main Page Export with Suspense Wrapper ----
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-16">Loading...</div>}>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }

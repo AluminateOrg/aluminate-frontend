@@ -391,13 +391,13 @@ export default function MemberDashboard() {
                         {!session.isPaid ? (
                           <div className="text-sm text-muted-foreground">
                             <span className="font-medium">Program URL:</span> <span className="italic">Pay mentor fee to reveal</span>
-                            <Button
+                            {/* <Button
                               className="ml-2"
                               size="sm"
                               onClick={() => payByPayhere(session)}
                             >
                               Pay Now
-                            </Button>
+                            </Button> */}
                           </div>
                         ) : (
                           <div className="text-sm">

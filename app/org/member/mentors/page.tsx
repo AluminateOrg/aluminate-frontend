@@ -37,13 +37,14 @@ import { toast } from "sonner";
 import axios from "axios";
 import axiosMember from "@/axiosInstances/axiosMember";
 
-interface Mentor {
+export interface Mentor {
   id: string;
-  name: string;
+  applicantName: string; // used in AvatarFallback, headings
+  applicantEmail?: string; // used elsewhere in some mentor components
   avatar?: string;
   designation: string;
   company: string;
-  skills: string[];
+  skills: string[]; // used in the Expertise section
   rating: number;
   totalSessions: number;
   yearsExperience: number;
@@ -53,6 +54,7 @@ interface Mentor {
   hourlyRate?: number;
   languages: string[];
 }
+
 interface MentorApplicationForm {
   motivation: string;
   skills: string[];
@@ -152,7 +154,7 @@ export default function MentorsPage() {
     console.log("Booking session for mentor:", mentorId);
     setLoading(true);
     try {
-      const {data} = await axiosMember.post('/mentor/request-session', {
+      const { data } = await axiosMember.post('/mentor/request-session', {
         mentorId,
         userId: [memberId]
       })
@@ -192,7 +194,7 @@ export default function MentorsPage() {
       return;
     }
     try {
-      const {data} = await axiosMember.post('/mentor/request-session', {
+      const { data } = await axiosMember.post('/mentor/request-session', {
         userId: selectedMembers,
         mentorId: connectMentorId
       })
@@ -788,7 +790,7 @@ export default function MentorsPage() {
                   <div className="bg-accent/20 p-4 rounded-lg">
                     <div className="flex items-center space-x-3">Book a
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={user?.avatar} alt={user?.name} />
+                        <AvatarImage src={user?.avatar || undefined} alt={user?.name || undefined} />
                         <AvatarFallback>
                           {user?.name
                             ?.split(" ")
@@ -796,6 +798,7 @@ export default function MentorsPage() {
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
+
                       <div>
                         <p className="font-medium">{user?.name}</p>
                         <p className="text-sm text-muted-foreground">

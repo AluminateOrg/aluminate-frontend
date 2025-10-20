@@ -1,13 +1,16 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { XCircle, Home, RotateCcw } from "lucide-react";
 
-export default function PaymentCancelPage() {
+// ✅ Inner component using useSearchParams
+function PaymentCancelInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
+
   const orderId = searchParams.get("orderId");
 
   return (
@@ -19,9 +22,10 @@ export default function PaymentCancelPage() {
           </div>
           <CardTitle className="text-2xl">Payment Cancelled</CardTitle>
           <p className="text-muted-foreground">
-            Your payment was cancelled and no charges were made
+            Your payment was cancelled and no charges were made.
           </p>
         </CardHeader>
+
         <CardContent className="space-y-6">
           {orderId && (
             <div className="bg-muted/20 p-4 rounded-lg">
@@ -46,6 +50,7 @@ export default function PaymentCancelPage() {
                 <Home className="mr-2 h-4 w-4" />
                 Back to Donations
               </Button>
+
               <Button
                 variant="outline"
                 onClick={() => router.back()}
@@ -59,5 +64,20 @@ export default function PaymentCancelPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ✅ Export wrapped with Suspense (required for useSearchParams)
+export default function PaymentCancelPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-2xl mx-auto px-4 py-16 text-center text-muted-foreground">
+          Loading...
+        </div>
+      }
+    >
+      <PaymentCancelInner />
+    </Suspense>
   );
 }
