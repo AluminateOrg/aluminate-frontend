@@ -24,7 +24,7 @@ import {
   MapPin,
 } from "lucide-react";
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, set } from "date-fns";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import { usePaymentContext } from "@/contexts/paymentContext";
 import React, { useEffect, useState } from "react";
@@ -45,6 +45,7 @@ export default function MemberDashboard() {
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [form, setForm] = useState({ programUrl: "", date: "", time: "" });
   const [acceptLoading, setAcceptLoading] = useState(false);
+  const [isMentor, setIsMentor] = useState<boolean>(false);
 
   const handleAcceptClick = (sessions: any) => {
     setSelectedSession(sessions);
@@ -78,24 +79,29 @@ export default function MemberDashboard() {
     }
   }
 
-
-
-  const fetchSessions = async () => {
-    // const memberId = user?.id || "";
-    // const isMentor = user?.isMentor;
-    // console.log("member id " + memberId + " isMentor: " + isMentor);
+  const checkForMentor = async (): Promise<boolean> => {
     try {
-      if (user?.isMentor) {
-        console.log("user is mentor >>>>>>>", user?.isMentor)
+      const { data } = await axiosMember.get(`/mentor/is-mentor/${user?.id}`);
+      const mentorFlag = Boolean(data?.data);
+      setIsMentor(mentorFlag);
+      return mentorFlag;
+    } catch (error) {
+      // fallback to user's current flag if available
+      const fallback = Boolean(user?.isMentor);
+      setIsMentor(fallback);
+      return fallback;
+    }
+  }
+
+  const fetchSessions = async (mentorOverride?: boolean) => {
+    try {
+      const mentorFlag = mentorOverride ?? isMentor ?? Boolean(user?.isMentor);
+      if (mentorFlag) {
         const { data } = await axiosMember.get(`/mentor/get-all-sessions/${user?.id}`);
-        console.log("from mentor side")
-        console.log("data of sessions: ", data);
         setSessions(data);
+        console.log("fetched mentor sessions", data);
       } else {
-        console.log("user is mentor >>>>>>>", user?.isMentor)
         const { data } = await axiosMember.get(`/mentor/get-all-sessions-by-user/${user?.id}`);
-        console.log("data of sessions: ", data);
-        console.log("from member side")
         setSessions(data);
       }
     } catch (error) {
@@ -104,10 +110,25 @@ export default function MemberDashboard() {
   }
 
   useEffect(() => {
-    if (user?.id) {
-      fetchSessions();
-    }
-  }, [user])
+    if (!user?.id) return;
+
+    let interval: ReturnType<typeof setInterval> | undefined;
+
+    const init = async () => {
+      const mentor = await checkForMentor();
+      await fetchSessions(mentor);
+
+      interval = setInterval(() => {
+        fetchSessions(mentor);
+      }, 10000);
+    };
+
+    init();
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [user?.id])
 
   const loading = eventsLoading;
 
@@ -159,7 +180,7 @@ export default function MemberDashboard() {
                 Member since {format(new Date(user.joinedAt), "MMM yyyy")}
               </Badge>
             )}
-            {user?.isMentor && (
+            {isMentor && (
               <Badge variant="outline" className="mt-1 ml-2 text-green-700 border-green-700">
                 Mentor
               </Badge>
@@ -313,7 +334,7 @@ export default function MemberDashboard() {
       </div>
 
       {/* Mentor Sessions Section */}
-      {user?.isMentor && (
+      {isMentor && (
         <Card>
           <CardHeader>
             <CardTitle>Mentor Sessions</CardTitle>
@@ -361,7 +382,7 @@ export default function MemberDashboard() {
         </Card>
       )}
 
-      {!user?.isMentor && (
+      {!isMentor && (
         <Card>
           <CardHeader>
             <CardTitle>My Booked Sessions</CardTitle>

@@ -359,15 +359,7 @@ export default function AdminFundraisingPage() {
 
 
         // DEBUG: Log transformed campaigns
-        console.log(
-          "Transformed campaigns:",
-          transformedCampaigns.map((c) => ({
-            id: c.id,
-            title: c.title,
-            isActive: c.isActive,
-            typeOfIsActive: typeof c.isActive,
-          }))
-        );
+        
 
 
         setCampaigns(transformedCampaigns);
@@ -406,11 +398,12 @@ export default function AdminFundraisingPage() {
   }, []);
 
   useEffect(() => {
-    if (user && (user.role === "admin" || user.role === "ADMIN")) {
-      fetchCampaigns();
-      fetchStats();
-    }
-  }, [user, fetchCampaigns, fetchStats]);
+  if (user && user.role.toLowerCase() === "admin") {
+    fetchCampaigns();
+    fetchStats();
+  }
+}, [user, fetchCampaigns, fetchStats]);
+
 
   // ===========================================
   // EVENT HANDLERS
@@ -716,27 +709,27 @@ export default function AdminFundraisingPage() {
   
 
   // Check authentication
-  if (!user || (user.role !== "admin" && user.role !== "ADMIN")) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground">
-            You need admin privileges to access this page.
-          </p>
-        </div>
+  // Access control
+if (!user || user.role.toLowerCase() !== "admin") {
+  return (
+    <div className="p-6 flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+        <p className="text-muted-foreground">
+          You need admin privileges to access this page.
+        </p>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  // Loading component with fallback
-  const LoadingComponent = LoadingSpinner
-    ? LoadingSpinner
-    : () => (
-        <div className="flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      );
+// Loading component with fallback
+const LoadingComponent: React.FC = LoadingSpinner ?? (() => (
+  <div className="flex items-center justify-center">
+    <Loader2 className="h-8 w-8 animate-spin" />
+  </div>
+));
+
 
   if (loading && campaigns.length === 0) {
     return (

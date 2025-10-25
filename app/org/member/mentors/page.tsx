@@ -38,13 +38,14 @@ import axiosMember from "@/axiosInstances/axiosMember";
 import {toast} from "sonner";
 import { Calendar as CalendarIcon, Clock as ClockIcon } from "lucide-react";
 
-interface Mentor {
+export interface Mentor {
   id: string;
-  name: string;
+  applicantName: string; // used in AvatarFallback, headings
+  applicantEmail?: string; // used elsewhere in some mentor components
   avatar?: string;
   designation: string;
   company: string;
-  skills: string[];
+  skills: string[]; // used in the Expertise section
   rating: number;
   totalSessions: number;
   yearsExperience: number;
@@ -54,6 +55,7 @@ interface Mentor {
   hourlyRate?: number;
   languages: string[];
 }
+
 interface MentorApplicationForm {
   motivation: string;
   skills: string[];
@@ -87,6 +89,7 @@ export default function MentorsPage() {
   const [requestedDate, setRequestedDate] = useState<string>("");
   const [requestedTime, setRequestedTime] = useState<string>("");
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [isMentor, setIsMentor] = useState<boolean>(false);
 
   // Mentor application form state
   const [applicationForm, setApplicationForm] = useState<MentorApplicationForm>(
@@ -112,7 +115,7 @@ export default function MentorsPage() {
   const fetchMentors = async () => {
     try {
 
-      const response = await axiosMember.get('/mentor/get-all-approved');
+      const response = await axiosMember.get(`/mentor/get-mentor-details/${memberId}`);
       console.log("response: ", response);
       if (response.status === 200) {
         setMentors(response.data);
@@ -156,9 +159,10 @@ export default function MentorsPage() {
     console.log("Booking session for mentor:", mentorId);
     setLoading(true);
     try {
-      const {data} = await axiosMember.post('/mentor/request-session', {
+      const { data } = await axiosMember.post('/mentor/request-session', {
         mentorId,
-        userId: [memberId]
+        userId: [memberId],
+        createdBy: memberId
       })
       console.log("data from booking session: ", data);
     } catch (error) {
@@ -196,7 +200,7 @@ export default function MentorsPage() {
       return;
     }
     try {
-      const {data} = await axiosMember.post('/mentor/request-session', {
+      const { data } = await axiosMember.post('/mentor/request-session', {
         userId: selectedMembers,
         mentorId: connectMentorId
       })
@@ -791,7 +795,7 @@ export default function MentorsPage() {
                   <div className="bg-accent/20 p-4 rounded-lg">
                     <div className="flex items-center space-x-3">Book a
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={user?.avatar} alt={user?.name} />
+                        <AvatarImage src={user?.avatar || undefined} alt={user?.name || undefined} />
                         <AvatarFallback>
                           {user?.name
                             ?.split(" ")
@@ -799,6 +803,7 @@ export default function MentorsPage() {
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
+
                       <div>
                         <p className="font-medium">{user?.name}</p>
                         <p className="text-sm text-muted-foreground">

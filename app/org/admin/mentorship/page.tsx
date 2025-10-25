@@ -1,11 +1,6 @@
 "use client";
 
 import {
-  PromiseLikeOfReactNode,
-  ReactElement,
-  JSXElementConstructor,
-  Key,
-  ReactNode,
   useEffect,
   useState,
 } from "react";
@@ -93,6 +88,13 @@ interface Mentor {
   yearsExperience: number;
   joinedAt: string;
   status: "active" | "inactive" | "suspended";
+  // Added fields to match API response
+  applicantName?: string;
+  applicantEmail?: string;
+  currentPosition?: string;
+  skills?: string[];
+  approved?: boolean;
+  applicantId?: string;
 }
 
 interface MentorshipSession {
@@ -126,13 +128,39 @@ export default function AdminMentorshipPage() {
     setLoading(true);
     console.log("fetch applications called");
     try {
-      const {data} = await axiosAdmin.get('/mentor/get-all-unapproved')
-      console.log("data from the mentor>", data)
-      setApplications(data);
-      if (data.length === 0) {
+      const { data } = await axiosAdmin.get('/mentor/get-all-unapproved');
+      console.log("data from the mentor>", data);
+      
+      // Ensure data is properly typed and has the correct structure
+      const typedData: MentorApplication[] = Array.isArray(data) ? data.map((app: any) => ({
+        id: app.id || app.applicantId || '',
+        applicantId: app.applicantId || app.id || '',
+        applicantName: app.applicantName || app.name || 'Unknown Applicant',
+        applicantEmail: app.applicantEmail || app.email || '',
+        applicantAvatar: app.applicantAvatar || app.avatar,
+        currentPosition: app.currentPosition || app.designation || '',
+        company: app.company || '',
+        yearsExperience: app.yearsExperience || 0,
+        expertise: app.expertise || [],
+        bio: app.bio || '',
+        motivation: app.motivation || '',
+        availability: app.availability || '',
+        preferredMenteeLevel: app.preferredMenteeLevel || 'any',
+        maxMentees: app.maxMentees || 1,
+        status: app.status || 'pending',
+        appliedAt: app.appliedAt || new Date().toISOString(),
+        reviewedAt: app.reviewedAt,
+        reviewedBy: app.reviewedBy,
+        reviewNotes: app.reviewNotes,
+        skills: app.skills || app.expertise || [],
+        approved: app.approved
+      })) : [];
+      
+      setApplications(typedData);
+      if (typedData.length === 0) {
         toast.info("No mentor applications found.");
       }
-      console.log("Applications fetched successfully:", data);
+      console.log("Applications fetched successfully:", typedData);
     } catch (error) {
       console.log("error fetching applications:", error);
       toast.error("Failed to fetch mentor applications. Please try again.");
@@ -143,11 +171,37 @@ export default function AdminMentorshipPage() {
 
   const fetchMentors = async () => {
     try {
-      const response = await axiosAdmin.get('/mentor/get-all-approved')
+      const response = await axiosAdmin.get('/mentor/get-all-approved');
       const data = response.data;
-      if (!data || data.length === 0) toast.error("No mentors found.");
-      console.log("Mentors fetched successfully:", data);
-      setMentors(data);
+      
+      // Ensure data is properly typed and has the correct structure
+      const typedData: Mentor[] = Array.isArray(data) ? data.map((mentor: any) => ({
+        id: mentor.id || mentor.applicantId || '',
+        name: mentor.name || mentor.applicantName || 'Unknown Mentor',
+        email: mentor.email || mentor.applicantEmail || '',
+        avatar: mentor.avatar || mentor.applicantAvatar,
+        designation: mentor.designation || mentor.currentPosition || '',
+        company: mentor.company || '',
+        expertise: mentor.expertise || [],
+        rating: mentor.rating || 0,
+        totalSessions: mentor.totalSessions || 0,
+        activeMentees: mentor.activeMentees || 0,
+        maxMentees: mentor.maxMentees || 1,
+        yearsExperience: mentor.yearsExperience || 0,
+        joinedAt: mentor.joinedAt || new Date().toISOString(),
+        status: mentor.status || 'active',
+        // Additional fields for compatibility
+        applicantName: mentor.applicantName || mentor.name,
+        applicantEmail: mentor.applicantEmail || mentor.email,
+        currentPosition: mentor.currentPosition || mentor.designation,
+        skills: mentor.skills || mentor.expertise || [],
+        approved: mentor.approved,
+        applicantId: mentor.applicantId || mentor.id
+      })) : [];
+      
+      if (!typedData || typedData.length === 0) toast.error("No mentors found.");
+      console.log("Mentors fetched successfully:", typedData);
+      setMentors(typedData);
     } catch (error) {
       console.log("error fetching mentors:", error);
       toast.error("Failed to fetch mentors. Please try again.");
@@ -202,11 +256,10 @@ export default function AdminMentorshipPage() {
   ) => {
     setLoading(true);
     try {
-
-      const {data} = await axiosAdmin.post('/mentor/approve', {
+      const { data } = await axiosAdmin.post('/mentor/approve', {
         applicationId,
         action,
-      })
+      });
 
       console.log("Application action response:", data);
 
@@ -217,7 +270,7 @@ export default function AdminMentorshipPage() {
                 ...app,
                 status: action === "approve" ? "approved" : "rejected",
                 reviewedAt: new Date().toISOString(),
-                reviewedBy: user?.id,
+                reviewedBy: user?.id || 'admin',
                 reviewNotes: notes || `Application ${action}d by admin`,
               }
             : app
@@ -245,6 +298,13 @@ export default function AdminMentorshipPage() {
             yearsExperience: application.yearsExperience,
             joinedAt: new Date().toISOString(),
             status: "active",
+            // Additional fields for compatibility
+            applicantName: application.applicantName,
+            applicantEmail: application.applicantEmail,
+            currentPosition: application.currentPosition,
+            skills: application.skills,
+            approved: true,
+            applicantId: application.applicantId
           };
           setMentors((prev) => [newMentor, ...prev]);
         }
@@ -264,25 +324,28 @@ export default function AdminMentorshipPage() {
     newStatus: Mentor["status"]
   ) => {
     try {
-
-      const {data} = await axiosAdmin.post('/mentor/dis-approve', {
+      const { data } = await axiosAdmin.post('/mentor/dis-approve', {
         mentorId,
         newStatus,
-      })
+      });
+      
       console.log("Mentor status change response:", data);
       if (data.success) {
         toast.success(`Mentor status updated to ${newStatus}`);
+        
+        // Update local state
+        setMentors((prev) =>
+          prev.map((mentor) =>
+            mentor.id === mentorId ? { ...mentor, status: newStatus } : mentor
+          )
+        );
         return;
       } else {
         toast.error("Failed to update mentor status");
         return;
       }
-      setMentors((prev) =>
-        prev.map((mentor) =>
-          mentor.id === mentorId ? { ...mentor, status: newStatus } : mentor
-        )
-      );
     } catch (error) {
+      console.error("Error updating mentor status:", error);
       toast.error("Failed to update mentor status");
     }
   };
@@ -425,7 +488,7 @@ export default function AdminMentorshipPage() {
                           statusFilter === filter.value ? "default" : "outline"
                         }
                         size="sm"
-                        onClick={() => setStatusFilter(filter.value as any)}
+                        onClick={() => setStatusFilter(filter.value as "all" | MentorApplication["status"])}
                       >
                         {filter.label}
                       </Button>
@@ -537,7 +600,7 @@ export default function AdminMentorshipPage() {
                           Review
                         </Button>
 
-                        {application.approved === false && (
+                        {application.status === "pending" && (
                           <>
                             <Button
                               size="sm"
@@ -614,13 +677,10 @@ export default function AdminMentorshipPage() {
                       <div className="flex items-start space-x-4">
                         <Avatar className="h-12 w-12">
                           <AvatarImage src={mentor.avatar} alt={mentor.name} />
-                          {/* <AvatarFallback>
-                            {mentor.applicantName[0]}
-                          </AvatarFallback> */}
                           <AvatarFallback className="text-lg">
-                            {(mentor.applicantName || "Unknown User")
+                            {(mentor.name || "Unknown User")
                               .split(" ")
-                              .map((n: any) => n[0])
+                              .map((n) => n[0])
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
@@ -628,16 +688,16 @@ export default function AdminMentorshipPage() {
                         <div className="space-y-2">
                           <div className="flex items-center space-x-2">
                             <h4 className="font-semibold">
-                              {mentor.applicantName}
+                              {mentor.name}
                             </h4>
                             <Badge
                               variant={
-                                mentor.approved === true
+                                mentor.status === "active"
                                   ? "default"
                                   : "secondary"
                               }
                             >
-                              {mentor.approved === true ? "Active" : "Inactive"}
+                              {mentor.status}
                             </Badge>
                             {mentor.rating > 0 && (
                               <div className="flex items-center space-x-1">
@@ -652,7 +712,7 @@ export default function AdminMentorshipPage() {
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
                             <div className="flex items-center space-x-1">
                               <Briefcase className="h-3 w-3" />
-                              <span>{mentor.currentPosition}</span>
+                              <span>{mentor.designation}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <Users className="h-3 w-3" />
@@ -667,12 +727,12 @@ export default function AdminMentorshipPage() {
                             </div>
                             <div className="flex items-center space-x-1">
                               <Mail className="h-3 w-3" />
-                              <span>{mentor.applicantEmail}</span>
+                              <span>{mentor.email}</span>
                             </div>
                           </div>
 
                           <div className="flex flex-wrap gap-1">
-                            {mentor.skills?.map((skill: string) => (
+                            {mentor.expertise?.slice(0, 5).map((skill: string) => (
                               <Badge
                                 key={skill}
                                 variant="outline"
@@ -681,6 +741,11 @@ export default function AdminMentorshipPage() {
                                 {skill}
                               </Badge>
                             ))}
+                            {mentor.expertise && mentor.expertise.length > 5 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{mentor.expertise.length - 5} more
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -691,13 +756,13 @@ export default function AdminMentorshipPage() {
                           Contact
                         </Button>
 
-                        {mentor.approved === true ? (
+                        {mentor.status === "active" ? (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() =>
                               handleMentorStatusChange(
-                                mentor.applicantId || "",
+                                mentor.id,
                                 "inactive"
                               )
                             }
@@ -710,7 +775,7 @@ export default function AdminMentorshipPage() {
                             size="sm"
                             onClick={() =>
                               handleMentorStatusChange(
-                                mentor.applicantId || "",
+                                mentor.id,
                                 "active"
                               )
                             }

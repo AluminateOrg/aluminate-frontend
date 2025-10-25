@@ -51,14 +51,7 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
   const closeSidebar = () => setSidebarOpen(false);
   const openSidebar = () => setSidebarOpen(true);
 
-  const checkRouter = async () => {
-    navigation.map((item) => {
-      console.log("prefetching route", item.href);
-      return router.prefetch(item.href);
-    });
-  };
-
-  checkRouter();
+  
 
   return (
     <div className="h-screen flex overflow-hidden bg-background">
@@ -247,7 +240,7 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
                       ? "bg-primary text-primary-foreground shadow-md border-primary/20"
                       : "text-muted-foreground hover:text-foreground"
                   )}
-                  prefetch
+                  
                 >
                   {/* Icon with enhanced styling */}
                   <div
