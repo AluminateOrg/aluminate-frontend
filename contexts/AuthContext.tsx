@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await axiosAdmin.get("/info/getAdminInfo");
         if (res.status === 200) {
           const { data } = res.data;
-          const response = await axiosCommon.get(`/mentor/is-mentor/${data.user.id}`)
+          // const response = await axiosCommon.get(`/mentor/is-mentor/${data.user.id}`)
           //setAdminUser in redux
           dispatch(
             setAdminUser({
@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             designation: data.user.position || null,
             phone: data.user.phone || null,
             joinedAt: data.user.createdAt || null,
-            isMentor: response.data.data
+            // isMentor: response.data.data
           });
           return true;
         } else {
@@ -103,9 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await axiosMember.get("/info/getMemberInfo");
         if (res.status === 200) {
           const { data } = res.data;
-          const response = await axiosCommon.get(
-            `/mentor/is-mentor/${data.user.id}`
-          );
+          // const response = await axiosCommon.get(
+          //   `/mentor/is-mentor/${data.user.id}`
+          // );
           //setMemberUser in redux
           dispatch(
             setMemberUser({
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               avatar: data.user.photoUrl || null,
               designation: data.user.position || null,
               joinedAt: data.user.createdAt || null,
-              isMentor: response.data.data,
+              // isMentor: response.data.data,
             })
           );
           setChecking(false);
@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             designation: data.user.position || null,
             phone: data.user.phone || null,
             joinedAt: data.user.createdAt || null,
-            isMentor: response.data.data,
+            // isMentor: response.data.data,
           });
           return true;
         } else {
@@ -170,10 +170,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data } = res.data;
       console.log("data from login response:", data);
 
-      const response = await axiosCommon.get(
-        `/mentor/is-mentor/${data.user.id}`
-      );
-      const isMentor = response.data.data;
+      // const response = await axiosCommon.get(
+      //   `/mentor/is-mentor/${data.user.id}`
+      // );
+      // const isMentor = response.data.data;
 
       if (role === "admin" && role === data.user.role.toLowerCase()) {
         dispatch(
@@ -198,7 +198,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             avatar: data.user.photoUrl || null,
             designation: data.user.position || null,
             joinedAt: data.user.createdAt || null,
-            isMentor: isMentor,
+            // isMentor: isMentor,
           })
         );
       } else {
@@ -215,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         designation: data.user.position || null,
         phone: data.user.phone || null,
         joinedAt: data.user.createdAt || null,
-        isMentor: isMentor,
+        // isMentor: isMentor,
       };
 
       // @ts-ignore

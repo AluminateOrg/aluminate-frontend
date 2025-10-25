@@ -1,6 +1,7 @@
 "use client";
 import axiosAdmin from '@/axiosInstances/axiosAdmin';
 import axiosCommon from '@/axiosInstances/axiosCommon';
+import axiosMember from '@/axiosInstances/axiosMember';
 import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useSelector } from 'react-redux';
@@ -39,6 +40,8 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
 
         setIsProcessing(true);
 
+        console.log("fee, items, cus1, cus2, firstName, lastName, email, returnUrl, cancelUrl:", fee, items, cus1, cus2, firstName, lastName, email, returnUrl, cancelUrl);
+
         try {
             if (!merchantId) {
                 toast.error("Merchant ID is not configured. Please contact support.");
@@ -48,6 +51,8 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
 
             // 1. Get hash and transaction ID from backend
             const amount = fee;
+            console.log("amount:", amount);
+            console.log("mode:", mode);
             const response = await axiosCommon.post('/payment/generate-hash', {
                 amount,
                 currency: "LKR",
@@ -97,10 +102,14 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
             const payhere = (window as any).payhere || {};
 
             // Avoid duplicated event listeners
-            payhere.onCompleted = function (orderId: string) {
+            payhere.onCompleted =  function (orderId: string) {
                 console.log("Payment completed. Order ID:", orderId);
                 toast.success("Payment completed successfully!");
                 // Redirect or refresh status
+                // if(mode === "MENTORSHIP") {
+                //     const {data} = await axiosMember.get(`/mentor/is-paid/${lastName}`)
+                //     console.log("Mentorship payment status:", data);
+                // }
                 router.replace(returnUrl);
                 router.refresh();
             };

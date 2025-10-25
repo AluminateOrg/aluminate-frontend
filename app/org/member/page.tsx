@@ -401,7 +401,7 @@ export default function MemberDashboard() {
                             <Button
                               className="ml-2"
                               size="sm"
-                              onClick={() => payByPayhere(session)}
+                              onClick={() => payByPayhere("MENTORSHIP", parseFloat(session?.hourly_rate),"Mentor Program Payment",session?.menteeName,session?.menteeEmail,session?.mentorName, "",session?.menteeEmail, `${window.location.origin}/org/member`, `${window.location.origin}/org/member`)}
                             >
                               Pay Now
                             </Button>
