@@ -337,7 +337,7 @@ export default function MemberDashboard() {
       {isMentor && (
         <Card>
           <CardHeader>
-            <CardTitle>Mentor Sessions</CardTitle>
+            <CardTitle>Hired Sessions</CardTitle>
             <CardDescription>Review and accept your session requests</CardDescription>
           </CardHeader>
           <CardContent>

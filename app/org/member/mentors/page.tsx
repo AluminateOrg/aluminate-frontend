@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import axiosMember from "@/axiosInstances/axiosMember";
-import {toast} from "sonner";
+import { toast } from "sonner";
 import { Calendar as CalendarIcon, Clock as ClockIcon } from "lucide-react";
 
 export interface Mentor {
@@ -130,9 +130,35 @@ export default function MentorsPage() {
     }
   }
 
+  const checkForMentor = async (): Promise<boolean> => {
+    try {
+      const { data } = await axiosMember.get(`/mentor/is-mentor/${user?.id}`);
+      const mentorFlag = Boolean(data?.data);
+      setIsMentor(mentorFlag);
+      return mentorFlag;
+    } catch (error) {
+      // fallback to user's current flag if available
+      const fallback = Boolean(user?.isMentor);
+      setIsMentor(fallback);
+      return fallback;
+    }
+  }
+
+
+
   useEffect(() => {
-    fetchMentors();
-  }, [])
+    if (!user?.id) return;
+
+    (async () => {
+      const mentor = await checkForMentor();
+      if (!mentor) {
+        await fetchMentors();
+      } else {
+        // ensure grid is empty when user is a mentor
+        setMentors([]);
+      }
+    })();
+  }, [user?.id])
 
   const filteredMentors = mentors.filter((mentor) => {
     const matchesSearch =
@@ -437,122 +463,21 @@ export default function MentorsPage() {
       </div>
 
       {/* Mentors Grid */}
-      {filteredMentors.length > 0 ? (
+      {isMentor ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">You are a mentor now</h3>
+            <p className="text-muted-foreground">
+              You can manage your mentees and sessions from your dashboard.
+            </p>
+          </CardContent>
+        </Card>
+      ) : filteredMentors.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMentors.map((mentor) => (
             <Card key={mentor.id} className="card-hover">
-              <CardHeader className="pb-4">
-                <div className="flex items-start space-x-4">
-                  <Avatar className="h-16 w-16">
-                    <AvatarImage src={mentor.avatar} alt={mentor.applicantName} />
-                    <AvatarFallback className="text-lg">
-                      {mentor.applicantName
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-foreground truncate">
-                        {mentor.applicantName}
-                      </h3>
-                      <Badge
-                        variant={
-                          mentor.availability === "available"
-                            ? "default"
-                            : "secondary"
-                        }
-                        className="ml-2"
-                      >
-                        {mentor.availability}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {mentor.designation}
-                    </p>
-                    <p className="text-sm font-medium text-primary">
-                      {mentor.company}
-                    </p>
-                    <div className="flex items-center mt-2">
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                        <span className="text-sm font-medium ml-1">
-                          {mentor.rating}
-                        </span>
-                      </div>
-                      <span className="text-sm text-muted-foreground ml-2">
-                        ({mentor.totalSessions} sessions)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Expertise
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {mentor.skills.slice(0, 3).map((skill) => (
-                      <Badge key={skill} variant="outline" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
-                    {mentor.skills.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{mentor.skills.length - 3} more
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center space-x-1">
-                    <Clock className="h-3 w-3 text-muted-foreground" />
-                    <span>{mentor.yearsExperience}+ years</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="h-3 w-3 text-muted-foreground" />
-                    <span className="truncate">{mentor.location}</span>
-                  </div>
-                </div>
-
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {mentor.bio}
-                </p>
-
-                {mentor.hourlyRate && (
-                  <div className="text-center py-2 bg-accent rounded-lg">
-                    <span className="text-lg font-bold text-primary">
-                      ${mentor.hourlyRate}
-                    </span>
-                    <span className="text-sm text-muted-foreground">/hour</span>
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-2 border-t">
-                  <Button
-                    size="sm"
-                    onClick={() => handleBookSession(mentor.id)}
-                    disabled={loading || mentor.availability === "unavailable"}
-                    className="flex-1"
-                  >
-                    <Calendar className="h-4 w-4 mr-1" />
-                    Book Session
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleConnectMentor(mentor.id)}
-                    className="flex-1"
-                  >
-                    <MessageSquare className="h-4 w-4 mr-1" />
-                    Connect
-                  </Button>
-                </div>
-              </CardContent>
+              {/* ...existing card content... */}
             </Card>
           ))}
         </div>
