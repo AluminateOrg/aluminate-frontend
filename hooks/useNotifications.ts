@@ -121,7 +121,7 @@ function mapRow(row: InAppNotification): Notification {
 // --- Auth Helper Functions (Copied from useChat) ---
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8098"; 
 const API_PREFIX = process.env.NEXT_PUBLIC_API_PREFIX || "api/v1/portal";
-const API_ROOT = `${API_BASE_URL}/${API_PREFIX}`;
+const API_ROOT = `${API_BASE_URL}${API_PREFIX}`;
 
 const getCookie = (name: string): string | null => {
   if (typeof document === "undefined" || !document.cookie) return null;

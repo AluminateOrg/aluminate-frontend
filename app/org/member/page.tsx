@@ -84,13 +84,11 @@ export default function MemberDashboard() {
     try {
       if (user?.isMentor) {
         const { data } = await axiosMember.get(`/mentor/get-all-sessions/${user?.id}`);
-        console.log("from mentor side")
-        console.log("data of sessions: ", data);
+        
         setSessions(data);
       } else {
         const { data } = await axiosMember.get(`/member/mentor/get-all-sessions-by-user/${user?.id}`);
-        console.log("data of sessions: ", data);
-        console.log("from member side")
+       
         setSessions(data);
       }
     } catch (error) {

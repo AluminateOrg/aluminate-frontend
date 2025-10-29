@@ -30,7 +30,7 @@ export function useChat(
   const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
   const API_PREFIX = process.env.NEXT_PUBLIC_API_PREFIX || "";
 
-  const API_ROOT = `${API_BASE}/${API_PREFIX}`; // e.g. http://localhost:8098/api/v1/portal
+  const API_ROOT = `${API_BASE}${API_PREFIX}`; // e.g. http://localhost:8098/api/v1/portal
 
   // helper to read a non-HttpOnly cookie by name
   const getCookie = (name: string): string | null => {
