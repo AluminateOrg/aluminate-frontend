@@ -102,6 +102,7 @@ export default function MemberDashboard() {
         console.log("fetched mentor sessions", data);
       } else {
         const { data } = await axiosMember.get(`/mentor/get-all-sessions-by-user/${user?.id}`);
+        console.log("fetched mentee sessions", data);
         setSessions(data);
       }
     } catch (error) {
@@ -416,13 +417,13 @@ export default function MemberDashboard() {
                     {/* Show programUrl only if scheduled and paid */}
                     {session.status === "SCHEDULED" && (
                       <div className="mt-2">
-                        {!session.isPaid ? (
+                        {!session.paid && session.createdBy == user?.id ? (
                           <div className="text-sm text-muted-foreground">
                             <span className="font-medium">Program URL:</span> <span className="italic">Pay mentor fee to reveal</span>
                             <Button
                               className="ml-2"
                               size="sm"
-                              onClick={() => payByPayhere("MENTORSHIP", parseFloat(session?.hourly_rate),"Mentor Program Payment",session?.menteeName,session?.menteeEmail,session?.mentorName, "",session?.menteeEmail, `${window.location.origin}/org/member`, `${window.location.origin}/org/member`)}
+                              onClick={() => payByPayhere("MENTORSHIP", parseFloat(session?.hourly_rate),"Mentor Program Payment",session?.menteeName,session?.menteeEmail,session?.mentorName, `${session?.id}`,session?.menteeEmail, `${window.location.origin}/org/member`, `${window.location.origin}/org/member`)}
                             >
                               Pay Now
                             </Button>

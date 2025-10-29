@@ -54,6 +54,10 @@ export interface Mentor {
   availability: "available" | "busy" | "unavailable";
   hourlyRate?: number;
   languages: string[];
+  maxMentees: number;
+  approved: boolean | null;
+  linkedInUrl?: string;
+  portfolioUrl?: string;
 }
 
 interface MentorApplicationForm {
@@ -477,7 +481,180 @@ export default function MentorsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMentors.map((mentor) => (
             <Card key={mentor.id} className="card-hover">
-              {/* ...existing card content... */}
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage
+                      src={mentor.avatar}
+                      alt={mentor.applicantName}
+                    />
+                    <AvatarFallback className="text-lg">
+                      {mentor.applicantName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-foreground truncate">
+                        {mentor.applicantName}
+                      </h3>
+                      {/* <div className="flex items-center space-x-1">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span className="text-sm font-medium">
+                          {mentor.rating}
+                        </span>
+                      </div> */}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {mentor.applicantEmail}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {mentor.company}
+                    </p>
+                    <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
+                      <div className="flex items-center space-x-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{mentor.yearsExperience}+ years</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Users className="h-3 w-3" />
+                        <span>{mentor.totalSessions} sessions</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Users className="h-3 w-3" />
+                        <span>{mentor.maxMentees} mentees</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {mentor.bio}
+                  </p>
+                </div>
+
+                {/* Availability Badge */}
+                <div className="mt-3">
+                  <Badge
+                    variant={
+                      mentor.approved === true
+                        ? "default"
+                        : mentor.approved === false
+                          ? "secondary"
+                          : "outline"
+                    }
+                    className="text-xs"
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full mr-2 ${mentor.approved === true
+                        ? "bg-green-500"
+                        : mentor.approved === false
+                          ? "bg-yellow-500"
+                          : "bg-gray-500"
+                        }`}
+                    />
+                    {mentor.approved === true
+                      ? "Approved Mentor"
+                      : mentor.approved === false
+                        ? "Not Approved"
+                        : "Unavailable"}
+                  </Badge>
+                </div>
+
+                {/* Skills */}
+                <div className="mt-4">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    Expertise
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {mentor.skills.slice(0, 3).map((skill) => (
+                      <Badge key={skill} variant="outline" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))}
+                    {mentor.skills.length > 3 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{mentor.skills.length - 3} more
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+
+                {/* LinkedIn and Portfolio Links */}
+                <div className="mt-4 space-y-1">
+                  {mentor.linkedInUrl && (
+                    <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                      </svg>
+                      <a
+                        href={mentor.linkedInUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary hover:underline"
+                      >
+                        LinkedIn Profile
+                      </a>
+                    </div>
+                  )}
+                  {mentor.portfolioUrl && (
+                    <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      <a
+                        href={mentor.portfolioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary hover:underline"
+                      >
+                        Portfolio
+                      </a>
+                    </div>
+                  )}
+                  <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                    <MessageSquare className="h-3 w-3" />
+                    <span>{mentor.languages.join(", ")}</span>
+                  </div>
+                </div>
+
+
+                {/* Actions */}
+                <div className="mt-6 flex space-x-2">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleBookSession(mentor.id)}
+                    disabled={mentor.availability === "unavailable" || loading}
+                  >
+                    <Calendar className="h-4 w-4 mr-1" />
+                    Book Session
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleConnectMentor(mentor.id)}
+                  >
+                    <Users className="h-4 w-4 mr-1" />
+                    Connect
+                  </Button>
+                </div>
+
+                {/* Hourly Rate */}
+                {mentor.hourlyRate && (
+                  <div className="mt-3 text-center">
+                    <span className="text-sm font-medium text-primary">
+                      ${mentor.hourlyRate}/hour
+                    </span>
+                  </div>
+                )}
+              </CardContent>
             </Card>
           ))}
         </div>
