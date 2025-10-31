@@ -417,17 +417,40 @@ export default function MemberDashboard() {
                     {/* Show programUrl only if scheduled and paid */}
                     {session.status === "SCHEDULED" && (
                       <div className="mt-2">
-                        {!session.paid && session.createdBy == user?.id ? (
-                          <div className="text-sm text-muted-foreground">
-                            <span className="font-medium">Program URL:</span> <span className="italic">Pay mentor fee to reveal</span>
-                            <Button
-                              className="ml-2"
-                              size="sm"
-                              onClick={() => payByPayhere("MENTORSHIP", parseFloat(session?.hourly_rate),"Mentor Program Payment",session?.menteeName,session?.menteeEmail,session?.mentorName, `${session?.id}`,session?.menteeEmail, `${window.location.origin}/org/member`, `${window.location.origin}/org/member`)}
-                            >
-                              Pay Now
-                            </Button>
-                          </div>
+                        {!session.paid ? (
+                          session.createdBy === user?.id ? (
+                            <div className="text-sm text-muted-foreground">
+                              <span className="font-medium">Program URL:</span>{" "}
+                              <span className="italic">Pay mentor fee to reveal</span>
+                              <Button
+                                className="ml-2"
+                                size="sm"
+                                onClick={() =>
+                                  payByPayhere(
+                                    "MENTORSHIP",
+                                    Number(session.hourly_rate ?? session.hourlyRate ?? 0),
+                                    "Mentor Program Payment",
+                                    session.menteeName ?? "",
+                                    session.menteeEmail ?? "",
+                                    session.mentorName ?? "",
+                                    String(session.id),
+                                    session.menteeEmail ?? "",
+                                    `${window.location.origin}/org/member`,
+                                    `${window.location.origin}/org/member`
+                                  )
+                                }
+                              >
+                                Pay Now
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              <span className="font-medium">Program URL:</span>{" "}
+                              <span className="italic">
+                                After the payment by the creator, the link will display
+                              </span>
+                            </div>
+                          )
                         ) : (
                           <div className="text-sm">
                             <span className="font-medium">Program URL:</span>{" "}
