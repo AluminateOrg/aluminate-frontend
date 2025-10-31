@@ -24,7 +24,7 @@ import {
   MapPin,
 } from "lucide-react";
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, set } from "date-fns";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import { usePaymentContext } from "@/contexts/paymentContext";
 import React, { useEffect, useState } from "react";
@@ -45,6 +45,7 @@ export default function MemberDashboard() {
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [form, setForm] = useState({ programUrl: "", date: "", time: "" });
   const [acceptLoading, setAcceptLoading] = useState(false);
+  const [isMentor, setIsMentor] = useState<boolean>(false);
 
   const handleAcceptClick = (sessions: any) => {
     setSelectedSession(sessions);
@@ -68,7 +69,7 @@ export default function MemberDashboard() {
         time: form.time
       })
       console.log("response after accepting session", data);
-      toast.success("Session accepted successfully");
+      toast.success(data.message);
       setAcceptModalOpen(false);
       fetchSessions();
     } catch (error) {
@@ -78,17 +79,30 @@ export default function MemberDashboard() {
     }
   }
 
-  
-
-  const fetchSessions = async () => {
+  const checkForMentor = async (): Promise<boolean> => {
     try {
-      if (user?.isMentor) {
+      const { data } = await axiosMember.get(`/mentor/is-mentor/${user?.id}`);
+      const mentorFlag = Boolean(data?.data);
+      setIsMentor(mentorFlag);
+      return mentorFlag;
+    } catch (error) {
+      // fallback to user's current flag if available
+      const fallback = Boolean(user?.isMentor);
+      setIsMentor(fallback);
+      return fallback;
+    }
+  }
+
+  const fetchSessions = async (mentorOverride?: boolean) => {
+    try {
+      const mentorFlag = mentorOverride ?? isMentor ?? Boolean(user?.isMentor);
+      if (mentorFlag) {
         const { data } = await axiosMember.get(`/mentor/get-all-sessions/${user?.id}`);
-        
         setSessions(data);
+        console.log("fetched mentor sessions", data);
       } else {
-        const { data } = await axiosMember.get(`/member/mentor/get-all-sessions-by-user/${user?.id}`);
-       
+        const { data } = await axiosMember.get(`/mentor/get-all-sessions-by-user/${user?.id}`);
+        console.log("fetched mentee sessions", data);
         setSessions(data);
       }
     } catch (error) {
@@ -97,8 +111,25 @@ export default function MemberDashboard() {
   }
 
   useEffect(() => {
-    fetchSessions();
-  }, [])
+    if (!user?.id) return;
+
+    let interval: ReturnType<typeof setInterval> | undefined;
+
+    const init = async () => {
+      const mentor = await checkForMentor();
+      await fetchSessions(mentor);
+
+      interval = setInterval(() => {
+        fetchSessions(mentor);
+      }, 10000);
+    };
+
+    init();
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [user?.id])
 
   const loading = eventsLoading;
 
@@ -150,7 +181,7 @@ export default function MemberDashboard() {
                 Member since {format(new Date(user.joinedAt), "MMM yyyy")}
               </Badge>
             )}
-            {user?.isMentor && (
+            {isMentor && (
               <Badge variant="outline" className="mt-1 ml-2 text-green-700 border-green-700">
                 Mentor
               </Badge>
@@ -304,10 +335,10 @@ export default function MemberDashboard() {
       </div>
 
       {/* Mentor Sessions Section */}
-      {user?.isMentor && (
+      {isMentor && (
         <Card>
           <CardHeader>
-            <CardTitle>Mentor Sessions</CardTitle>
+            <CardTitle>Hired Sessions</CardTitle>
             <CardDescription>Review and accept your session requests</CardDescription>
           </CardHeader>
           <CardContent>
@@ -352,7 +383,7 @@ export default function MemberDashboard() {
         </Card>
       )}
 
-      {!user?.isMentor && (
+      {!isMentor && (
         <Card>
           <CardHeader>
             <CardTitle>My Booked Sessions</CardTitle>
@@ -386,17 +417,40 @@ export default function MemberDashboard() {
                     {/* Show programUrl only if scheduled and paid */}
                     {session.status === "SCHEDULED" && (
                       <div className="mt-2">
-                        {!session.isPaid ? (
-                          <div className="text-sm text-muted-foreground">
-                            <span className="font-medium">Program URL:</span> <span className="italic">Pay mentor fee to reveal</span>
-                            {/* <Button
-                              className="ml-2"
-                              size="sm"
-                              onClick={() => payByPayhere(session)}
-                            >
-                              Pay Now
-                            </Button> */}
-                          </div>
+                        {!session.paid ? (
+                          session.createdBy === user?.id ? (
+                            <div className="text-sm text-muted-foreground">
+                              <span className="font-medium">Program URL:</span>{" "}
+                              <span className="italic">Pay mentor fee to reveal</span>
+                              <Button
+                                className="ml-2"
+                                size="sm"
+                                onClick={() =>
+                                  payByPayhere(
+                                    "MENTORSHIP",
+                                    Number(session.hourly_rate ?? session.hourlyRate ?? 0),
+                                    "Mentor Program Payment",
+                                    session.menteeName ?? "",
+                                    session.menteeEmail ?? "",
+                                    session.mentorName ?? "",
+                                    String(session.id),
+                                    session.menteeEmail ?? "",
+                                    `${window.location.origin}/org/member`,
+                                    `${window.location.origin}/org/member`
+                                  )
+                                }
+                              >
+                                Pay Now
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              <span className="font-medium">Program URL:</span>{" "}
+                              <span className="italic">
+                                After the payment by the creator, the link will display
+                              </span>
+                            </div>
+                          )
                         ) : (
                           <div className="text-sm">
                             <span className="font-medium">Program URL:</span>{" "}

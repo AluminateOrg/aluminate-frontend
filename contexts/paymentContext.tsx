@@ -1,6 +1,7 @@
 "use client";
 import axiosAdmin from '@/axiosInstances/axiosAdmin';
 import axiosCommon from '@/axiosInstances/axiosCommon';
+import axiosMember from '@/axiosInstances/axiosMember';
 import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useSelector } from 'react-redux';
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 
 type PaymentContextType = {
 
-    payByPayhere: (mode: string,fee: number, items: string, cus1: string, cus2: string, firstName: string, lastName: string, email: string, returnUrl: string, cancelUrl: string) => void;
+    payByPayhere: (mode: string, fee: number, items: string, cus1: string, cus2: string, firstName: string, lastName: string, email: string, returnUrl: string, cancelUrl: string) => void;
 };
 
 const PaymentContext = createContext<PaymentContextType | undefined>(undefined);
@@ -22,7 +23,7 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
     const apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX;
     const apiUrl = `${backend}/${apiPrefix}`;
     const router = useRouter();
-    
+
 
     const payByPayhere = async (
         mode: string | "DONATION" | "MEMBERSHIP" | "MENTORSHIP",
@@ -39,6 +40,8 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
 
         setIsProcessing(true);
 
+        console.log("fee, items, cus1, cus2, firstName, lastName, email, returnUrl, cancelUrl:", fee, items, cus1, cus2, firstName, lastName, email, returnUrl, cancelUrl);
+
         try {
             if (!merchantId) {
                 toast.error("Merchant ID is not configured. Please contact support.");
@@ -48,6 +51,8 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
 
             // 1. Get hash and transaction ID from backend
             const amount = fee;
+            console.log("amount:", amount);
+            console.log("mode:", mode);
             const response = await axiosCommon.post('/payment/generate-hash', {
                 amount,
                 currency: "LKR",
@@ -89,35 +94,50 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
                 address: "",     // optional
                 city: "",        // optional
                 country: "Sri Lanka",
-                custom_1: cus1,  
+                custom_1: cus1,
                 custom_2: cus2
             };
 
             // 3. Attach event listeners before calling `startPayment`
-            const payhere = (window as any).payhere || {};
+            const attachHandlersAndPay = () => {
+                const payhere = (window as any).payhere;
+                if (!payhere) {
+                    console.error("PayHere SDK not available");
+                    toast.error("Payment SDK not loaded. Please try again.");
+                    setIsProcessing(false);
+                    return;
+                }
 
-            // Avoid duplicated event listeners
-            payhere.onCompleted = function (orderId: string) {
-                console.log("Payment completed. Order ID:", orderId);
-                toast.success("Payment completed successfully!");
-                // Redirect or refresh status
-                router.replace(returnUrl);
-                router.refresh();
+                payhere.onCompleted = async function (orderId: string) {
+                    console.log("Payment completed. Order ID:", orderId);
+                    toast.success("Payment completed successfully!");
+                    if (mode === "MENTORSHIP") {
+                        try {
+                            const { data } = await axiosMember.get(`/mentor/is-paid/${lastName}`);
+                            console.log("Mentorship payment status:", data);
+                        } catch (e) {
+                            console.warn("Mentorship status check failed:", e);
+                        }
+                    }
+                    router.replace(returnUrl);
+                    router.refresh();
+                };
+
+                payhere.onDismissed = function () {
+                    console.log("Payment dismissed");
+                    toast.error("Payment was cancelled.");
+                };
+
+                payhere.onError = function (error: any) {
+                    console.error("PayHere Error:", error);
+                    toast.error("Payment error occurred. Please try again.");
+                    router.replace(cancelUrl);
+                    router.refresh();
+                };
+
+                payhere.startPayment(payment);
             };
 
-            payhere.onDismissed = function () {
-                console.log("Payment dismissed");
-                toast.error("Payment was cancelled.");
-            };
-
-            payhere.onError = function (error: any) {
-                console.error("PayHere Error:", error);
-                toast.error("Payment error occurred. Please try again.");
-                router.replace(cancelUrl);
-                router.refresh();
-            };
-
-            // 4. Start PayHere Payment
             const isLoaded = (window as any).payhereScriptLoaded;
 
             if (!isLoaded) {
@@ -125,11 +145,15 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
                 script.src = "https://www.payhere.lk/lib/payhere.js";
                 script.onload = () => {
                     (window as any).payhereScriptLoaded = true;
-                    (window as any).payhere.startPayment(payment);
+                    attachHandlersAndPay();
+                };
+                script.onerror = () => {
+                    toast.error("Failed to load payment SDK. Please try again.");
+                    setIsProcessing(false);
                 };
                 document.body.appendChild(script);
             } else {
-                payhere.startPayment(payment);
+                attachHandlersAndPay();
             }
 
         } catch (error) {

@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await axiosAdmin.get("/info/getAdminInfo");
         if (res.status === 200) {
           const { data } = res.data;
+          // const response = await axiosCommon.get(`/mentor/is-mentor/${data.user.id}`)
           //setAdminUser in redux
           dispatch(
             setAdminUser({
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               phone: data.user.phone || null,
               emailVerified: data.user.emailVerified || null,
               createdAt: data.user.createdAt || null,
+          
             })
           );
           setChecking(false);
@@ -84,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             designation: data.user.position || null,
             phone: data.user.phone || null,
             joinedAt: data.user.createdAt || null,
+            // isMentor: response.data.data
           });
           return true;
         } else {
@@ -100,9 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await axiosMember.get("/info/getMemberInfo");
         if (res.status === 200) {
           const { data } = res.data;
-          const response = await axiosCommon.get(
-            `/mentor/is-mentor/${data.user.id}`
-          );
+          // const response = await axiosCommon.get(
+          //   `/mentor/is-mentor/${data.user.id}`
+          // );
           //setMemberUser in redux
           dispatch(
             setMemberUser({
@@ -113,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               avatar: data.user.photoUrl || null,
               designation: data.user.position || null,
               joinedAt: data.user.createdAt || null,
-              isMentor: response.data.data,
+              // isMentor: response.data.data,
             })
           );
           setChecking(false);
@@ -128,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             designation: data.user.position || null,
             phone: data.user.phone || null,
             joinedAt: data.user.createdAt || null,
-            isMentor: response.data.data,
+            // isMentor: response.data.data,
           });
           return true;
         } else {
