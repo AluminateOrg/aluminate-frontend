@@ -41,7 +41,7 @@ export default function GroupsPage() {
 
     try {
       const response = await axiosMember.get(
-        `/member/${user.id}/groups/membership-status`
+        `member/${user.id}/groups/membership-status`
       );
       const data = response.data;
 
