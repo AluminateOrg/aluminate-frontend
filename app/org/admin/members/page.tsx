@@ -86,7 +86,7 @@ export default function MembersPage() {
         </div>
       </div>
 
-      {organization &&
+      {/* {organization &&
         organization.currentMemberCount >=
           (organization.maxMemberCount * 0.9) && (
           <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
@@ -106,7 +106,7 @@ export default function MembersPage() {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as TabValue)} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
