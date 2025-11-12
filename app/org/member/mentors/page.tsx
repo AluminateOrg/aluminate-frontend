@@ -37,6 +37,7 @@ import axios from "axios";
 import axiosMember from "@/axiosInstances/axiosMember";
 import { toast } from "sonner";
 import { Calendar as CalendarIcon, Clock as ClockIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 export interface Mentor {
   id: string;
@@ -72,6 +73,7 @@ interface MentorApplicationForm {
   languages: string[];
   linkedinUrl: string;
   portfolioUrl: string;
+  isCharge: boolean;
 }
 
 export default function MentorsPage() {
@@ -109,6 +111,7 @@ export default function MentorsPage() {
       languages: ["English"],
       linkedinUrl: "",
       portfolioUrl: "",
+      isCharge: false,
     }
   );
 
@@ -296,17 +299,6 @@ export default function MentorsPage() {
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-
-
-    const payLoad = {
-      ...applicationForm,
-      memberId
-    };
-
-    console.log("payLoad: ", payLoad);
-    console.log("memberID>>>", user.id);
-
-    // Validation
     if (!applicationForm.motivation.trim()) {
       toast.error("Please provide your motivation for becoming a mentor");
       return;
@@ -327,11 +319,28 @@ export default function MentorsPage() {
       return;
     }
 
+    if (applicationForm.isCharge) {
+      const rate = Number(applicationForm.hourlyRate);
+      if (!Number.isFinite(rate) || rate <= 0) {
+        toast.error("Please provide a valid hourly rate");
+        return;
+      }
+    }
+
+
     setApplicationLoading(true);
 
     try {
 
-      const response = await axiosMember.post('/mentor/apply', payLoad);
+      const { isCharge, ...rest } = applicationForm;
+
+      const payload = {
+        ...rest,
+        memberId,
+        hourlyRate: isCharge ? Number(rest.hourlyRate) : 0,
+      }
+
+      const response = await axiosMember.post('/mentor/apply', payload);
 
       console.log("response when submitting application: ", response);
 
@@ -356,6 +365,7 @@ export default function MentorsPage() {
         languages: ["English"],
         linkedinUrl: "",
         portfolioUrl: "",
+        isCharge: false,
       });
 
       setShowApplicationModal(false);
@@ -382,6 +392,7 @@ export default function MentorsPage() {
       languages: ["English"],
       linkedinUrl: "",
       portfolioUrl: "",
+      isCharge: false,
     });
   };
 
@@ -810,7 +821,7 @@ export default function MentorsPage() {
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Apply to Become a Mentor
-              </Button>Book a
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -895,7 +906,7 @@ export default function MentorsPage() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Personal Information</h3>
                   <div className="bg-accent/20 p-4 rounded-lg">
-                    <div className="flex items-center space-x-3">Book a
+                    <div className="flex items-center space-x-3">
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={user?.avatar || undefined} alt={user?.name || undefined} />
                         <AvatarFallback>
@@ -920,15 +931,35 @@ export default function MentorsPage() {
                 </div>
 
                 {/* Professional Background */}
+
+                {/* Professional Background */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">
-                    Professional Background
-                  </h3>
+                  <h3 className="text-lg font-medium">Professional Background</h3>
+
+                  {/* Paid vs Free toggle */}
+                  <div className="space-y-2">
+                    <Label htmlFor="isPaid">Mentoring Type</Label>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        id="isPaid"
+                        checked={applicationForm.isCharge}
+                        onCheckedChange={(checked) => {
+                          handleApplicationInputChange("isCharge", checked);
+                          handleApplicationInputChange("hourlyRate", checked ? "" : "0");
+                        }}
+                      />
+                      <span className="text-sm">
+                        {applicationForm.isCharge ? "Paid sessions" : "Free mentorship"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Toggle on to charge an hourly rate. If off, your rate will be set to $0 and cannot be changed.
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="yearsExperience">
-                        Years of Experience *
-                      </Label>
+                      <Label htmlFor="yearsExperience">Years of Experience *</Label>
                       <Input
                         id="yearsExperience"
                         type="number"
@@ -947,7 +978,9 @@ export default function MentorsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="hourlyRate">Hourly Rate (Optional)</Label>
+                      <Label htmlFor="hourlyRate">
+                        Hourly Rate {applicationForm.isCharge ? "(Required)" : "(Free: $0)"}
+                      </Label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
                           $
@@ -955,21 +988,22 @@ export default function MentorsPage() {
                         <Input
                           id="hourlyRate"
                           type="number"
-                          min="0"
+                          min={applicationForm.isCharge ? 1 : 0}
                           step="5"
-                          value={applicationForm.hourlyRate}
+                          value={applicationForm.isCharge ? applicationForm.hourlyRate : "0"}
                           onChange={(e) =>
-                            handleApplicationInputChange(
-                              "hourlyRate",
-                              e.target.value
-                            )
+                            handleApplicationInputChange("hourlyRate", e.target.value)
                           }
-                          placeholder="75"
+                          placeholder={applicationForm.isCharge ? "75" : "0"}
                           className="pl-8"
+                          disabled={!applicationForm.isCharge}
+                          required={applicationForm.isCharge}
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Leave empty if you prefer to mentor for free
+                        {applicationForm.isCharge
+                          ? "Set the amount you charge per hour."
+                          : "Free mentorship: hourly rate is fixed at $0."}
                       </p>
                     </div>
                   </div>
@@ -979,15 +1013,14 @@ export default function MentorsPage() {
                     <Textarea
                       id="bio"
                       value={applicationForm.bio}
-                      onChange={(e) =>
-                        handleApplicationInputChange("bio", e.target.value)
-                      }
+                      onChange={(e) => handleApplicationInputChange("bio", e.target.value)}
                       placeholder="Tell us about your professional background, achievements, and what makes you a great mentor..."
                       rows={4}
                       required
                     />
                   </div>
                 </div>
+
 
                 {/* Areas of Expertise */}
                 <div className="space-y-4">
