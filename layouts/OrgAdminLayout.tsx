@@ -166,9 +166,9 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
                   <AvatarFallback className="bg-gradient-to-br from-primary/10 to-primary/20 text-primary font-medium">
                     {user?.name
                       ? user.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
                       : ""}
                   </AvatarFallback>
                 </Avatar>
@@ -290,9 +290,9 @@ export default function OrgAdminLayout({ children }: OrgAdminLayoutProps) {
                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30 text-primary font-semibold text-sm">
                   {user?.name
                     ? user.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
                     : ""}
                 </AvatarFallback>
               </Avatar>
