@@ -39,7 +39,7 @@ interface Member {
   company?: string;
   degree?: string;
   avatar?: string;
-  status: "active" | "pending" | "inactive";
+  is_active: boolean;
   joinedAt?: string;
   groupIds: number[];
 }
@@ -51,10 +51,22 @@ export default function ManageMembers({
   members: Member[];
   setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
 }) {
+
+
+
+  const LIMIT = 3;
+  const [offset, setOffset] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0)
+
+  const currentPage = Math.floor(offset / LIMIT) + 1;
+  const totalPages = Math.ceil(totalRecords / LIMIT);
+
   const { groups } = useOrg();
   const [searchTerm, setSearchTerm] = useState("");
+  const [queryStatus, setQueryStatus] = useState<"all" | "active" | "pending" | "inactive">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "inactive">("all");
   const [loading, setLoading] = useState(true);
+  const [activeSearch, setActiveSearch] = useState("");
 
   const getMemberGroups = (groupIds?: number[] | null) => {
   if (!Array.isArray(groups) || !Array.isArray(groupIds) || groupIds.length === 0) return [];
@@ -67,10 +79,26 @@ export default function ManageMembers({
 
   const getAllMembers = useCallback(async () => {
     try {
-      const response = await axiosAdmin.get(`/member/get/all`);
+        const params: any = {
+                limit: LIMIT,
+                offset: offset,
+              };
 
-      if (response.data && Array.isArray(response.data.data)) {
-        const mappedMembers: Member[] = response.data.data.map((member: any) => ({
+
+        if (activeSearch.trim()) params.search = activeSearch;
+        if (queryStatus !== "all") params.status = queryStatus;
+
+      const response = await axiosAdmin.get(`/member/search`, { params });
+
+            console.log(" FULL SERVER RESPONSE:", response);
+            console.log(" DATA PAYLOAD:", response.data);
+
+      const responseData = response.data.data;
+
+
+
+      if (responseData && Array.isArray(responseData.data)) {
+        const mappedMembers: Member[] = responseData.data.map((member: any) => ({
           id: (member.id || member.nic || "").toString(),
           name: member.name || "Unknown",
           email: member.email || "",
@@ -80,19 +108,22 @@ export default function ManageMembers({
           batch: member.batch,
           degree: member.degree || "",
           avatar: member.photoUrl || "",
-          status: (member.status || "active") as "active" | "pending" | "inactive",
+          is_active: member.is_active,
           joinedAt: member.createdAt || new Date().toISOString(),
           groupIds: Array.isArray(member.groupIds) ? member.groupIds : [],
         }));
         setMembers(mappedMembers);
+        setTotalRecords(responseData.total || 0);
       } else {
+          setMembers([]);
+          setTotalRecords(0);
         toast.error("Invalid data received");
       }
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch members");
     }
-  }, [setMembers]);
+  }, [offset, activeSearch, queryStatus, setMembers]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,15 +145,17 @@ export default function ManageMembers({
     toast.success("Invitation email sent successfully");
   };
 
-  const filteredMembers = members.filter((member) => {
-    if (!member) return false;
-    const matchesSearch =
-      member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (member.company?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-    const matchesStatus = statusFilter === "all" || member.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+//I remove this because I want the server to do the work
+
+//   const filteredMembers = members.filter((member) => {
+//     if (!member) return false;
+//     const matchesSearch =
+//       member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+//       member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+//       (member.company?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+//     const matchesStatus = statusFilter === "all" || member.status === statusFilter;
+//     return matchesSearch && matchesStatus;
+//   });
 
   const getInitials = (name?: string) => {
     if (!name) return "UN";
@@ -133,6 +166,26 @@ export default function ManageMembers({
       .toUpperCase()
       .substring(0, 2);
   };
+  const handleFilterChange = (status: "all" | "active" | "pending" | "inactive") => {
+      setStatusFilter(status);
+  };
+
+  const handleSearchClick = () => {
+      console.log(" Search Button Clicked!");
+      setActiveSearch(searchTerm);
+      setQueryStatus(statusFilter);
+      setOffset(0);
+    };
+
+  const handleNextPage = () => {
+      if (offset + LIMIT < totalRecords) {
+        setOffset((prev) => prev + LIMIT);
+      }
+    };
+
+  const handlePrevPage = () => {
+      setOffset((prev) => Math.max(0, prev - LIMIT));
+    };
 
   if (loading) {
     return (
@@ -167,9 +220,14 @@ export default function ManageMembers({
               placeholder="Search members..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearchClick()}
               className="pl-10"
             />
           </div>
+
+          <Button onClick={handleSearchClick}  variant="secondary">
+                Search
+          </Button>
           <div className="flex items-center space-x-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             {["all", "active", "inactive"].map((status) => (
@@ -177,7 +235,7 @@ export default function ManageMembers({
                 key={status}
                 variant={statusFilter === status ? "default" : "outline"}
                 size="sm"
-                onClick={() => setStatusFilter(status as "all" | "active" | "pending" | "inactive")}
+                onClick={() => handleFilterChange(status as "all" | "active" | "pending" | "inactive")}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </Button>
@@ -187,7 +245,7 @@ export default function ManageMembers({
 
         {/* Member List */}
         <div className="space-y-4">
-          {filteredMembers.map((member) => {
+          {members.map((member) => {
             if (!member.id) return null;
             const memberGroups = getMemberGroups(member.groupIds);
             return (
@@ -204,15 +262,9 @@ export default function ManageMembers({
                     <div className="flex items-center space-x-2">
                       <h4 className="font-medium">{member.name}</h4>
                       <Badge
-                        variant={
-                          member.status === "active"
-                            ? "default"
-                            : member.status === "pending"
-                            ? "secondary"
-                            : "outline"
-                        }
+                        variant={member.is_active ? "default" : "outline"}
                       >
-                        {member.status}
+                        {member.is_active ? "Active" : "Inactive"}
                       </Badge>
                     </div>
                     <div className="flex items-center space-x-4 text-sm text-muted-foreground">
@@ -243,7 +295,7 @@ export default function ManageMembers({
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  {member.status === "pending" && (
+                  {!member.is_active && (
                     <Button size="sm" variant="outline" onClick={() => resendInvitation(member.id)}>
                       <Mail className="h-4 w-4 mr-1" /> Resend
                     </Button>
@@ -264,8 +316,32 @@ export default function ManageMembers({
             );
           })}
         </div>
+        <div className="flex items-center space-x-2 mt-6 pt-4 border-t border-gray-700">
 
-        {filteredMembers.length === 0 && (
+            <span className="text-sm font-medium mx-4">
+                Page {currentPage} of {totalPages === 0 ? 1 : totalPages}
+            </span>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrevPage}
+              disabled={offset === 0 || loading}
+            >
+             Previous
+            </Button>
+
+            <Button
+             variant="outline"
+             size="sm"
+             onClick={handleNextPage}
+             disabled={offset + LIMIT >= totalRecords || loading}
+            >
+             Next
+            </Button>
+        </div>
+
+        {members.length === 0 && (
           <div className="text-center py-8">
             <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Members Found</h3>
