@@ -25,24 +25,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/atoms/LoadingSpinner";
 import axiosAdmin from "@/axiosInstances/axiosAdmin";
+import type { Member } from "@/types/member";
 
-interface Member {
-  id: string; // normalized as string
-  name: string;
-  email: string;
-  phone?: string;
-  nic?: string;
-  regNo?: string;
-  address?: string;
-  batch?: number;
-  designation?: string;
-  company?: string;
-  degree?: string;
-  avatar?: string;
-  is_active: boolean;
-  joinedAt?: string;
-  groupIds: number[];
-}
 
 export default function ManageMembers({
   members,

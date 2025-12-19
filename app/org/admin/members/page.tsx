@@ -11,26 +11,12 @@ import AddSingleMember from "./singlemember";
 import BulkCsvUpload from "./bulkupload";
 import ManageMembers from "./managemembers";
 import { useOrg } from "@/hooks/useOrg";
+import type { Member } from "@/types/member";
+
 
 type TabValue = "add-single" | "bulk-upload" | "manage-members";
 
-  interface Member {
-  id: string; // normalized as string
-  name: string;
-  email: string;
-  phone?: string;
-  nic?: string;
-  regNo?: string;
-  address?: string;
-  batch?: number;
-  designation?: string;
-  company?: string;
-  degree?: string;
-  avatar?: string;
-  status: "active" | "pending" | "inactive";
-  joinedAt?: string;
-  groupIds: number[];
-}
+  
 
 export default function MembersPage() {
   const { organization, loading: orgLoading } = useOrg();
