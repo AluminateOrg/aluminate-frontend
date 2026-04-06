@@ -3,13 +3,9 @@
 // --- Dynamic Routing Configuration ---
 // Read the ORG_SLUG passed via Docker build argument (ARG/ENV).
 const ORG_SLUG = process.env.ORG_SLUG;
-// Set the base path to /acme, /zenith, etc. This is CRITICAL for Traefik path routing.
-const basePath = ORG_SLUG ? `/${ORG_SLUG}` : undefined;
 // -------------------------------------
 
 const nextConfig = {
-  // 1. DYNAMIC CONFIG
-  basePath: basePath,
   
   // Expose all environment variables required by the frontend application.
   // These are passed via 'args' in the docker-compose file.
