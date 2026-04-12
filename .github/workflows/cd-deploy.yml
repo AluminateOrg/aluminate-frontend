@@ -41,19 +41,21 @@ jobs:
 
             for ENV_FILE in /opt/aluminate/tenants/*.env; do
               ORG_SLUG=$(grep '^ORG_SLUG=' "$ENV_FILE" | cut -d= -f2)
+              TRAEFIK_HOST=$(grep '^TRAEFIK_HOST=' "$ENV_FILE" | cut -d= -f2)
+              API_PREFIX=$(grep '^API_PREFIX=' "$ENV_FILE" | cut -d= -f2)
+              NEXT_PUBLIC_ORGANIZATION_PUBLIC_KEY=$(grep '^NEXT_PUBLIC_ORGANIZATION_PUBLIC_KEY=' "$ENV_FILE" | cut -d= -f2 | tr -d '"')
+              NEXT_PUBLIC_PAYHERE_MERCHANT_ID=$(grep '^NEXT_PUBLIC_PAYHERE_MERCHANT_ID=' "$ENV_FILE" | cut -d= -f2 | tr -d '"')
 
               if docker ps --format "{{.Names}}" | grep -q "^${ORG_SLUG}-org-frontend$"; then
                 echo "--------------------------------------------"
                 echo "Building frontend image for org: $ORG_SLUG"
 
-                set -a && source "$ENV_FILE" && set +a
-
-                docker build \
+                docker build --no-cache \
                   --build-arg ORG_SLUG="$ORG_SLUG" \
-                  --build-arg NEXT_PUBLIC_BACKEND_URL="https://${ORG_SLUG}.api.${TRAEFIK_HOST}" \
+                  --build-arg NEXT_PUBLIC_BACKEND_URL="https://api.${ORG_SLUG}.${TRAEFIK_HOST}" \
                   --build-arg NEXT_PUBLIC_API_PREFIX="$API_PREFIX" \
                   --build-arg NEXT_PUBLIC_ORGANIZATION_PUBLIC_KEY="$NEXT_PUBLIC_ORGANIZATION_PUBLIC_KEY" \
-                  --build-arg NEXT_PUBLIC_WS_URL="wss://${ORG_SLUG}.api.${TRAEFIK_HOST}" \
+                  --build-arg NEXT_PUBLIC_WS_URL="wss://api.${ORG_SLUG}.${TRAEFIK_HOST}" \
                   --build-arg NEXT_PUBLIC_PAYHERE_MERCHANT_ID="$NEXT_PUBLIC_PAYHERE_MERCHANT_ID" \
                   -t aluminate/org-frontend:$ORG_SLUG \
                   /opt/aluminate/app/aluminate/aluminate-organization-frontend-deploy
