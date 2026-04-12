@@ -11,26 +11,12 @@ import AddSingleMember from "./singlemember";
 import BulkCsvUpload from "./bulkupload";
 import ManageMembers from "./managemembers";
 import { useOrg } from "@/hooks/useOrg";
+import type { Member } from "@/types/member";
+
 
 type TabValue = "add-single" | "bulk-upload" | "manage-members";
 
-  interface Member {
-  id: string; // normalized as string
-  name: string;
-  email: string;
-  phone?: string;
-  nic?: string;
-  regNo?: string;
-  address?: string;
-  batch?: number;
-  designation?: string;
-  company?: string;
-  degree?: string;
-  avatar?: string;
-  status: "active" | "pending" | "inactive";
-  joinedAt?: string;
-  groupIds: number[];
-}
+  
 
 export default function MembersPage() {
   const { organization, loading: orgLoading } = useOrg();
@@ -86,7 +72,7 @@ export default function MembersPage() {
         </div>
       </div>
 
-      {organization &&
+      {/* {organization &&
         organization.currentMemberCount >=
           (organization.maxMemberCount * 0.9) && (
           <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
@@ -106,7 +92,7 @@ export default function MembersPage() {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as TabValue)} className="w-full">
         <TabsList className="grid w-full grid-cols-3">

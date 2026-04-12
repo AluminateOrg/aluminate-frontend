@@ -28,9 +28,15 @@ yarn-error.log*
 #.env
 #.env*.local
 
+next.config.js
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+.vscode
+

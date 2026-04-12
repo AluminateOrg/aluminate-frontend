@@ -34,7 +34,7 @@ export default function AddSingleMember({ members, setMembers }: any) {
   const [groups, setGroups] = useState<Group[]>([]);
   // const { groups } = useOrg();
   const [loading, setLoading] = useState(false);
-  const orgId = useSelector((state: any) => state.user?.organization.id);
+  const orgId = useSelector((state: any) => state.user?.organization?.id);
   const [singleMemberForm, setSingleMemberForm] = useState({
     name: "",
     nic: "",

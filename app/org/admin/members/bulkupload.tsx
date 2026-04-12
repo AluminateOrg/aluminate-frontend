@@ -154,23 +154,18 @@ export default function BulkCsvUpload() {
       setFinalizeProgress((prev) => (prev < 90 ? prev + 10 : prev));
     }, 200);
 
-    const formData = new FormData();
-    formData.append("rows", JSON.stringify(editableRows));
-    formData.append("groups", JSON.stringify(bulkUploadForm.selectedGroups));
-    formData.append("organizationId", JSON.stringify(orgId));
-
     try {
-      
-      const response = await axiosAdmin.post('/member/bulk-finalize', formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
+      const payload = {
+        rows: editableRows,
+        groups: bulkUploadForm.selectedGroups,
+        organizationId: orgId,
+      };
 
-      const data = await response.data;
-      console.log("data from finalize:", data);
+      // Do not set Content-Type; axios will use application/json
+      const response = await axiosAdmin.post("/member/bulk-finalize", payload);
+      const data = response.data;
+
       setUploadResult(data);
-
       if (data.invalidRows && data.invalidRows.length > 0) {
         setEditableRows(data.invalidRows);
         toast.error("Some rows are still invalid. Please fix them.");
@@ -184,9 +179,7 @@ export default function BulkCsvUpload() {
     } finally {
       clearInterval(interval);
       setFinalizeProgress(100);
-      setTimeout(() => {
-        setFinalizing(false);
-      }, 500);
+      setTimeout(() => setFinalizing(false), 500);
     }
   };
 
@@ -236,11 +229,10 @@ export default function BulkCsvUpload() {
                 groups.map((group) => (
                   <div
                     key={group.id}
-                    className={`border rounded-lg p-4 cursor-pointer ${
-                      bulkUploadForm.selectedGroups.includes(group.id)
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:bg-accent"
-                    }`}
+                    className={`border rounded-lg p-4 cursor-pointer ${bulkUploadForm.selectedGroups.includes(group.id)
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-accent"
+                      }`}
                     onClick={() => handleGroupSelection(group.id)}
                   >
                     <h4 className="font-medium">{group.name}</h4>
@@ -324,9 +316,8 @@ export default function BulkCsvUpload() {
                             onChange={(e) =>
                               handleCellChange(rowIndex, field, e.target.value)
                             }
-                            className={`${
-                              row.errors?.[field] ? "border-red-500" : ""
-                            }`}
+                            className={`${row.errors?.[field] ? "border-red-500" : ""
+                              }`}
                           />
                           {row.suggestions?.[field] && (
                             <p className="text-green-600 text-xs">

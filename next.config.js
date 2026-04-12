@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 
+const nextConfig = {
+
+
 // --- Dynamic Routing Configuration ---
 // Read the ORG_SLUG passed via Docker build argument (ARG/ENV).
 const ORG_SLUG = process.env.ORG_SLUG;
@@ -20,10 +23,11 @@ const nextConfig = {
 
   // 2. EXISTING CONFIGURATION (Preserved)
   output: 'standalone', // Keeps your optimized Docker output
+
   eslint: {
-    ignoreDuringBuilds: true, // Preserves your ESLint ignore setting
+    ignoreDuringBuilds: true,
   },
-  images: { unoptimized: true }, // Preserves your image setting
+  images: { unoptimized: true },
 };
 
 module.exports = nextConfig;
