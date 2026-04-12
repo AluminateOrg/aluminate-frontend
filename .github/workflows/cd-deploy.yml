@@ -26,9 +26,8 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: aluminate-organization-frontend/
+          source: .
           target: /opt/aluminate/app/aluminate/aluminate-organization-frontend-deploy/
-          strip_components: 1
           rm: true
 
       - name: Build Per-Org & Restart All Org Frontends on Droplet
