@@ -1,0 +1,89 @@
+name: Org Frontend CD
+
+on:
+  push:
+    branches: [ production ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-org-frontend-cd
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Copy Frontend Source to Droplet
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: aluminate-organization-frontend/
+          target: /opt/aluminate/app/aluminate/aluminate-organization-frontend-deploy/
+          strip_components: 1
+          rm: true
+
+      - name: Build Per-Org & Restart All Org Frontends on Droplet
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+
+            for ENV_FILE in /opt/aluminate/tenants/*.env; do
+              ORG_SLUG=$(grep '^ORG_SLUG=' "$ENV_FILE" | cut -d= -f2)
+
+              if docker ps --format "{{.Names}}" | grep -q "^${ORG_SLUG}-org-frontend$"; then
+                echo "--------------------------------------------"
+                echo "Building frontend image for org: $ORG_SLUG"
+
+                set -a && source "$ENV_FILE" && set +a
+
+                docker build \
+                  --build-arg ORG_SLUG="$ORG_SLUG" \
+                  --build-arg NEXT_PUBLIC_BACKEND_URL="https://${ORG_SLUG}.api.${TRAEFIK_HOST}" \
+                  --build-arg NEXT_PUBLIC_API_PREFIX="$API_PREFIX" \
+                  --build-arg NEXT_PUBLIC_ORGANIZATION_PUBLIC_KEY="$NEXT_PUBLIC_ORGANIZATION_PUBLIC_KEY" \
+                  --build-arg NEXT_PUBLIC_WS_URL="wss://${ORG_SLUG}.api.${TRAEFIK_HOST}" \
+                  --build-arg NEXT_PUBLIC_PAYHERE_MERCHANT_ID="$NEXT_PUBLIC_PAYHERE_MERCHANT_ID" \
+                  -t aluminate/org-frontend:$ORG_SLUG \
+                  /opt/aluminate/app/aluminate/aluminate-organization-frontend-deploy
+
+                echo "Recreating frontend container for org: $ORG_SLUG"
+
+                docker compose \
+                  -f /opt/aluminate/app/aluminate/docker-compose-org.yml \
+                  -p "$ORG_SLUG" \
+                  --env-file "/opt/aluminate/tenants/${ORG_SLUG}.env" \
+                  up -d --force-recreate --no-deps frontend
+
+                echo "Done: $ORG_SLUG"
+              else
+                echo "Skipping $ORG_SLUG — frontend not running"
+              fi
+            done
+
+            echo "--------------------------------------------"
+            echo "Cleaning unused images..."
+            docker image prune -f
+
+            echo "Waiting for startups..."
+            sleep 15
+
+            echo "Container status:"
+            docker ps | grep "\-org-frontend"
+
+            echo "Deployment complete"
+
+      - name: Deployment Success
+        run: echo "All Org Frontends deployed to Production"
