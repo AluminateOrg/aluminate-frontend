@@ -62,10 +62,10 @@ jobs:
 
                 echo "Recreating frontend container for org: $ORG_SLUG"
 
-                docker compose \
-                  -f /opt/aluminate/app/aluminate/docker-compose-org.yml \
+                export ORG_SLUG && docker compose \
+                  -f /opt/aluminate/config/docker-compose-org.yml \
                   -p "$ORG_SLUG" \
-                  --env-file "/opt/aluminate/tenants/${ORG_SLUG}.env" \
+                  --env-file "$ENV_FILE" \
                   up -d --force-recreate --no-deps frontend
 
                 echo "Done: $ORG_SLUG"
