@@ -1,0 +1,50 @@
+name: Org Frontend CI
+
+on:
+  pull_request:
+    branches: [ production ]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: production-org-frontend-ci
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aluminate-organization-frontend
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: |
+          docker build --pull \
+            --build-arg ORG_SLUG="ci-test" \
+            --build-arg NEXT_PUBLIC_BACKEND_URL="https://ci-test.api.example.com" \
+            --build-arg NEXT_PUBLIC_API_PREFIX="/api" \
+            --build-arg NEXT_PUBLIC_ORGANIZATION_PUBLIC_KEY="ci-test-key" \
+            --build-arg NEXT_PUBLIC_WS_URL="wss://ci-test.api.example.com" \
+            --build-arg NEXT_PUBLIC_PAYHERE_MERCHANT_ID="ci-test-merchant" \
+            -t aluminate/org-frontend:ci-test \
+            .
+
+      - name: Comment PR on Success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Org frontend build succeeded. Ready to merge to production.'
+            })
