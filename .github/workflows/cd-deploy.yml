@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: .
-          target: /opt/aluminate/app/aluminate/aluminate-organization-frontend-deploy/
+          target: /opt/aluminate/app/aluminate/aluminate-organization-frontend/
           rm: true
 
       - name: Build Per-Org & Restart All Org Frontends on Droplet
@@ -58,7 +58,7 @@ jobs:
                   --build-arg NEXT_PUBLIC_WS_URL="wss://api.${ORG_SLUG}.${TRAEFIK_HOST}" \
                   --build-arg NEXT_PUBLIC_PAYHERE_MERCHANT_ID="$NEXT_PUBLIC_PAYHERE_MERCHANT_ID" \
                   -t aluminate/org-frontend:$ORG_SLUG \
-                  /opt/aluminate/app/aluminate/aluminate-organization-frontend-deploy
+                  /opt/aluminate/app/aluminate/aluminate-organization-frontend
 
                 echo "Recreating frontend container for org: $ORG_SLUG"
 

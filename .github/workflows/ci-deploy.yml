@@ -24,7 +24,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build --pull \
+          docker build --no-cache \
             --build-arg ORG_SLUG="ci-test" \
             --build-arg NEXT_PUBLIC_BACKEND_URL="https://api.ci-test.example.com" \
             --build-arg NEXT_PUBLIC_API_PREFIX="/api/v1/portal" \
