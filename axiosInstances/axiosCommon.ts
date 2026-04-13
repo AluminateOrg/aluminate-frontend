@@ -41,8 +41,6 @@ const apiUrl =
   (process.env.NEXT_PUBLIC_BACKEND_URL ?? "") + 
   (process.env.NEXT_PUBLIC_API_PREFIX ?? "") + "/common";
 
-
-  console.log("loaded apiUrl->",apiUrl);
 /**
  * Pre-configured Axios instance for common API requests
  * 
