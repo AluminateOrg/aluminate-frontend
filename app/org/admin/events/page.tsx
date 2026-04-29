@@ -55,12 +55,12 @@ interface Event {
   endTime: string;
   location: string;
   type:
-    | "meeting"
-    | "workshop"
-    | "social"
-    | "fundraising"
-    | "networking"
-    | "webinar";
+  | "meeting"
+  | "workshop"
+  | "social"
+  | "fundraising"
+  | "networking"
+  | "webinar";
   maxAttendees: number;
   registrationDeadline?: string;
   isPublic: boolean;
@@ -258,39 +258,39 @@ export default function AdminEventsPage() {
             prev.map((ev) =>
               ev.id === editingEvent.id
                 ? {
-                    ...ev,
-                    id: updated.id?.toString() ?? ev.id,
-                    title: updated.title ?? eventForm.title,
-                    description: updated.description ?? eventForm.description,
-                    startDate:
-                      updated.startDate && updated.startTime
-                        ? new Date(
-                            `${updated.startDate}T${updated.startTime}`
-                          ).toISOString()
-                        : ev.startDate,
-                    endDate:
-                      updated.endDate && updated.endTime
-                        ? new Date(
-                            `${updated.endDate}T${updated.endTime}`
-                          ).toISOString()
-                        : ev.endDate,
-                    location: updated.location ?? eventForm.location,
-                    type: (
-                      updated.type ?? eventForm.type
-                    ).toLowerCase() as Event["type"],
-                    maxAttendees: updated.maxParticipants ?? ev.maxAttendees,
-                    currentAttendees:
-                      updated.currentParticipants ?? ev.currentAttendees,
-                    registrationDeadline: updated.registrationDeadline
-                      ? new Date(updated.registrationDeadline).toISOString()
-                      : ev.registrationDeadline,
-                    requiresApproval:
-                      updated.requiresApproval ?? ev.requiresApproval,
-                    status: (
-                      updated.status ?? ev.status
-                    ).toLowerCase() as Event["status"],
-                    price: updated.price ?? ev.price,
-                  }
+                  ...ev,
+                  id: updated.id?.toString() ?? ev.id,
+                  title: updated.title ?? eventForm.title,
+                  description: updated.description ?? eventForm.description,
+                  startDate:
+                    updated.startDate && updated.startTime
+                      ? new Date(
+                        `${updated.startDate}T${updated.startTime}`
+                      ).toISOString()
+                      : ev.startDate,
+                  endDate:
+                    updated.endDate && updated.endTime
+                      ? new Date(
+                        `${updated.endDate}T${updated.endTime}`
+                      ).toISOString()
+                      : ev.endDate,
+                  location: updated.location ?? eventForm.location,
+                  type: (
+                    updated.type ?? eventForm.type
+                  ).toLowerCase() as Event["type"],
+                  maxAttendees: updated.maxParticipants ?? ev.maxAttendees,
+                  currentAttendees:
+                    updated.currentParticipants ?? ev.currentAttendees,
+                  registrationDeadline: updated.registrationDeadline
+                    ? new Date(updated.registrationDeadline).toISOString()
+                    : ev.registrationDeadline,
+                  requiresApproval:
+                    updated.requiresApproval ?? ev.requiresApproval,
+                  status: (
+                    updated.status ?? ev.status
+                  ).toLowerCase() as Event["status"],
+                  price: updated.price ?? ev.price,
+                }
                 : ev
             )
           );
@@ -372,34 +372,34 @@ export default function AdminEventsPage() {
           prev.map((event) =>
             event.id === eventId
               ? {
-                  ...event,
-                  // Transform the backend response to match frontend interface
-                  id: responseData.data.id.toString(),
-                  title: responseData.data.title,
-                  description: responseData.data.description,
-                  startDate: new Date(
-                    `${responseData.data.startDate}T${responseData.data.startTime}`
-                  ).toISOString(),
-                  endDate: new Date(
-                    `${responseData.data.endDate}T${responseData.data.endTime}`
-                  ).toISOString(),
-                  location: responseData.data.location,
-                  type: responseData.data.type.toLowerCase() as Event["type"], // Convert to lowercase
-                  maxAttendees: responseData.data.maxParticipants || 0,
-                  currentAttendees: responseData.data.currentParticipants || 0,
-                  registrationDeadline: responseData.data.registrationDeadline
-                    ? new Date(
-                        responseData.data.registrationDeadline + "T23:59:59"
-                      ).toISOString()
-                    : undefined,
-                  status:
-                    responseData.data.status.toLowerCase() as Event["status"], // Convert to lowercase
-                  price: responseData.data.price || undefined,
-                  // Keep existing frontend-only fields
-                  isPublic: event.isPublic,
-                  requiresApproval: event.requiresApproval,
-                  createdAt: event.createdAt,
-                }
+                ...event,
+                // Transform the backend response to match frontend interface
+                id: responseData.data.id.toString(),
+                title: responseData.data.title,
+                description: responseData.data.description,
+                startDate: new Date(
+                  `${responseData.data.startDate}T${responseData.data.startTime}`
+                ).toISOString(),
+                endDate: new Date(
+                  `${responseData.data.endDate}T${responseData.data.endTime}`
+                ).toISOString(),
+                location: responseData.data.location,
+                type: responseData.data.type.toLowerCase() as Event["type"], // Convert to lowercase
+                maxAttendees: responseData.data.maxParticipants || 0,
+                currentAttendees: responseData.data.currentParticipants || 0,
+                registrationDeadline: responseData.data.registrationDeadline
+                  ? new Date(
+                    responseData.data.registrationDeadline + "T23:59:59"
+                  ).toISOString()
+                  : undefined,
+                status:
+                  responseData.data.status.toLowerCase() as Event["status"], // Convert to lowercase
+                price: responseData.data.price || undefined,
+                // Keep existing frontend-only fields
+                isPublic: event.isPublic,
+                requiresApproval: event.requiresApproval,
+                createdAt: event.createdAt,
+              }
               : event
           )
         );
@@ -452,34 +452,34 @@ export default function AdminEventsPage() {
           prev.map((event) =>
             event.id === eventId
               ? {
-                  ...event,
-                  // Transform the backend response to match frontend interface
-                  id: responseData.data.id.toString(),
-                  title: responseData.data.title,
-                  description: responseData.data.description,
-                  startDate: new Date(
-                    `${responseData.data.startDate}T${responseData.data.startTime}`
-                  ).toISOString(),
-                  endDate: new Date(
-                    `${responseData.data.endDate}T${responseData.data.endTime}`
-                  ).toISOString(),
-                  location: responseData.data.location,
-                  type: responseData.data.type.toLowerCase() as Event["type"], // Convert to lowercase
-                  maxAttendees: responseData.data.maxParticipants || 0,
-                  currentAttendees: responseData.data.currentParticipants || 0,
-                  registrationDeadline: responseData.data.registrationDeadline
-                    ? new Date(
-                        responseData.data.registrationDeadline + "T23:59:59"
-                      ).toISOString()
-                    : undefined,
-                  status:
-                    responseData.data.status.toLowerCase() as Event["status"], // Convert to lowercase
-                  price: responseData.data.price || undefined,
-                  // Keep existing frontend-only fields
-                  isPublic: event.isPublic,
-                  requiresApproval: event.requiresApproval,
-                  createdAt: event.createdAt,
-                }
+                ...event,
+                // Transform the backend response to match frontend interface
+                id: responseData.data.id.toString(),
+                title: responseData.data.title,
+                description: responseData.data.description,
+                startDate: new Date(
+                  `${responseData.data.startDate}T${responseData.data.startTime}`
+                ).toISOString(),
+                endDate: new Date(
+                  `${responseData.data.endDate}T${responseData.data.endTime}`
+                ).toISOString(),
+                location: responseData.data.location,
+                type: responseData.data.type.toLowerCase() as Event["type"], // Convert to lowercase
+                maxAttendees: responseData.data.maxParticipants || 0,
+                currentAttendees: responseData.data.currentParticipants || 0,
+                registrationDeadline: responseData.data.registrationDeadline
+                  ? new Date(
+                    responseData.data.registrationDeadline + "T23:59:59"
+                  ).toISOString()
+                  : undefined,
+                status:
+                  responseData.data.status.toLowerCase() as Event["status"], // Convert to lowercase
+                price: responseData.data.price || undefined,
+                // Keep existing frontend-only fields
+                isPublic: event.isPublic,
+                requiresApproval: event.requiresApproval,
+                createdAt: event.createdAt,
+              }
               : event
           )
         );
@@ -617,8 +617,10 @@ export default function AdminEventsPage() {
         responseType: "blob",
       });
 
+      const contentType = resp.headers["content-type"];
+
       const blob = new Blob([resp.data], {
-        type: resp.headers["content-type"] || "text/csv",
+        type: typeof contentType === "string" ? contentType : "text/csv",
       });
 
       // try to parse filename from Content-Disposition header
@@ -644,7 +646,7 @@ export default function AdminEventsPage() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-      
+
       toast.success('Attendee list exported successfully!');
     } catch (error) {
       console.error("Failed to export attendee list:", error);
@@ -656,12 +658,12 @@ export default function AdminEventsPage() {
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.location.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.location.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesStatus = statusFilter === 'all' || event.status === statusFilter;
     const matchesType = typeFilter === 'all' || event.type === typeFilter;
-    
+
     return matchesSearch && matchesStatus && matchesType;
   });
 
@@ -784,7 +786,7 @@ export default function AdminEventsPage() {
                           required
                         />
                       </div>
-                      
+
                       <div className="md:col-span-2 space-y-2">
                         <Label htmlFor="description">Description *</Label>
                         <Textarea
@@ -796,7 +798,7 @@ export default function AdminEventsPage() {
                           required
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="type">Event Type</Label>
                         <select
@@ -813,7 +815,7 @@ export default function AdminEventsPage() {
                           <option value="webinar">Webinar</option>
                         </select>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="location">Location *</Label>
                         <Input
@@ -841,7 +843,7 @@ export default function AdminEventsPage() {
                           required
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="startTime">Start Time</Label>
                         <Input
@@ -852,7 +854,7 @@ export default function AdminEventsPage() {
                           required
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="endDate">End Date</Label>
                         <Input
@@ -863,7 +865,7 @@ export default function AdminEventsPage() {
                           required
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="endTime">End Time</Label>
                         <Input
@@ -891,7 +893,7 @@ export default function AdminEventsPage() {
                           placeholder="Leave empty for unlimited"
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="registrationDeadline">Registration Deadline</Label>
                         <Input
@@ -901,7 +903,7 @@ export default function AdminEventsPage() {
                           onChange={(e) => handleInputChange('registrationDeadline', e.target.value)}
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="price">Price (Optional)</Label>
                         <div className="flex space-x-2">
@@ -953,7 +955,7 @@ export default function AdminEventsPage() {
                           />
                           <Label htmlFor="isPublic">Public Event</Label>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           <input
                             type="checkbox"
@@ -1092,7 +1094,7 @@ export default function AdminEventsPage() {
                           <div className="flex items-center space-x-2">
                             <Clock className="h-4 w-4 text-muted-foreground" />
                             <span>
-                              {format(new Date(event.startDate), 'h:mm a')} - 
+                              {format(new Date(event.startDate), 'h:mm a')} -
                               {format(new Date(event.endDate), 'h:mm a')}
                             </span>
                           </div>
@@ -1128,7 +1130,7 @@ export default function AdminEventsPage() {
                                 Publish
                               </Button>
                             )}
-                            
+
                             {event.status === 'published' && (
                               <>
                                 <Button
@@ -1196,9 +1198,9 @@ export default function AdminEventsPage() {
                                   registrationDeadline:
                                     event.registrationDeadline
                                       ? format(
-                                          new Date(event.registrationDeadline),
-                                          "yyyy-MM-dd"
-                                        )
+                                        new Date(event.registrationDeadline),
+                                        "yyyy-MM-dd"
+                                      )
                                       : "",
                                   isPublic: event.isPublic ?? true,
                                   requiresApproval:
@@ -1209,7 +1211,7 @@ export default function AdminEventsPage() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            
+
                             <Button
                               size="sm"
                               variant="ghost"
@@ -1237,8 +1239,8 @@ export default function AdminEventsPage() {
                               value={
                                 event.maxAttendees
                                   ? (event.currentAttendees /
-                                      event.maxAttendees) *
-                                    100
+                                    event.maxAttendees) *
+                                  100
                                   : 0
                               }
                               className="h-2"
@@ -1261,7 +1263,7 @@ export default function AdminEventsPage() {
                       : 'Create your first event to get started.'}
                   </p>
                   {!showCreateForm && (
-                    <Button 
+                    <Button
                       onClick={() => setShowCreateForm(true)}
                       className="mt-4"
                     >
